@@ -20,11 +20,19 @@
 
 FileMan::FileMan(QObject *parent) : QObject(parent) {}
 
-using Category = FileMan::Category;
+static const QList categoryList = { FileMan::Audio, FileMan::Image, FileMan::Video };
+static const qsizetype catListSize = categoryList.size();
 
-// Translate enums (i.e. integers) to strings
-constexpr QLatin1StringView catStr(Category cat) noexcept
-{ return cat == Category::Audio ? QLatin1StringView("audio") : QLatin1StringView("image"); }
+// Translate enums (i.e. integers) to strings, string is never empty
+constexpr QLatin1StringView catStr(FileMan::Category category) noexcept
+{
+    switch (category) {
+    case FileMan::Audio: return QLatin1StringView("audio");
+    case FileMan::Image: return QLatin1StringView("image");
+    case FileMan::Video: return QLatin1StringView("video");
+    }
+    Q_UNREACHABLE();
+}
 
 // Show the app's data dir; never returns null
 QString FileMan::getDataDir()
@@ -43,7 +51,7 @@ QString mkDataDir()
 }
 
 // Overload function, takes the enum as argument e.g. mkDataDir(FileMan::Audio)
-QString mkDataDir(Category category)
+QString mkDataDir(FileMan::Category category)
 {
     const QDir dataDir(FileMan::getDataDir());
     const QString categoryStr = catStr(category);
@@ -55,7 +63,7 @@ QString mkDataDir(Category category)
 }
 
 // Validator function before adding to store
-static int preAddValidate(const QString &path, Category category)
+static int preAddValidate(const QString &path, FileMan::Category category)
 {
     QFileInfo file(path);
 
@@ -99,12 +107,12 @@ static int preAddValidate(const QString &path, Category category)
         .name().toLower();
     qDebug().noquote() << "FileMan:\tMIME:" << mime;
     // only take files having <category>/* mime types, e.g. audio/ogg,
-    // audio/flac, image/svg+xml, image/png etc
+    // audio/flac, image/svg+xml, image/png, video/mp4 etc
     // this rules out text files common under unacceptable paths like /sys
     if (const QLatin1StringView c = catStr(category); mime.isEmpty() ||
         !mime.startsWith(c + u"/")) {
-        // video/* mime types are supported to be played as audio
-        if (c == "audio" && mime.startsWith("video/")) return 0;
+        // .mkv appears as application/x-matroska instead of video/x-matroska
+        if (c == "video" && mime.contains("/x-matroska")) return 0;
         qCritical().noquote() << "FileMan:\tFile type not supported for this operation";
         return EOPNOTSUPP;
     }
@@ -157,7 +165,7 @@ static QString renameFile(const QString &fileName, const QDir &location)
 // Outputs K-V pairs; {{ "error": <int> }, { "path": <url> }}
 // We use .toInt() and .toString() to extract the V[alues] from K[eys]
 //
-QVariantMap FileMan::addFile(const QUrl &fileUrl, Category category)
+QVariantMap FileMan::addFile(const QUrl &fileUrl, FileMan::Category category)
 {
     //
     // URL  =>  Translated path
@@ -177,7 +185,17 @@ QVariantMap FileMan::addFile(const QUrl &fileUrl, Category category)
     qDebug().noquote() << "FileMan:\tResolved file:" << src;
 
     // File validation
-    if (int err = preAddValidate(src, category)) return {{"error", err}, {"path", {}}};
+
+    // Also find the matching category for the file
+    int idx = -1;
+    int err = 0;
+    for (int i = 0; i < catListSize; ++i) {
+        const auto c = categoryList.at(i);
+        if ((category & c) == 0) continue;
+        if (err = preAddValidate(src, c); err == 0) { idx = i; break; }
+    }
+    if (idx < 0) return {{"error", err}, {"path", {}}};
+    const auto catSelected = categoryList.at(idx);
 
     // Hash the file to get unanimous identity
     const QString hash = sha256File(src);
@@ -193,7 +211,7 @@ QVariantMap FileMan::addFile(const QUrl &fileUrl, Category category)
     } else dest = QDir(d).filePath(hash);
 
     QDir lnkDir;
-    if(const QString d = mkDataDir(category); d.isEmpty())
+    if(const QString d = mkDataDir(catSelected); d.isEmpty())
         return {{"error", ENOENT}, {"path", {}}};
     else lnkDir.setPath(d);
 
@@ -340,7 +358,7 @@ static bool isHexDigit(QChar ch) noexcept
 // and allows to be - a lot more stricter than preAddValidate() for obvious
 // reasons
 //
-static QVariantMap preRmValidate(const QString &lnkFileName, Category category, const bool enforcedCheck = false)
+static QVariantMap preRmValidate(const QString &lnkFileName, FileMan::Category category, const bool enforcedCheck = false)
 {
     // Fail early if dataDir is actually a symlink
     if (QFileInfo(FileMan::getDataDir()).isSymLink()) {
@@ -471,41 +489,48 @@ static QVariantMap preRmValidate(const QString &lnkFileName, Category category, 
 // file name & not a path. Strips the file name (i.e. "basename" as on Linux)
 // from a path even if supplied
 //
-int FileMan::rmFile(const QString &fileName, Category category)
+int FileMan::rmFile(const QString &fileName, FileMan::Category category)
 {
-    const QVariantMap result = preRmValidate(fileName, category);
-    const QString linkName = result["lnkName"].toString();
-    qDebug().noquote() << "FileMan:\tFile name in store:" << linkName;
+    int err = 0;
+    for (const auto &c : std::as_const(categoryList)) {
+        const auto cat = category & c;
+        if (cat == 0) continue;
 
-    if (int e = result["lnkOk"].toInt(); e != 0 || linkName.isEmpty()) {
-        qCritical().noquote() << "FileMan:\tRefusing to proceed with" << fileName;
-        qDebug().noquote() << "FileMan:\tError:" << e;
-        return e;
-    }
+        qDebug().noquote() << "FileMan:\tSearching category" << catStr(cat);
+        const QVariantMap result = preRmValidate(fileName, cat);
+        const QString linkName = result["lnkName"].toString();
+        qDebug().noquote() << "FileMan:\tFile name in store:" << linkName;
 
-    // Following are all hopefully reliable operations onwards
-    QDir categoryDir = QDir(FileMan::getDataDir())
-                                        .filePath(catStr(category).toString());
-
-    if (QString f = result["hashPath"].toString(); f.isEmpty()) {
-        qWarning().noquote() << "FileMan:\tNo valid hashed file found in store for" << linkName;
-    } else {
-        // Remove the raw blob from the store first
-        if (!QFile(f).remove()) {
-            qCritical().noquote() << "FileMan:\tCouldn't remove" << f;
-            return EACCES;
+        if (int e = result["lnkOk"].toInt(); e != 0 || linkName.isEmpty()) {
+            qCritical().noquote() << "FileMan:\tRefusing to proceed with" << fileName;
+            qDebug().noquote() << "FileMan:\tError:" << e;
+            if (err != 0) err = e; continue;
         }
+
+        // Following are all hopefully reliable operations onwards
+        QDir categoryDir = QDir(FileMan::getDataDir())
+                            .filePath(catStr(cat).toString());
+
+        if (QString f = result["hashPath"].toString(); f.isEmpty()) {
+            qWarning().noquote() << "FileMan:\tNo valid hashed file found in store for" << linkName;
+        } else {
+            // Remove the raw blob from the store first
+            if (!QFile(f).remove()) {
+                qCritical().noquote() << "FileMan:\tCouldn't remove" << f;
+                if (err != 0) err = EACCES; continue;
+            }
+        }
+
+        // Remove the symlink next
+        if (!categoryDir.remove(linkName)) {
+            qCritical().noquote() << "FileMan:\tCouldn't remove" << linkName;
+            if (err != 0) err = EACCES; continue;
+        }
+
+        qInfo().noquote() << "FileMan:\t" << linkName << "removed successfully from store";
     }
 
-    // Remove the symlink next
-    if (!categoryDir.remove(linkName)) {
-        qCritical().noquote() << "FileMan:\tCouldn't remove" << linkName;
-        return EACCES;
-    }
-
-    qInfo().noquote() << "FileMan:\t" << linkName << "removed successfully from store";
-
-    return 0;
+    return err;
 }
 
 //
@@ -513,7 +538,6 @@ int FileMan::rmFile(const QString &fileName, Category category)
 //
 int FileMan::storeHouseKeeping()
 {
-    const QList categoryList = { FileMan::Audio, FileMan::Image };
     QStringList contents;
     QHash<QString, QString> contentsDict;
 

@@ -58,12 +58,16 @@ The code is intended to be C++17 standardized and Qt >=6.9 compatible.
 
 #### FileMan::Category
 
-This enum describes the available category options available on FileMan. These enums are meant to be mutually exclusive. *OR*ing is not supported.
+This enum describes the available category options available on FileMan. These enums are meant to be mutually exclusive. *OR*ing is supported.
 
 | Constant | Value | Description |
 | :-- | :-- | :-- |
-| `FileMan::Audio` | `0` | Add to or remove from the **audio** store; located under `$XDG_DATA_HOME/appName/audio`. Takes only files with `audio/*` MIME types |
-| `FileMan::Image` | `1` | Add to or remove from the **image** store; located under `$XDG_DATA_HOME/appName/image`. Takes only files with `image/*` MIME types |
+| `FileMan::Audio` | `0x01` | Add to or remove from the **audio** store; located under `$XDG_DATA_HOME/appName/audio`. Takes only files with `audio/*` MIME types |
+| `FileMan::Image` | `0x02` | Add to or remove from the **image** store; located under `$XDG_DATA_HOME/appName/image`. Takes only files with `image/*` MIME types |
+| `FileMan::Video` | `0x04` | Add to or remove from the **video** store; located under `$XDG_DATA_HOME/appName/video`. Takes only files with `video/*` MIME types |
+
+> [!Note]
+> Qt's MIME database recognizes matroska (.mkv) files as application/x-matroska. `FileMan::Video` whitelists these files.
 
 #### [QVariantMap](https://doc.qt.io/qt-6/qvariant.html) FileMan::addFile([QUrl](https://doc.qt.io/qt-6/qurl.html) &fileURL, [FileMan::Category](#fileman-category) category)
 <a name="addfile"/>
@@ -76,6 +80,8 @@ Adds the file from *fileURL* to store. The URL must follow local file specifiers
 | `path` (QString) | `<path_to_symlink>`/empty (QString) |
 
 Failed returns follow [`errno`](https://www.man7.org/linux/man-pages/man3/errno.3.html) values. On success (`"error": 0`), a path to the symlink under matching category is returned. For the example above, `"path": ~/.local/share/appName/audio/MyAudio.ogg`. Unsuccessful operations return corresponding non-zero `errno` value for `"error"` and an empty string for `"path"`.
+
+ORing *category* adds *fileURL* to the first matching enum, even if it matches multiple categories. In this case, if adding fails, the error for adding the last category is returned.
 
 Duplicate detection is done on the blobs, not on symlink names. Adding duplicate files to the store, i.e. files having same digests, fails ambiguosly; path to the existing symlink is returned if it exists (an empty string otherwise) but unlike a successful operation, `EEXIST` is returned.
 
@@ -142,6 +148,8 @@ Removes the file with the name *fileName* from store. Paths are not necessary. R
 
 rmFile() will remove *any* files or folders matching *fileName* from the categorized directory. Incomplete removing is possible, e.g. hashed file removed but symlink removal was unsuccessful. However, it is still possible to remove the dangling symlinks next time as a cause of this, provided the implementation handles returns properly.
 
+ORing lets rmFile() look for additional category directories; files with the same name all supplied categories will also be removed. Returns successful if removal succeeds under any one of the category. If unsuccessful, returns the error for the last category where removal failed.
+
 #### int FileMan::storeHouseKeeping()
 <a name="storehousekeeping"/>
 
@@ -171,12 +179,12 @@ podman -t localhost/test-builder .
 
 Create and enter the container with this image:
 ```bash
-podman run --rm -it -v $(pwd):/src localhost/test-builder
+podman run --rm -it -v $(pwd):/src:z localhost/test-builder
 ```
 
 Replace `podman` with `docker` if using docker instead. From there execute:
 ```bash
-cmake -S . -B build --fresh -G'Ninja Multi-Config' -DCMAKE_BUILD_TYPE=Release && cmake --build build --config Release --parallel && strip build/Release/*
+cmake -S examples/ -B build --fresh -G'Ninja Multi-Config' -DCMAKE_BUILD_TYPE=Release && cmake --build build --config Release --parallel && strip build/Release/*
 ```
 
 Alternatively, just press up arrow key and hit enter! The built binary should be available under `build/Release/fileman`. Execute from outside the container:

@@ -13,13 +13,15 @@ int main(int argc, char *argv[])
 
     while (!in.atEnd()) {
         // 1. Category Selection
-        qInfo().noquote() << "Select Category:\n[1] Audio\n[2] Image";
+        qInfo().noquote() << "Select Category:\n[1] Audio\n[2] Image\n[3] Video\n[4] Audio & Video";
         QString line = in.readLine().trimmed();
         if (line.isEmpty()) continue;
 
         FileMan::Category category;
         if (line == "1") category = FileMan::Audio;
         else if (line == "2") category = FileMan::Image;
+        else if (line == "3") category = FileMan::Video;
+        else if (line == "4") category = (FileMan::Audio | FileMan::Video);
         else { qInfo() << "Invalid category."; continue; }
 
         // 2. Operation Selection
