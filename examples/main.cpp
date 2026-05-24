@@ -13,15 +13,18 @@ int main(int argc, char *argv[])
 
     while (!in.atEnd()) {
         // 1. Category Selection
-        qInfo().noquote() << "Select Category:\n[1] Audio\n[2] Image\n[3] Video\n[4] Audio & Video";
+        qInfo().noquote() <<
+            "Select Category:\n[1] Audio\n[2] Image\n[3] Video\n[4] Audio & Video\n[5] All";
         QString line = in.readLine().trimmed();
         if (line.isEmpty()) continue;
 
-        FileMan::Category category;
+        FileMan::Categories category;
+        bool useDefault = false;
         if (line == "1") category = FileMan::Audio;
         else if (line == "2") category = FileMan::Image;
         else if (line == "3") category = FileMan::Video;
         else if (line == "4") category = (FileMan::Audio | FileMan::Video);
+        else if (line == "5") useDefault = true;
         else { qInfo() << "Invalid category."; continue; }
 
         // 2. Operation Selection
@@ -42,13 +45,16 @@ int main(int argc, char *argv[])
         // 4. Execute Operation
         switch (op) {
             case 1: {
-                QVariantMap result = fileman.addFile(QUrl(fileUrl), category);
+                QVariantMap result;
+                if (useDefault)
+                    result = fileman.addFile(QUrl(fileUrl));
+                else result = fileman.addFile(QUrl(fileUrl), category);
                 qInfo() << "Program returned saved path:" << result["path"].toString();
                 if (int e = result["error"].toInt(); e != 0) return e;
                 break;
             }
             case 2: {
-                if (int e = fileman.rmFile(fileUrl, category)) return e;
+                if (int e = useDefault ? fileman.rmFile(fileUrl) : fileman.rmFile(fileUrl, category)) return e;
                 break;
             }
             case 3: {

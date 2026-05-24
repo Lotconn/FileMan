@@ -1,20 +1,21 @@
-#include <cerrno>
-#include <cstring>
 #include <QCryptographicHash>
 #include <QDebug>
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
 #include <QMimeDatabase>
+#include <QQmlEngine>
 #include <QSaveFile>
 #include <QStandardPaths>
 #include <QStorageInfo>
 #include <QUrl>
 #include <QVariant>
+#include <cerrno>
+#include <cstring>
 
-#include "fileman.h"
+#include "fileman.hpp"
 
-#if defined(Q_OS_UNIX)
+#ifdef Q_OS_UNIX
 #include <unistd.h>
 #endif
 
@@ -23,13 +24,15 @@ FileMan::FileMan(QObject *parent) : QObject(parent) {}
 static const QList categoryList = { FileMan::Audio, FileMan::Image, FileMan::Video };
 static const qsizetype catListSize = categoryList.size();
 
+FileMan *FileMan::s_singletonInstance = nullptr;
+
 // Translate enums (i.e. integers) to strings, string is never empty
-constexpr QLatin1StringView catStr(FileMan::Category category) noexcept
+constexpr static QLatin1StringView catStr(FileMan::Categories category) noexcept
 {
     switch (category) {
-    case FileMan::Audio: return QLatin1StringView("audio");
-    case FileMan::Image: return QLatin1StringView("image");
-    case FileMan::Video: return QLatin1StringView("video");
+        case FileMan::Audio: return QLatin1StringView("audio");
+        case FileMan::Image: return QLatin1StringView("image");
+        case FileMan::Video: return QLatin1StringView("video");
     }
     Q_UNREACHABLE();
 }
@@ -38,7 +41,7 @@ constexpr QLatin1StringView catStr(FileMan::Category category) noexcept
 QString FileMan::getDataDir()
 { return QStandardPaths::writableLocation(QStandardPaths::AppDataLocation); }
 
-QString mkDataDir()
+static QString mkDataDir()
 {
     const QDir dataDir(FileMan::getDataDir());
 
@@ -51,7 +54,7 @@ QString mkDataDir()
 }
 
 // Overload function, takes the enum as argument e.g. mkDataDir(FileMan::Audio)
-QString mkDataDir(FileMan::Category category)
+static QString mkDataDir(FileMan::Categories category)
 {
     const QDir dataDir(FileMan::getDataDir());
     const QString categoryStr = catStr(category);
@@ -63,7 +66,7 @@ QString mkDataDir(FileMan::Category category)
 }
 
 // Validator function before adding to store
-static int preAddValidate(const QString &path, FileMan::Category category)
+static int preAddValidate(const QString &path, FileMan::Categories category)
 {
     QFileInfo file(path);
 
@@ -77,7 +80,8 @@ static int preAddValidate(const QString &path, FileMan::Category category)
         //
         QString p = QFileInfo(file.symLinkTarget()).absoluteFilePath();
         int i = 0;
-        for (; i < 41; i++) {
+        constexpr int loopDepth = 41;
+        for (; i < loopDepth; i++) {
             const QFileInfo t(p);
             if (!t.isSymLink()) break;
             p = QFileInfo(t.symLinkTarget()).absoluteFilePath();
@@ -96,7 +100,8 @@ static int preAddValidate(const QString &path, FileMan::Category category)
 
     // A 5 mins long 96 kHz 24-bit audio file could easily reach this ceiling
     // images are much more forgiving though
-    if (file.size() > 1073741824) {
+    constexpr int gibVal = 1073741824;
+    if (file.size() > gibVal) {
         qCritical().noquote() << "FileMan:\tFile size exceeding 1GB not supported";
         return EFBIG;
     }
@@ -165,7 +170,7 @@ static QString renameFile(const QString &fileName, const QDir &location)
 // Outputs K-V pairs; {{ "error": <int> }, { "path": <url> }}
 // We use .toInt() and .toString() to extract the V[alues] from K[eys]
 //
-QVariantMap FileMan::addFile(const QUrl &fileUrl, FileMan::Category category)
+QVariantMap FileMan::addFile(const QUrl &fileUrl, FileMan::Categories category)
 {
     //
     // URL  =>  Translated path
@@ -192,10 +197,15 @@ QVariantMap FileMan::addFile(const QUrl &fileUrl, FileMan::Category category)
     for (int i = 0; i < catListSize; ++i) {
         const auto c = categoryList.at(i);
         if ((category & c) == 0) continue;
+        qDebug().noquote() << "FileMan:\tValidating for category" << catStr(c);
         if (err = preAddValidate(src, c); err == 0) { idx = i; break; }
     }
-    if (idx < 0) return {{"error", err}, {"path", {}}};
+    if (idx < 0 || idx >= catListSize) {
+        qCritical().noquote() << "FileMan:\tNo valid category found for" << src;
+        return {{"error", err}, {"path", {}}};
+    }
     const auto catSelected = categoryList.at(idx);
+    qDebug().noquote() << "FileMan:\tSelected category:" << catStr(catSelected);
 
     // Hash the file to get unanimous identity
     const QString hash = sha256File(src);
@@ -242,7 +252,7 @@ QVariantMap FileMan::addFile(const QUrl &fileUrl, FileMan::Category category)
 
     // Opportunistically try hardlinking the file, fallback to regular copying
     // if fails. Only UNIX for now
-#if defined(Q_OS_UNIX)
+#ifdef Q_OS_UNIX
     bool hlStatus = false;
     {
         //
@@ -316,7 +326,7 @@ QVariantMap FileMan::addFile(const QUrl &fileUrl, FileMan::Category category)
 
     QString srcFileName = QFileInfo(src).fileName();
     QString savedPath = QDir::cleanPath(lnkDir.absoluteFilePath(srcFileName));
-#if defined(Q_OS_WIN)
+#ifdef Q_OS_WIN
     constexpr QLatin1StringView winLnkExt(".lnk");
     savedPath += winLnkExt;
 #endif
@@ -328,7 +338,7 @@ QVariantMap FileMan::addFile(const QUrl &fileUrl, FileMan::Category category)
         qWarning().noquote() << "FileMan:\tSaving" << srcFileName << "as" << f << "since it already exists";
         srcFileName = f;
         savedPath = QDir::cleanPath(lnkDir.absoluteFilePath(srcFileName));
-#if defined(Q_OS_WIN)
+#ifdef Q_OS_WIN
         // Windows requires .lnk extension for a valid symlink
         savedPath += winLnkExt;
 #endif
@@ -358,7 +368,7 @@ static bool isHexDigit(QChar ch) noexcept
 // and allows to be - a lot more stricter than preAddValidate() for obvious
 // reasons
 //
-static QVariantMap preRmValidate(const QString &lnkFileName, FileMan::Category category, const bool enforcedCheck = false)
+static QVariantMap preRmValidate(const QString &lnkFileName, FileMan::Categories category, const bool enforcedCheck = false)
 {
     // Fail early if dataDir is actually a symlink
     if (QFileInfo(FileMan::getDataDir()).isSymLink()) {
@@ -373,7 +383,7 @@ static QVariantMap preRmValidate(const QString &lnkFileName, FileMan::Category c
         qWarning().noquote() << "FileMan:\tStore doesn't exist yet";
         return {{"lnkOk", EAGAIN}, {"lnkName", {}}, {"hashPath", {}}};
     }
-    else if (QFileInfo(dir).isSymLink()) {
+    if (QFileInfo(dir).isSymLink()) {
         qWarning().noquote() << "FileMan:\t" << dir << "is a symlink";
         return {{"lnkOk", ECANCELED}, {"lnkName", {}}, {"hashPath", {}}};
     }
@@ -385,14 +395,14 @@ static QVariantMap preRmValidate(const QString &lnkFileName, FileMan::Category c
         qWarning().noquote() << "FileMan:\tStore doesn't exist yet";
         return {{"lnkOk", EAGAIN}, {"lnkName", {}}, {"hashPath", {}}};
     }
-    else if (QFileInfo(dir).isSymLink()) {
+    if (QFileInfo(dir).isSymLink()) {
         qWarning().noquote() << "FileMan:\t" << dir << "is a symlink";
         return {{"lnkOk", ECANCELED}, {"lnkName", {}}, {"hashPath", {}}};
     }
     const QDir categoryDir(dir);
 
      // lnkFileName can also be a full path
-#if defined(Q_OS_WIN)
+#ifdef Q_OS_WIN
     // Valid Windows symlinks present in store should be having .lnk extensions
     const QString file = QFileInfo(lnkFileName).fileName()
                         + QLatin1StringView(".lnk");
@@ -457,9 +467,10 @@ static QVariantMap preRmValidate(const QString &lnkFileName, FileMan::Category c
 
     // Valid files ought to have 64 characters exactly (sha256 digest length)
     const QString targetBaseName = targetFile.completeBaseName();
-    if (qint64 s = targetBaseName.size(); s != 64) {
+    constexpr int nameLength = 64;
+    if (qint64 s = targetBaseName.size(); s != nameLength) {
         qWarning().noquote() << "FileMan:\t" << target << "is not a valid file in store (wrong name)";
-        qDebug().noquote() << "FileMan:\tBase name size:" << s << "vs" << 64;
+        qDebug().noquote() << "FileMan:\tBase name size:" << s << "vs" << nameLength;
         return {{"lnkOk", 0}, {"lnkName", file}, {"hashPath", {}}};
     }
 
@@ -489,12 +500,15 @@ static QVariantMap preRmValidate(const QString &lnkFileName, FileMan::Category c
 // file name & not a path. Strips the file name (i.e. "basename" as on Linux)
 // from a path even if supplied
 //
-int FileMan::rmFile(const QString &fileName, FileMan::Category category)
+int FileMan::rmFile(const QString &fileName, FileMan::Categories category)
 {
+    bool entered = false;
     int err = 0;
     for (const auto &c : std::as_const(categoryList)) {
         const auto cat = category & c;
         if (cat == 0) continue;
+
+        entered = true;
 
         qDebug().noquote() << "FileMan:\tSearching category" << catStr(cat);
         const QVariantMap result = preRmValidate(fileName, cat);
@@ -528,6 +542,11 @@ int FileMan::rmFile(const QString &fileName, FileMan::Category category)
         }
 
         qInfo().noquote() << "FileMan:\t" << linkName << "removed successfully from store";
+    }
+
+    if (!entered) {
+        qCritical().noquote() << "FileMan:\t" << category << "is an invalid category";
+        err = EINVAL;
     }
 
     return err;
