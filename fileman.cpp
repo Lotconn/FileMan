@@ -13,7 +13,7 @@
 #include <cerrno>
 #include <cstring>
 
-#include "fileman.hpp"
+#include <fileman.hpp>
 
 #ifdef Q_OS_UNIX
 #include <unistd.h>

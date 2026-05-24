@@ -4,10 +4,10 @@ include(CMakePrintHelpers)
 include(CMakePackageConfigHelpers)
 
 project(fileman
-        VERSION 0.2.0
-        DESCRIPTION "A file manager library for Qt6 apps written in C++"
-        LANGUAGES CXX
-        # SPDX_LICENSE MIT
+    VERSION 0.2.0
+    DESCRIPTION "A file manager library for Qt6 apps written in C++"
+    LANGUAGES CXX
+    # SPDX_LICENSE MIT
 )
 
 set(CMAKE_AUTOMOC ON)
@@ -53,7 +53,7 @@ if("${FM_BUILD_AS}" STREQUAL "SHARED")
         OUTPUT_TARGETS  fileman_output_targets
     )
     install(TARGETS "${PROJECT_NAME}plugin"
-        LIBRARY DESTINATION "${QT_QML_OUTPUT_DIRECTORY}/HasanEsa/FileMan"
+        LIBRARY DESTINATION "${QT6_INSTALL_QML}/HasanEsa/FileMan"
     )
 else()
     qt_add_qml_module(${PROJECT_NAME}
@@ -115,12 +115,12 @@ set_target_properties(${PROJECT_NAME} PROPERTIES
 install(TARGETS                 ${PROJECT_NAME}
     ${${PROJECT_NAME}_output_targets}
     EXPORT                      FileManTargets
-    PUBLIC_HEADER   DESTINATION include/HasanEsa/FileMan
+    PUBLIC_HEADER   DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/HasanEsa/FileMan"
 )
 install(FILES
     "${${PROJECT_NAME}_qmldir}"
     "${${PROJECT_NAME}_typeinfo}"
-    DESTINATION "${QT_QML_OUTPUT_DIRECTORY}/HasanEsa/FileMan"
+    DESTINATION "${QT6_INSTALL_QML}/HasanEsa/FileMan"
 )
 write_basic_package_version_file(
     FileManConfigVersion.cmake
@@ -130,10 +130,10 @@ write_basic_package_version_file(
 install(EXPORT  FileManTargets
     FILE        FileManTargets.cmake
     NAMESPACE   HasanEsa::
-    DESTINATION lib/cmake/HasanEsa/FileMan
+    DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/FileMan"
 )
 install(FILES
     "${CMAKE_CURRENT_SOURCE_DIR}/FileManConfig.cmake"
     "${CMAKE_CURRENT_BINARY_DIR}/FileManConfigVersion.cmake"
-    DESTINATION lib/cmake/HasanEsa/FileMan
+    DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/FileMan"
 )
