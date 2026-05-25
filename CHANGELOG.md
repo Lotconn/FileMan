@@ -11,10 +11,12 @@ Reconfigure FileMan to additionally be as a QML module: Part 1
 - Rename fileman.h to .hpp
 - Add a top-level `CMakeLists.txt` conforming to QML layout. Notable aspects include:
     - C++17 & Qt>=6.9 Standardized
-    - Use as a QML module with plugin support when built as shared
-    - Also can be used as a linked library from C++ implemenatations
+    - Use as a QML module with plugin support when built as shared (`-DFM_BUILD_AS=SHARED`; already the default)
+    - Also can be used as a statically-linked library from C++ implemenatations (`-DFM_BUILD_AS=STATIC`)
     - LTO and RELRO enabled, moderately hardened building
     - clang+llvm is the preferred building tool. CC=clang and CXX=clang++ needs to be specified
+    - Build examples in-tree with `-DFM_BUILD_EXAMPLES=ON`. Default is turned off.
+    - Defaults to "Release" build if none specified during CMake configuration. Available are: Debug, MinSizeRel, Release & RelWithDebInfo
 
 - Replace custom ENABLE_BITWISE_OPS_FOR_ENUM with Q_DECLARE_OPERATORS_FOR_FLAGS macro, remove unused `scoped-enum-bitops.h` as a result 
 - Few code touch-ups
@@ -30,7 +32,6 @@ Reconfigure FileMan to additionally be as a QML module: Part 1
 ## New
 - Add an "All" category alias to select all available categories
 - Make FileMan a singleton
-- Examples are omitted for now, reimplementation comming soon
 
 Full changelog: [`v0.2.0...v0.1.0`](https://gitlab.com/hasanesa/fileman/-/compare/v0.1.0...v0.2.0)
 

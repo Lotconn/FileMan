@@ -6,7 +6,7 @@
 int main(int argc, char *argv[])
 {
     QCoreApplication app(argc, argv);
-    app.setApplicationName("myapp");
+    app.setApplicationName("fileman-cpp");
 
     FileMan fileman;
     QTextStream in(stdin);
@@ -52,7 +52,8 @@ int main(int argc, char *argv[])
                 else result = fileman.addFile(QUrl(fileUrl), category);
                 qInfo() << "Program returned saved path:"
                         << result["path"].toString();
-                if (int e = result["error"].toInt(); e != 0) return e;
+                if (int e = result["error"].toInt(); e != 0)
+                    qInfo() << "addFile() return:" << e;
                 break;
             }
             case 2: {
@@ -61,8 +62,9 @@ int main(int argc, char *argv[])
                 if (fileUrl.isEmpty())
                 { qInfo() << "Nothing provided."; continue; }
 
-                if (int e = useDefault ? fileman.rmFile(fileUrl) :
-                                    fileman.rmFile(fileUrl, category)) return e;
+                int e = useDefault ? fileman.rmFile(fileUrl) :
+                                    fileman.rmFile(fileUrl, category);
+                qInfo() << "rmFile() return:" << e;
                 break;
             }
             case 3: {
