@@ -1,7 +1,7 @@
 #include <QtCore>
 #include <QTextStream>
 #include <QVariant>
-#include <HasanEsa/FileMan/fileman.hpp>
+#include <fileman.hpp>
 
 int main(int argc, char *argv[])
 {

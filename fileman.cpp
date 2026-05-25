@@ -289,7 +289,7 @@ QVariantMap FileMan::addFile(const QUrl &fileUrl, FileMan::Categories category)
             return {{"error", EPERM}, {"path", {}}};
         }
 
-        const QString destDir = QFileInfo(dest).absoluteFilePath();
+        const QString destDir = QFileInfo(dest).absolutePath();
 
         // Check available (quota) free space before copying
         // bytesAvailable() needs to be guarded first

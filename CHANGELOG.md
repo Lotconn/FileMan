@@ -2,10 +2,11 @@ This file contains a brief lists of notable changes for each version. Refer to r
 
 # v0.2.0
 
-Reconfigure FileMan to additionally be as a QML module: Part 1
+This version fixes some critical bugs, adds a catch-all "All" category on the APIs and lays out good ground work for FileMan to be a reusable library in good sense; the library is now a singleton, is installable, can be used a shared library or be linked statically with the implementing application and can also be used as a QML module. The QML module part is still in progress and not guarranteed to be stable.
 
 ## Bugs
 - Fix file can't be added for any category
+- Fix storage info always fails during adding
 
 ## Improvments
 - Rename fileman.h to .hpp
