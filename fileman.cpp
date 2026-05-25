@@ -24,6 +24,7 @@ FileMan::FileMan(QObject *parent) : QObject(parent) {}
 static const QList categoryList = { FileMan::Audio, FileMan::Image, FileMan::Video };
 static const qsizetype catListSize = categoryList.size();
 
+// FileMan is meant to be a singleton
 FileMan *FileMan::s_singletonInstance = nullptr;
 
 // Translate enums (i.e. integers) to strings, string is never empty
@@ -200,6 +201,13 @@ QVariantMap FileMan::addFile(const QUrl &fileUrl, FileMan::Categories category)
         qDebug().noquote() << "FileMan:\tValidating for category" << catStr(c);
         if (err = preAddValidate(src, c); err == 0) { idx = i; break; }
     }
+
+    //
+    // C++ implementations can check compile-time for invalid enum/flags
+    // but unfortunately, no such checks exists for QML. Ensure "category"
+    // is valid before proceeding
+    //
+
     if (idx < 0 || idx >= catListSize) {
         qCritical().noquote() << "FileMan:\tNo valid category found for" << src;
         return {{"error", err}, {"path", {}}};
@@ -379,6 +387,7 @@ static QVariantMap preRmValidate(const QString &lnkFileName, FileMan::Categories
     QString dir = QDir(FileMan::getDataDir())
                                 .absoluteFilePath(QLatin1StringView("common"));
     qDebug().noquote() << "FileMan:\tStore path (common):" << dir;
+
     if (dir.isEmpty() || !QFileInfo::exists(dir)) {
         qWarning().noquote() << "FileMan:\tStore doesn't exist yet";
         return {{"lnkOk", EAGAIN}, {"lnkName", {}}, {"hashPath", {}}};
@@ -391,6 +400,7 @@ static QVariantMap preRmValidate(const QString &lnkFileName, FileMan::Categories
 
     dir = QDir(FileMan::getDataDir()).absoluteFilePath(catStr(category).toString());
     qDebug().noquote() << "FileMan:\tStore path (categorized):" << dir;
+
     if (dir.isEmpty() || !QFileInfo::exists(dir)) {
         qWarning().noquote() << "FileMan:\tStore doesn't exist yet";
         return {{"lnkOk", EAGAIN}, {"lnkName", {}}, {"hashPath", {}}};
@@ -469,16 +479,20 @@ static QVariantMap preRmValidate(const QString &lnkFileName, FileMan::Categories
     const QString targetBaseName = targetFile.completeBaseName();
     constexpr int nameLength = 64;
     if (qint64 s = targetBaseName.size(); s != nameLength) {
-        qWarning().noquote() << "FileMan:\t" << target << "is not a valid file in store (wrong name)";
-        qDebug().noquote() << "FileMan:\tBase name size:" << s << "vs" << nameLength;
+        qWarning().noquote()    << "FileMan:\t" << target
+                                << "is not a valid file in store (wrong name)";
+        qDebug().noquote()  << "FileMan:\tBase name size:" << s
+                            << "vs" << nameLength;
         return {{"lnkOk", 0}, {"lnkName", file}, {"hashPath", {}}};
     }
 
     // They also have exactly hex characters: [a-fA-F] & [0-9]
     for (QChar c : targetBaseName) {
         if (!isHexDigit(c)) {
-            qWarning().noquote() << "FileMan:\t" << target << "is not a valid file in store (wrong name)";
-            qDebug().noquote() << "FileMan:\tBase name" << targetBaseName << "doesn't look like a sha256 hash";
+            qWarning().noquote() << "FileMan:\t" << target
+                                << "is not a valid file in store (wrong name)";
+            qDebug().noquote()  << "FileMan:\tBase name" << targetBaseName
+                                << "doesn't look like a sha256 hash";
             return {{"lnkOk", 0}, {"lnkName", file}, {"hashPath", {}}};
         }
     }
@@ -508,6 +522,7 @@ int FileMan::rmFile(const QString &fileName, FileMan::Categories category)
         const auto cat = category & c;
         if (cat == 0) continue;
 
+        // Gate for invalid "category" similarly
         entered = true;
 
         qDebug().noquote() << "FileMan:\tSearching category" << catStr(cat);

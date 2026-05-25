@@ -12,6 +12,7 @@ FileMan provides simple APIs and robust backend for managing data store for Qt/Q
 | Type | Description |
 |------|-------------|
 | enum | [Category](#category-enum) |
+| flag | [Categories](#categoy-enum) |
 
 ### Public Functions
 

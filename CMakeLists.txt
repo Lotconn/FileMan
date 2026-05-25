@@ -1,5 +1,7 @@
+# Qt recommends minimum version of 3.16
 cmake_minimum_required(VERSION 3.16...4.3)
 
+# CMakePrintHelpers for printing variables easily
 include(CMakePrintHelpers)
 include(CMakePackageConfigHelpers)
 
@@ -7,17 +9,18 @@ project(FileMan
     VERSION 0.2.0
     DESCRIPTION "A file manager library for Qt6 apps written in C++"
     LANGUAGES CXX
-    # SPDX_LICENSE MIT
+    # SPDX_LICENSE MIT  # SPDX_LICENSE doesn't work before cmake 4.1
 )
 
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)   # Some IDEs need this for linter servers
 set(FM_NS HasanEsa CACHE STRING "Namespace for the project")
 string(TOLOWER ${PROJECT_NAME} PROJECT_NAME_LOWER)
 
+# Do not show this in normal listing
 mark_as_advanced(FORCE FM_NS)
 mark_as_advanced(FORCE PROJECT_NAME_LOWER)
 
@@ -28,9 +31,9 @@ if(CCACHE_PROGRAM)
     set(CMAKE_CXX_COMPILER_LAUNCHER "${CCACHE_PROGRAM}")
 endif()
 
-qt_policy(SET QTP0003 NEW)
-qt_policy(SET QTP0005 NEW)
-qt_standard_project_setup(REQUIRES 6.9)
+qt_policy(SET QTP0003 NEW)  # Respect BUILD_SHARED_LIBS
+qt_policy(SET QTP0005 NEW)  # Use CMake TARGETS inside qt_add_qml_module()
+qt_standard_project_setup(REQUIRES 6.9) # Strictly standardize on Qt 6.9
 
 set(default_build_type "Release")
 
@@ -55,22 +58,35 @@ if("${FM_BUILD_AS}" STREQUAL "SHARED")
         VERSION         0.2
         ${FM_BUILD_AS}
         SOURCES         fileman.cpp fileman.hpp
+        #
+        # qt_add_qml_module() creates some object targets that need to be
+        # included with the qml module in order for it to work. This is
+        # especially necessary on static builds. OUTPUT_TARGETS enlists all
+        # those required objects in the variable
+        #
         OUTPUT_TARGETS  fm_qml_mod_output_targets
     )
     set_target_properties(${PROJECT_NAME}plugin PROPERTIES
         INTERPROCEDURAL_OPTIMIZATION ON
-        OUTPUT_NAME "filemanplugin"
+        OUTPUT_NAME "filemanplugin" # Creates (lib)FileManplugin.* otherwise
     )
 else()
     qt_add_qml_module(${PROJECT_NAME}
         URI             HasanEsa.FileMan
         VERSION         0.2
         ${FM_BUILD_AS}
+        #
+        # Using separate plugins with static building requires some other
+        # hassles on consumer ends. For this and the reason that such separation
+        # doesn't quite make sense in static linking, omit creatng plugins
+        # altogether
+        #
         NO_PLUGIN
         SOURCES         fileman.cpp fileman.hpp
         OUTPUT_TARGETS  fm_qml_mod_output_targets
     )
 endif()
+# Some variables worth noting down
 qt_query_qml_module(${PROJECT_NAME}
     URI             fm_qml_mod_uri
     VERSION         fm_qml_mod_version
@@ -79,6 +95,7 @@ qt_query_qml_module(${PROJECT_NAME}
     TYPEINFO        fm_qml_mod_typeinfo
 )
 
+# qt_add_qml_module() handles this part, keep this around for reference
 # add_library(${PROJECT_NAME}
 #     ${CMAKE_CURRENT_SOURCE_DIR}/fileman.cpp
 #     ${CMAKE_CURRENT_SOURCE_DIR}/fileman.hpp
@@ -90,8 +107,11 @@ if(FM_BUILD_EXAMPLES)
     add_subdirectory(examples/)
 endif()
 
+# Namespaces are always a good idea
 add_library(${FM_NS}::${PROJECT_NAME} ALIAS ${PROJECT_NAME})
 
+# Disable policies older than Qt 6.9. The format is 0xMMmmrr
+# MM = Major (06); mm = minor (09); rr = revision (00)
 target_compile_definitions(${PROJECT_NAME} PUBLIC
     QT_ENABLE_STRICT_MODE_UP_TO=0x060900
 )
@@ -102,29 +122,45 @@ target_compile_options(${PROJECT_NAME} PRIVATE
     -fstack-clash-protection -fcf-protection -mno-omit-leaf-frame-pointer
     $<$<CONFIG:Release>:-O3>
     $<$<OR:$<CONFIG:Debug>,$<CONFIG:RelWithDebInfo>>:-O2 -g -grecord-gcc-switches>
+    # CMake auto handles MinSizeRel with -Os
 )
 target_include_directories(${PROJECT_NAME} PUBLIC
+    #
+    # Since the project layout is flat, CMake needs to know where to look for
+    # headers/source files during building and how to handle installing such a
+    # flat structure
+    #
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
     $<INSTALL_INTERFACE:include>
 )
+# Versionless invokes are preferred
 target_link_libraries(${PROJECT_NAME} PUBLIC Qt::Core Qt::Qml)
 target_link_options(${PROJECT_NAME} PRIVATE
-    -fuse-ld=lld
+    -fuse-ld=lld # necessary because ld fails to link
     $<$<NOT:$<OR:$<CONFIG:Debug>,$<CONFIG:RelWithDebInfo>>>:-Wl,-z,relro,-z,now -Wl,--as-needed>
 )
 
 set_target_properties(${PROJECT_NAME} PROPERTIES
     INTERPROCEDURAL_OPTIMIZATION    ON
     PUBLIC_HEADER                   fileman.hpp
-    OUTPUT_NAME                     ${PROJECT_NAME_LOWER}
+    OUTPUT_NAME                     ${PROJECT_NAME_LOWER} # Outputs
+                                                          # (lib)FileMan.*
+                                                          # otherwise
 )
 
 install(TARGETS                 ${PROJECT_NAME}
-    ${fm_qml_mod_output_targets}
+    ${fm_qml_mod_output_targets} # install those qml module object targets
     EXPORT                      ${PROJECT_NAME}Targets
+    # QML module objects go under the INSTALL_LIBDIR (/lib, /lib64 etc)
     OBJECTS         DESTINATION "${CMAKE_INSTALL_LIBDIR}/${FM_NS}/${PROJECT_NAME}"
+    # This installs the header (.hpp) file properly
     PUBLIC_HEADER   DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/${FM_NS}/${PROJECT_NAME}"
 )
+#
+# The qml module plugin and related files should be installed under
+# INSTALL_LIBDIR/qt6/qml as is conventional. QT_QML_OUTPUT_DIR could be manually
+# set but QT6_INSTALL_QML already has the structure right
+#
 if("${FM_BUILD_AS}" STREQUAL "SHARED")
     install(TARGETS "${PROJECT_NAME}plugin"
         LIBRARY DESTINATION "${QT6_INSTALL_QML}/${FM_NS}/${PROJECT_NAME}"
@@ -135,11 +171,15 @@ install(FILES
     "${fm_qml_mod_typeinfo}"
     DESTINATION "${QT6_INSTALL_QML}/${FM_NS}/${PROJECT_NAME}"
 )
+# Auto create the *ConfigVersion.cmake file
+# requires including CMakePackageConfigHelpers
 write_basic_package_version_file(
     ${PROJECT_NAME}ConfigVersion.cmake
     VERSION         ${PROJECT_VERSION}
     COMPATIBILITY   AnyNewerVersion
 )
+# Install the handwritten *Targets.cmake file. Library can now be invoked during
+# linking as HasanEsa::FileMan
 install(EXPORT  ${PROJECT_NAME}Targets
     FILE        ${PROJECT_NAME}Targets.cmake
     NAMESPACE   HasanEsa::
