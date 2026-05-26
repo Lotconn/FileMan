@@ -525,20 +525,23 @@ int FileMan::rmFile(const QString &fileName, FileMan::Categories category)
         // Gate for invalid "category" similarly
         entered = true;
 
-        qDebug().noquote() << "FileMan:\tSearching category" << catStr(cat);
+        const QString categoryName = catStr(cat);
+
+        qDebug().noquote() << "FileMan:\tSearching category" << categoryName;
         const QVariantMap result = preRmValidate(fileName, cat);
         const QString linkName = result["lnkName"].toString();
         qDebug().noquote() << "FileMan:\tFile name in store:" << linkName;
 
         if (int e = result["lnkOk"].toInt(); e != 0 || linkName.isEmpty()) {
-            qCritical().noquote() << "FileMan:\tRefusing to proceed with" << fileName;
+            qCritical().noquote() << "FileMan:\tRefusing to proceed with" << fileName
+                                << "on category" << categoryName;
             qDebug().noquote() << "FileMan:\tError:" << e;
             if (err != 0) err = e; continue;
         }
 
         // Following are all hopefully reliable operations onwards
         QDir categoryDir = QDir(FileMan::getDataDir())
-                            .filePath(catStr(cat).toString());
+                            .filePath(categoryName);
 
         if (QString f = result["hashPath"].toString(); f.isEmpty()) {
             qWarning().noquote() << "FileMan:\tNo valid hashed file found in store for" << linkName;
@@ -556,7 +559,8 @@ int FileMan::rmFile(const QString &fileName, FileMan::Categories category)
             if (err != 0) err = EACCES; continue;
         }
 
-        qInfo().noquote() << "FileMan:\t" << linkName << "removed successfully from store";
+        qInfo().noquote() << "FileMan:\t" << linkName
+            << "removed successfully from" << categoryName << "store";
     }
 
     if (!entered) {

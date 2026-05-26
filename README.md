@@ -12,15 +12,15 @@ FileMan provides simple APIs and robust backend for managing data store for Qt/Q
 | Type | Description |
 |------|-------------|
 | enum | [Category](#category-enum) |
-| flag | [Categories](#categoy-enum) |
+| flag | [Categories](#category-enum) |
 
 ### Public Functions
 
 | Return type | Function |
 |--:|:--|
-| [QVariantMap](https://doc.qt.io/qt-6/qvariant.html) | [addFile](#addfile)([QUrl](https://doc.qt.io/qt-6/qurl.html) &fileURL, [FileMan::Category](#fileman-category) categories = FileMan::All) |
+| [QVariantMap](https://doc.qt.io/qt-6/qvariant.html) | [addFile](#addfile)([QUrl](https://doc.qt.io/qt-6/qurl.html) &fileURL, [FileMan::Categories](#fileman-category) category = FileMan::All) |
 | [QString](https://doc.qt.io/qt-6/qstring.html) | [getFileName](#getfilename)([QUrl](https://doc.qt.io/qt-6/qurl.html) &fileURL) |
-| int | [rmFile](#rmfile)([QString](https://doc.qt.io/qt-6/qstring.html) fileName, [FileMan::Category](#fileman-category) categories = FileMan::All) |
+| int | [rmFile](#rmfile)([QString](https://doc.qt.io/qt-6/qstring.html) fileName, [FileMan::Categories](#fileman-category) category = FileMan::All) |
 | int | [storeHouseKeeping()](#storehousekeeping) |
 
 ### Static Public Members
@@ -222,7 +222,7 @@ Replace `podman` with `docker` if using docker instead.
 
 From there execute:
 ```bash
-CC=clang CXX=clang++ cmake -S . -B . --fresh -G'Ninja Multi-Config' && cmake --build . --parallel
+CC=clang CXX=clang++ cmake -B . --fresh -GNinja && cmake --build . --parallel
 # optional
 strip examples/fileman-*/fileman-*
 ```
@@ -235,7 +235,7 @@ cmake --install .
 The repository contains example apps that can be opted in for building during configuration with `-DFM_BUILD_EXAMPLES=ON`. The built binaries would be available under their respective folders `examples/<program name>` and are not exported or installed. They can also be built standalone without the need for configuring the root project provided the library has already been installed to running system and available in searchable paths. This however, requires a manual change of include directive in `main.cpp` files from `#include <fileman.hpp>` to `#include <HasanEsa/FileMan/fileman.hpp>`. After ensuring the requirements, change working directory to the `examples/` folder, configure and build the binary:
 ```bash
 cd examples/
-CC=clang CXX=clang++ cmake -S . -B build/ --fresh -G'Ninja' && cmake --build build/ --parallel
+CC=clang CXX=clang++ cmake -S . -B build/ --fresh -GNinja && cmake --build build/ --parallel
 ```
 
 The built binary should be available under `build/`. Try executing the binary:
@@ -261,6 +261,7 @@ find_package(FileMan REQUIRED)
 set(CMAKE_AUTOMOC ON)
 
 target_link_libraries(${PROJECT_NAME} PRIVATE Qt::Core HasanEsa::FileMan)
+# lld is required for clang, can be omitted if using gcc instead
 target_link_options(${PROJECT_NAME} PRIVATE -fuse-ld=lld)
 ```
 

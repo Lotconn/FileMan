@@ -14,9 +14,9 @@ RUN rm -rf /var/cache/* /var/log/dnf* \
         /var/log/yum.* /var/lib/*dnf*
 
 RUN cp /usr/share/rootfiles/.* /root && \
-    echo "CC=clang CXX=clang++ cmake -S examples/ -B examples/build/ --fresh -G'Ninja Multi-Config' && cmake --build examples/build/ --parallel" >> /root/.bash_history && \
+    echo "CC=clang CXX=clang++ cmake -B . --fresh -GNinja -DFM_BUILD_EXAMPLES=ON && cmake --build . --parallel" >> /root/.bash_history && \
     echo "cmake --install ." >> /root/.bash_history && \
-    echo "CC=clang CXX=clang++ cmake -S . -B . --fresh -G'Ninja Multi-Config' && cmake --build . --parallel" >> /root/.bash_history
+    echo "CC=clang CXX=clang++ cmake -B . --fresh -GNinja && cmake --build . --parallel" >> /root/.bash_history
 
 WORKDIR /src
 ENTRYPOINT /bin/bash

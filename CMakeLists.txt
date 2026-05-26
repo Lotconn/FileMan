@@ -6,7 +6,7 @@ include(CMakePrintHelpers)
 include(CMakePackageConfigHelpers)
 
 project(FileMan
-    VERSION 0.2.0
+    VERSION 0.2.1
     DESCRIPTION "A file manager library for Qt6 apps written in C++"
     LANGUAGES CXX
     # SPDX_LICENSE MIT  # SPDX_LICENSE doesn't work before cmake 4.1
@@ -104,7 +104,8 @@ qt_query_qml_module(${PROJECT_NAME}
 set(FM_BUILD_EXAMPLES OFF CACHE BOOL "Build examples in the project")
 
 if(FM_BUILD_EXAMPLES)
-    add_subdirectory(examples/)
+    add_subdirectory(examples/fileman-app)
+    add_subdirectory(examples/fileman-cpp)
 endif()
 
 # Namespaces are always a good idea
@@ -146,6 +147,8 @@ set_target_properties(${PROJECT_NAME} PROPERTIES
     OUTPUT_NAME                     ${PROJECT_NAME_LOWER} # Outputs
                                                           # (lib)FileMan.*
                                                           # otherwise
+    VERSION                         ${PROJECT_VERSION}
+    SOVERSION                       ${PROJECT_VERSION_MAJOR}
 )
 
 install(TARGETS                 ${PROJECT_NAME}
