@@ -6,7 +6,7 @@ Simple Qt6 file manager class in C++
 
 FileMan provides simple APIs and robust backend for managing data store for Qt/QML applications.
 
-**Note:** FileMan is moderately hardened, async-safe, thread-safe and is reentrant.
+**Note:** FileMan is moderately hardened, singleton, async-safe, thread-safe and is reentrant.
 
 ### Public Types
 | Type | Description |
@@ -175,6 +175,97 @@ Executes cleanup routines to prune unknown, unrecognized & invalid files (e.g. d
 
 ***
 
+<a name="qml-integration">
+
+## QML Integration Guide
+
+FileMan can be used as a QML module to integrate with QML apps very easily. With this approach, there's no need to set context properties from C++ backend into QML namespace which is also discouraged.
+
+<a name="submodule-integration"/>
+
+### Build from source, use as a submodule
+
+This is a very common way of integrating third-party libraries within a project. First, decide where to add the FileMan submodule to. For our guide here, we'll add it under `libs/` from the project root. Whichever location you choose inside your project, just make sure the trailing directories are `HasanEsa/FileMan/` complying with Qt's expected translated lookup of `HasanEsa.FileMan` URI:
+
+```bash
+git clone --depth 1 --branch v1.0.0 --recurse-submodules https://gitlab.com/hasanesa/fileman libs/HasanEsa/FileMan
+git submodule add https://gitlab.com/hasanesa/fileman libs/HasanEsa/FileMan
+```
+
+On your project's root `CMakeLists` add or modify these invocations: [^1]
+
+```CMakeLists.txt
+cmake_minimum_required(VERSION 3.16...4.3)
+
+# Recommended
+set(CMAKE_CXX_EXTENSIONS           OFF)
+set(CMAKE_CXX_STANDARD              17)
+set(CMAKE_CXX_STANDARD_REQUIRED     ON)
+qt_standard_project_setup(REQUIRES 6.9)
+
+add_subdirectory(libs/HasanEsa/FileMan)
+
+qt_add_executable(${PROJECT_NAME} main.cpp)
+qt_add_qml_module(${PROJECT_NAME}
+    URI your.company.uri
+    QML_FILES
+        main.qml
+        # Enlist *all* your .qml, .js files here
+    
+    SOURCES
+        main.cpp
+        # Enlist *all* your .cpp and .h/.hpp files here
+        
+    RESOURCES
+        brandImg.png
+        # Enlist *all* required resources
+        
+    DEPENDENCIES TARGET FileMan
+)
+
+target_link_libraries(${PROJECT_NAME} PRIVATE FileMan)
+# This is required for clang+LLVM
+target_link_options(${PROJECT_NAME} PRIVATE -fuse-ld=lld)
+```
+
+Next, import the module on your qml file:
+
+```qml
+import HasanEsa.FileMan
+```
+
+You're now qualified to call and operate on all enums/flags, functions and members [FileMan](#fileman) provides:
+
+```qml
+var result = FileMan.addFile(fileUrl, category)
+```
+
+> [!Important]
+> Importing the module on a separate namespace does not qualify access to the types and members FileMan provides
+
+---
+
+For static building, add link against the FileMan plugin instead:
+
+```CMakelists.txt
+set(FM_BUILD_AS "STATIC" CACHE "Set FileMan build type" FORCE)
+# Alternatively, pass -DFM_BUILD_AS=STATIC during configuring cmake
+
+target_link_libraries(${PROJECT_NAME} PRIVATE FileManplugin)
+```
+
+Add a QML module import macro on your `main.cpp`
+
+```cpp
+#include <QtQml/QQmlExtensionPlugin>
+
+Q_IMPORT_QML_PLUGIN(HasanEsa_FileManPlugin)
+```
+
+Then import the module on your qml file as usual. Refer to the [QML example](examples/fileman-qml/) for a basic working implementation.
+
+---
+
 ## Contributing
 
 This project uses CMake as the build environment. Minimum required is 3.16 with highest policy set to 4.3. clang with LLVM is the recommended compiler used for the project.
@@ -275,3 +366,5 @@ We try to be as clear as possible on AI agents, LLMs and bots contributions to t
 This project is licensed under MIT. Redistribution permission, usage scope and copyrights apply as per the license.
 
 ***
+
+[^1]: For full reference on `qt_add_qml_module()`: https://doc.qt.io/qt-6/qt-add-qml-module.html
