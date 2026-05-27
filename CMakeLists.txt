@@ -6,7 +6,7 @@ include(CMakePrintHelpers)
 include(CMakePackageConfigHelpers)
 
 project(FileMan
-    VERSION 0.2.1
+    VERSION 1.0.0
     DESCRIPTION "A file manager library for Qt6 apps written in C++"
     LANGUAGES CXX
     # SPDX_LICENSE MIT  # SPDX_LICENSE doesn't work before cmake 4.1
@@ -31,9 +31,20 @@ if(CCACHE_PROGRAM)
     set(CMAKE_CXX_COMPILER_LAUNCHER "${CCACHE_PROGRAM}")
 endif()
 
-qt_policy(SET QTP0003 NEW)  # Respect BUILD_SHARED_LIBS
-qt_policy(SET QTP0005 NEW)  # Use CMake TARGETS inside qt_add_qml_module()
-qt_standard_project_setup(REQUIRES 6.9) # Strictly standardize on Qt 6.9
+qt_standard_project_setup(REQUIRES 6.9)
+#
+# Strictly standardize on Qt 6.9
+#
+# These CMake policies are in effect:
+# QTP0001: ':/qt/qml/' is the default resource prefix for QML modules (Qt 6.5)
+# QTP0002: Target properties that specify Android-specific paths may contain
+#          generator expressions. (Qt 6.6)
+# QTP0003: Consider the BUILD_SHARED_LIBS value when creating Qt
+#          libraries (Qt 6.7)
+# QTP0004: Extra directories with QML files in a QML module need extra qmldir
+#          files. (Qt 6.8)
+# QTP0005: qt_add_qml_module dependency keywords accept CMake targets (Qt 6.8)
+#
 
 set(default_build_type "Release")
 
@@ -52,40 +63,23 @@ endif()
 
 set(FM_BUILD_AS "SHARED" CACHE STRING "Choose the type of build")
 
-if("${FM_BUILD_AS}" STREQUAL "SHARED")
-    qt_add_qml_module(${PROJECT_NAME}
-        URI             HasanEsa.FileMan
-        VERSION         0.2
-        ${FM_BUILD_AS}
-        SOURCES         fileman.cpp fileman.hpp
-        #
-        # qt_add_qml_module() creates some object targets that need to be
-        # included with the qml module in order for it to work. This is
-        # especially necessary on static builds. OUTPUT_TARGETS enlists all
-        # those required objects in the variable
-        #
-        OUTPUT_TARGETS  fm_qml_mod_output_targets
-    )
-    set_target_properties(${PROJECT_NAME}plugin PROPERTIES
-        INTERPROCEDURAL_OPTIMIZATION ON
-        OUTPUT_NAME "filemanplugin" # Creates (lib)FileManplugin.* otherwise
-    )
-else()
-    qt_add_qml_module(${PROJECT_NAME}
-        URI             HasanEsa.FileMan
-        VERSION         0.2
-        ${FM_BUILD_AS}
-        #
-        # Using separate plugins with static building requires some other
-        # hassles on consumer ends. For this and the reason that such separation
-        # doesn't quite make sense in static linking, omit creatng plugins
-        # altogether
-        #
-        NO_PLUGIN
-        SOURCES         fileman.cpp fileman.hpp
-        OUTPUT_TARGETS  fm_qml_mod_output_targets
-    )
-endif()
+qt_add_qml_module(${PROJECT_NAME}
+    URI             HasanEsa.FileMan
+    VERSION         1.0
+    ${FM_BUILD_AS}
+    SOURCES         fileman.cpp fileman.hpp
+    #
+    # qt_add_qml_module() creates some object targets that need to be
+    # included with the qml module in order for it to work. This is
+    # especially necessary on static builds. OUTPUT_TARGETS enlists all
+    # those required objects in the variable
+    #
+    OUTPUT_TARGETS  fm_qml_mod_output_targets
+)
+set_target_properties(${PROJECT_NAME}plugin PROPERTIES
+    INTERPROCEDURAL_OPTIMIZATION ON
+)
+
 # Some variables worth noting down
 qt_query_qml_module(${PROJECT_NAME}
     URI             fm_qml_mod_uri
@@ -106,13 +100,19 @@ set(FM_BUILD_EXAMPLES OFF CACHE BOOL "Build examples in the project")
 if(FM_BUILD_EXAMPLES)
     add_subdirectory(examples/fileman-app)
     add_subdirectory(examples/fileman-cpp)
+    add_subdirectory(examples/fileman-qml)
 endif()
 
 # Namespaces are always a good idea
 add_library(${FM_NS}::${PROJECT_NAME} ALIAS ${PROJECT_NAME})
 
+#
 # Disable policies older than Qt 6.9. The format is 0xMMmmrr
 # MM = Major (06); mm = minor (09); rr = revision (00)
+#
+# Refer to https://doc.qt.io/qt-6/qtglobal.html#QT_ENABLE_STRICT_MODE_UP_TO
+# for a complete list of disabled APIs
+#
 target_compile_definitions(${PROJECT_NAME} PUBLIC
     QT_ENABLE_STRICT_MODE_UP_TO=0x060900
 )
@@ -164,11 +164,11 @@ install(TARGETS                 ${PROJECT_NAME}
 # INSTALL_LIBDIR/qt6/qml as is conventional. QT_QML_OUTPUT_DIR could be manually
 # set but QT6_INSTALL_QML already has the structure right
 #
-if("${FM_BUILD_AS}" STREQUAL "SHARED")
-    install(TARGETS "${PROJECT_NAME}plugin"
-        LIBRARY DESTINATION "${QT6_INSTALL_QML}/${FM_NS}/${PROJECT_NAME}"
-    )
-endif()
+install(TARGETS "${PROJECT_NAME}plugin"
+    EXPORT               ${PROJECT_NAME}Targets
+    LIBRARY DESTINATION "${QT6_INSTALL_QML}/${FM_NS}/${PROJECT_NAME}"
+    ARCHIVE DESTINATION "${QT6_INSTALL_QML}/${FM_NS}/${PROJECT_NAME}"
+)
 install(FILES
     "${fm_qml_mod_qmldir}"
     "${fm_qml_mod_typeinfo}"
