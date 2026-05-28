@@ -326,6 +326,12 @@ Alternatively, just press up arrow key and hit enter! The built libraries can th
 cmake --install .
 ```
 
+Note this only installs the runtime required files & libraries. To install the development-related files specify `--component devel` with the previous invocation:
+```bash
+# do this after the previous step for full runtime+devel install
+cmake --install . --component devel
+```
+
 The repository contains example apps that can be opted in for building during configuration with `-DFM_BUILD_EXAMPLES=ON`. The built binaries would be available under their respective folders `examples/<program name>` and are not exported or installed. They can also be built standalone without the need for configuring the root project provided the library has already been installed to running system and available in searchable paths. This however, requires a manual change of include directive in `main.cpp` files from `#include <fileman.hpp>` to `#include <HasanEsa/FileMan/fileman.hpp>`. After ensuring the requirements, change working directory to the `examples/` folder, configure and build the binary:
 ```bash
 cd examples/
