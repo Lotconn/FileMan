@@ -21,6 +21,8 @@ FileMan can now be used as a QML module with QML apps. This allows convenient in
 - Remove redundant Qt policy settings, move the details to comments instead
 - Add details about disabled APIs on Qt's version strict mode in the comments
 
+Full changelog: [`v0.2.1...v1.0.0`](https://gitlab.com/hasanesa/fileman/-/compare/v0.2.1...v1.0.0)
+
 ---
 
 # v0.2.1
@@ -38,6 +40,8 @@ This is a patch version to fix and lightly edit few leftover bugs from previous 
 - Tell about lld in the CMakeLists snippet of README.md
 - Add a license/copyright header and intro about the app on the examples codes
 - Highlight key parts on the examples code related to FileMan integration
+
+Full changelog: [`v0.2.0...v0.2.1`](https://gitlab.com/hasanesa/fileman/-/compare/v0.2.0...v0.2.1)
 
 ---
 
@@ -75,7 +79,7 @@ This version fixes some critical bugs, adds a catch-all "All" category on the AP
 - Add an "All" category alias to select all available categories
 - Make FileMan a singleton
 
-Full changelog: [`v0.2.0...v0.1.0`](https://gitlab.com/hasanesa/fileman/-/compare/v0.1.0...v0.2.0)
+Full changelog: [`v0.1.0...v0.2.0`](https://gitlab.com/hasanesa/fileman/-/compare/v0.1.0...v0.2.0)
 
 ---
 

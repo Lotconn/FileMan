@@ -109,6 +109,7 @@ ApplicationWindow {
 
             for (var i = 0; i < selectedFiles.length; i++) {
                 var fileUrl = selectedFiles[i]
+
 //[KEY:addFile() usage]
                 var result = FileMan.addFile(fileUrl, category)
 
@@ -177,6 +178,7 @@ ApplicationWindow {
 
                         onClicked: {
                             var rmIdx = audioListCb.currentIndex
+
 //[KEY:rmFile() usage with default category]
                             var status = FileMan.rmFile(mainWindow.audioList[rmIdx].name)
                             if (status !== 0) {

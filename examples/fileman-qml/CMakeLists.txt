@@ -18,111 +18,130 @@ or [KEY::extra comments].
 
 #[KEY:Minimum 3.16 recommended]
 cmake_minimum_required(VERSION 3.16...4.3)
+set(TARGET_NAME fileman-qml)
 
 if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
-    project(fileman-qml
-        DESCRIPTION "Example C++ program implementing FileMan"
-        LANGUAGES CXX
-    )
+	project(${TARGET_NAME}
+		DESCRIPTION "Example QML program implementing FileMan"
+		LANGUAGES CXX
+	)
 
 #[KEY:BEGIN:Recommended]
-    set(CMAKE_CXX_EXTENSIONS           OFF)
-    set(CMAKE_CXX_STANDARD              17)
-    set(CMAKE_CXX_STANDARD_REQUIRED     ON)
+	set(CMAKE_CXX_EXTENSIONS			 OFF)
+	set(CMAKE_CXX_STANDARD					17)
+	set(CMAKE_CXX_STANDARD_REQUIRED	ON)
 #[KEY:END]
 
-    set(CMAKE_EXPORT_COMPILE_COMMANDS   ON)
-    find_program(CCACHE_PROGRAM ccache)
-    if(CCACHE_PROGRAM)
-        set(CMAKE_CXX_COMPILER_LAUNCHER "${CCACHE_PROGRAM}")
-    endif()
+	set(CMAKE_EXPORT_COMPILE_COMMANDS	ON)
+	find_program(CCACHE_PROGRAM ccache)
+	if(CCACHE_PROGRAM)
+		set(CMAKE_CXX_COMPILER_LAUNCHER "${CCACHE_PROGRAM}")
+	endif()
 endif()
 
 find_package(Qt6 REQUIRED COMPONENTS Core Qml Quick Widgets)
 
 if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
+
 #[KEY:Recommended]
-    qt_standard_project_setup(REQUIRES 6.9)
+	qt_standard_project_setup(REQUIRES 6.9)
 endif()
 
 if(TARGET FileMan)
-    message(STATUS "Building fileman-qml example in-tree with root project")
-#[KEY:When using for submodule; also add "add_subdirectory(path/to/HasanEsa/FileMan)"]
-    set(FM_QML_DEP TARGET FileMan)
+	message(STATUS "Building fileman-qml example in-tree with root project")
 
-    mark_as_advanced(FM_QML_DEP)
+#[KEY:When using for submodule; also add "add_subdirectory(path/to/HasanEsa/FileMan)"]
+	set(FM_QML_DEP TARGET FileMan)
+	mark_as_advanced(FM_QML_DEP)
 else()
+
 #[KEY:BEGIN:When using system installed instance]
-    find_package(FileMan REQUIRED)
-    if(DEFINED FileMan_FOUND)
-        message(STATUS "Found FileMan: TRUE")
-    endif()
-    set(FM_QML_DEP HasanEsa.FileMan)
+	find_package(FileMan REQUIRED)
+	if(DEFINED FileMan_FOUND)
+		message(STATUS "Found FileMan: TRUE")
+	endif()
+	set(FM_QML_DEP HasanEsa.FileMan)
 #[KEY:END]
-    mark_as_advanced(FM_QML_DEP)
+
+	mark_as_advanced(FM_QML_DEP)
 endif()
 
 set(default_build_type "Release")
 
 if((CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR) AND NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
-    message(STATUS
-        "Setting build type to '${default_build_type}' as none was specified."
-    )
-    set(CMAKE_BUILD_TYPE "${default_build_type}" CACHE STRING
-        "Choose the type of build."
-        FORCE
-    )
-    set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS
-        "Debug" "MinSizeRel" "Release" "RelWithDebInfo"
-    )
+	message(STATUS
+		"Setting build type to '${default_build_type}' as none was specified."
+	)
+	set(CMAKE_BUILD_TYPE "${default_build_type}"
+		CACHE
+		STRING	"Choose the type of build."
+		FORCE
+	)
+	set_property(CACHE CMAKE_BUILD_TYPE
+		PROPERTY
+			STRINGS
+				"Debug"
+				"MinSizeRel"
+				"Release"
+				"RelWithDebInfo"
+	)
 endif()
 
-qt_add_executable(fileman-qml main.cpp)
+qt_add_executable(${TARGET_NAME} main.cpp)
 
 #[KEY:BEGIN:FM_QML_DEP shows alternate options for two possible implementations]
-qt_add_qml_module(fileman-qml
-    URI FilemanQml
-    QML_FILES main.qml
-    DEPENDENCIES ${FM_QML_DEP}
+qt_add_qml_module(${TARGET_NAME}
+	URI						FilemanQml
+	QML_FILES			main.qml
+	DEPENDENCIES	${FM_QML_DEP}
 )
 #[KEY:END]
 
 set(FM_PLUGIN_TARGET FileManplugin)
+
 if(TARGET HasanEsa::FileManplugin)
-    set(FM_PLUGIN_TARGET HasanEsa::FileManplugin)
-endif()
-if(TARGET ${FM_PLUGIN_TARGET})
-    get_target_property(fm_plugin_type ${FM_PLUGIN_TARGET} TYPE)
-    if(fm_plugin_type STREQUAL "STATIC_LIBRARY")
-        target_compile_definitions(fileman-qml PRIVATE FM_STATIC_PLUGIN)
-    endif()
-    unset(fm_plugin_type)
+	set(FM_PLUGIN_TARGET HasanEsa::FileManplugin)
 endif()
 
-# target_compile_definitions(fileman-qml PRIVATE
-#     QT_ENABLE_STRICT_MODE_UP_TO=0x060900
-# )
-# target_compile_features(fileman-qml PRIVATE cxx_std_17)
-target_compile_options(fileman-qml PRIVATE
-    -pipe -Wp,-D_FORTIFY_SOURCE=3 -Wp,-D_GLIBCXX_ASSERTIONS -fexceptions
-    -fstack-protector-strong -fasynchronous-unwind-tables
-    -fstack-clash-protection -fcf-protection -mno-omit-leaf-frame-pointer
-    $<$<CONFIG:Release>:-O3>
-    $<$<OR:$<CONFIG:Debug>,$<CONFIG:RelWithDebInfo>>:-O2 -g -grecord-gcc-switches>
-)
-target_link_libraries(fileman-qml PRIVATE
-    Qt::Core Qt::Qml Qt::Quick Qt::Widgets
-#[KEY]
-    HasanEsa::FileMan
-#[KEY:When FileMan is built statically, the plugin must be explicitly linked
-#   to prevent the type registration from being dead-stripped by the linker.
-#   Use HasanEsa::FileManplugin explicitly if statically linking always]
-    $<TARGET_NAME_IF_EXISTS:${FM_PLUGIN_TARGET}>
+get_target_property(fm_plugin_type ${FM_PLUGIN_TARGET} TYPE)
+if(fm_plugin_type STREQUAL "STATIC_LIBRARY")
+	target_compile_definitions(${TARGET_NAME} PRIVATE FM_STATIC_PLUGIN)
 
+#[KEY:Required to link FileManplugin explicitly for static building]
+	target_link_libraries(${TARGET_NAME} PRIVATE ${FM_PLUGIN_TARGET})
+else()
+
+#[KEY:For shared library/regular builds]
+	target_link_libraries(${TARGET_NAME} PRIVATE HasanEsa::FileMan)
+endif()
+unset(fm_plugin_type)
+
+	# target_compile_definitions(${TARGET_NAME} PRIVATE
+	#   QT_ENABLE_STRICT_MODE_UP_TO=0x060900
+	# )
+	# target_compile_features(${TARGET_NAME} PRIVATE cxx_std_17)
+target_compile_options(${TARGET_NAME} PRIVATE
+	-Wp,-D_FORTIFY_SOURCE=3
+	-Wp,-D_GLIBCXX_ASSERTIONS
+	-fexceptions
+	-fstack-protector-strong
+	-fasynchronous-unwind-tables
+	-fstack-clash-protection
+	-fcf-protection
+	-mno-omit-leaf-frame-pointer
+	-pipe
+	$<$<CONFIG:Release>:-O3>
+	$<$<OR:$<CONFIG:Debug>,$<CONFIG:RelWithDebInfo>>:-O2 -g -grecord-gcc-switches>
 )
-target_link_options(fileman-qml PRIVATE
-    -fuse-ld=lld
-    $<$<NOT:$<OR:$<CONFIG:Debug>,$<CONFIG:RelWithDebInfo>>>:-Wl,-z,relro,-z,now -Wl,--as-needed>
+target_link_libraries(${TARGET_NAME} PRIVATE
+	Qt::Core
+	Qt::Qml
+	Qt::Quick
+	Qt::Widgets
+)
+target_link_options(${TARGET_NAME} PRIVATE
+	-fuse-ld=lld
+	$<$<NOT:$<OR:$<CONFIG:Debug>,$<CONFIG:RelWithDebInfo>>>:-Wl,-z,relro,-z,now -Wl,--as-needed>
 )
 
-set_target_properties(fileman-qml PROPERTIES INTERPROCEDURAL_OPTIMIZATION ON)
+set_target_properties(${TARGET_NAME} PROPERTIES INTERPROCEDURAL_OPTIMIZATION ON)

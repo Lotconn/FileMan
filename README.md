@@ -1,12 +1,22 @@
 # FileMan
 
-Simple Qt6 file manager class in C++
+Simple file manager library for Qt/QML apps written in Qt6/C++
 
 ---
 
 FileMan provides simple APIs and robust backend for managing data store for Qt/QML applications.
 
-**Note:** FileMan is moderately hardened, singleton, async-safe, thread-safe and is reentrant.
+**Note:** FileMan is a singleton, moderately hardened, async-safe, thread-safe and is reentrant.
+
+## FileMan Class
+
+| Use case | Integration |
+|----------|-------------|
+| Header:  | `#include <HasanEsa/FileMan/fileman.h>` |
+| CMake:   | `find_package(FileMan REQUIRED)`<br>`target_link_libraries(mytarget PRIVATE HasanEsa::FileMan)`<br>`target_link_libraries(mytarget PRIVATE HasanEsa::FileManplugin)` \[static building\]<br>`qt_add_qml_module(mytarget DEPENDENCIES HasanEsa.FileMan)` \[QML module\] |
+| QML:     | `import HasanEsa.FileMan` |
+| CPP:     | `#include <QtQml/QQmlExtensionPlugin>`<br>`Q_IMPORT_QML_PLUGIN(HasanEsa_FileManPlugin)` \[static building\] |
+
 
 ### Public Types
 | Type | Description |
@@ -54,7 +64,6 @@ The code is intended to be C++17 standardized and Qt >=6.9 compatible.
 ***
 
 ## Documentation
-
 
 <a name="category-enum"/>
 
@@ -169,12 +178,6 @@ Executes cleanup routines to prune unknown, unrecognized & invalid files (e.g. d
 
 ***
 
-## Implementations
-
-- [Munadi](https://gitlab.com/munadi/munadi)
-
-***
-
 <a name="qml-integration">
 
 ## QML Integration Guide
@@ -183,25 +186,19 @@ FileMan can be used as a QML module to integrate with QML apps very easily. With
 
 <a name="submodule-integration"/>
 
-### Build from source, use as a submodule
+### Including as a submodule
 
-This is a very common way of integrating third-party libraries within a project. First, decide where to add the FileMan submodule to. For our guide here, we'll add it under `libs/` from the project root. Whichever location you choose inside your project, just make sure the trailing directories are `HasanEsa/FileMan/` complying with Qt's expected translated lookup of `HasanEsa.FileMan` URI:
+This is a very common way of integrating third-party libraries within a project. Decide where to add the FileMan submodule first. For our guide here, we'll add it under `libs/` from the project root. Whichever location you choose, just make sure the trailing directories are `HasanEsa/FileMan/` complying with Qt's expected URI translated lookup:
 
 ```bash
 git clone --depth 1 --branch v1.0.0 --recurse-submodules https://gitlab.com/hasanesa/fileman libs/HasanEsa/FileMan
 git submodule add https://gitlab.com/hasanesa/fileman libs/HasanEsa/FileMan
 ```
 
-On your project's root `CMakeLists` add or modify these invocations: [^1]
+On your project's main `CMakeLists` add/modify these invocations: [^1]
 
 ```CMakeLists.txt
-cmake_minimum_required(VERSION 3.16...4.3)
-
-# Recommended
-set(CMAKE_CXX_EXTENSIONS           OFF)
-set(CMAKE_CXX_STANDARD              17)
-set(CMAKE_CXX_STANDARD_REQUIRED     ON)
-qt_standard_project_setup(REQUIRES 6.9)
+cmake_minimum_required(VERSION 3.16)
 
 add_subdirectory(libs/HasanEsa/FileMan)
 
@@ -224,11 +221,11 @@ qt_add_qml_module(${PROJECT_NAME}
 )
 
 target_link_libraries(${PROJECT_NAME} PRIVATE FileMan)
-# This is required for clang+LLVM
+# Required for clang+LLVM
 target_link_options(${PROJECT_NAME} PRIVATE -fuse-ld=lld)
 ```
 
-Next, import the module on your qml file:
+Import the module on your qml file:
 
 ```qml
 import HasanEsa.FileMan
@@ -237,15 +234,15 @@ import HasanEsa.FileMan
 You're now qualified to call and operate on all enums/flags, functions and members [FileMan](#fileman) provides:
 
 ```qml
-var result = FileMan.addFile(fileUrl, category)
+var result = FileMan.addFile(fileUrl, FileMan.Audio | FileMan.Video)
 ```
 
 > [!Important]
-> Importing the module on a separate namespace does not qualify access to the types and members FileMan provides
+> FileMan's types and members are accessible only inside "FileMan" scope. Importing the module on a custom namespace is known not to work.
 
 ---
 
-For static building, add link against the FileMan plugin instead:
+For static building, build FileMan as [static](#available-build-flags) and link against the FileMan plugin instead:
 
 ```CMakelists.txt
 set(FM_BUILD_AS "STATIC" CACHE "Set FileMan build type" FORCE)
@@ -264,7 +261,13 @@ Q_IMPORT_QML_PLUGIN(HasanEsa_FileManPlugin)
 
 Then import the module on your qml file as usual. Refer to the [QML example](examples/fileman-qml/) for a basic working implementation.
 
----
+***
+
+## Implementations
+
+- [Munadi](https://gitlab.com/munadi/munadi)
+
+***
 
 ## Contributing
 

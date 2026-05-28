@@ -46,7 +46,7 @@ int main(int argc, char *argv[])
 {
     QApplication app(argc, argv);
     app.setOrganizationDomain("hasanesa");
-    app.setApplicationName("FileMan-App");
+    app.setApplicationName("FileMan-QML-legacy");
 
     QApplication::setStyle(QStyleFactory::create("fusion"));
 
