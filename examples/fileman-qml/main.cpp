@@ -55,6 +55,7 @@ int main(int argc, char *argv[])
 
     QQmlApplicationEngine engine;
 
+//[KEY:Mind the URL]
     engine.load(QUrl(QLatin1String("qrc:/qt/qml/FilemanQml/main.qml")));
     if (engine.rootObjects().isEmpty()) {
         qCritical("Failed to load QML root object; aborting");

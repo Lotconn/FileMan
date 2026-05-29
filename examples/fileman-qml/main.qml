@@ -1,8 +1,8 @@
 /*
 
-                          MIT License
+                                MIT License
 
-                      Copyright HasanEsa 2026
+                        Copyright HasanEsa 2026
 
 This is an example app demonstrating modern use of the FileMan library as a QML
 module. This approach is recommended over setting context properties from C++
@@ -26,179 +26,179 @@ import QtQuick.Dialogs
 import HasanEsa.FileMan
 
 ApplicationWindow {
-    id: mainWindow
-    visible: true
-    height: 150
-    width: 250
-    minimumWidth: 250
-    minimumHeight: 150
+  id: mainWindow
+  visible: true
+  height: 150
+  width: 250
+  minimumWidth: 250
+  minimumHeight: 150
 
-    property var audioList: []
-    property var imageList: []
-    property var videoList: []
-    property var category:  FileMan.All
+  property var audioList: []
+  property var imageList: []
+  property var videoList: []
 
-    Component.onCompleted: {
-        settings.category = "Audio"
-        var list = settings.value("list", JSON.stringify(audioList))
-        try {
-            audioList = JSON.parse(list)
-        } catch(_) {}
+  Component.onCompleted: {
+    settings.category = "Audio"
+    var list = settings.value("list", JSON.stringify(audioList))
+    try {
+      audioList = JSON.parse(list)
+    } catch(_) {}
 
-        settings.category = "Image"
-        list = settings.value("list", JSON.stringify(imageList))
-        try {
-            imageList = JSON.parse(list)
-        } catch(_) {}
+    settings.category = "Image"
+    list = settings.value("list", JSON.stringify(imageList))
+    try {
+      imageList = JSON.parse(list)
+    } catch(_) {}
 
-        settings.category = "Video"
-        list = settings.value("list", JSON.stringify(videoList))
-        try {
-            videoList = JSON.parse(list)
-        } catch(_) {}
+    settings.category = "Video"
+    list = settings.value("list", JSON.stringify(videoList))
+    try {
+      videoList = JSON.parse(list)
+    } catch(_) {}
 
-        settings.category = "Window"
-        mainWindow.width    = settings.value("width",   mainWindow.width)
-        mainWindow.height   = settings.value("height",  mainWindow.height)
-        mainWindow.x        = settings.value("x",       mainWindow.x)
-        mainWindow.y        = settings.value("y",       mainWindow.y)
+    settings.category   = "Window"
+    mainWindow.width    = settings.value("width",   mainWindow.width)
+    mainWindow.height   = settings.value("height",  mainWindow.height)
+    mainWindow.x        = settings.value("x",   mainWindow.x)
+    mainWindow.y        = settings.value("y",   mainWindow.y)
 
 //[KEY:storeHouseKeeping() usage]
-        var e = FileMan.storeHouseKeeping()
-        console.debug("Fileman::storeHouseKeeping() return:", e)
-    }
+    var e = FileMan.storeHouseKeeping()
+    console.debug("Fileman::storeHouseKeeping() return:", e)
+  }
 
-    Component.onDestruction: {
-        settings.category = "Audio"
-        settings.setValue("list", JSON.stringify(audioList || []))
+  Component.onDestruction: {
+    settings.category = "Audio"
+    settings.setValue("list", JSON.stringify(audioList || []))
 
-        settings.category = "Image"
-        settings.setValue("list", JSON.stringify(imageList || []))
+    settings.category = "Image"
+    settings.setValue("list", JSON.stringify(imageList || []))
 
-        settings.category = "Video"
-        settings.setValue("list", JSON.stringify(videoList || []))
+    settings.category = "Video"
+    settings.setValue("list", JSON.stringify(videoList || []))
 
-        settings.category = "Window"
-        settings.setValue("width",  mainWindow.width)
-        settings.setValue("height", mainWindow.height)
-        settings.setValue("x",      mainWindow.x)
-        settings.setValue("y",      mainWindow.y)
+    settings.category = "Window"
+    settings.setValue("width",  mainWindow.width)
+    settings.setValue("height", mainWindow.height)
+    settings.setValue("x",    mainWindow.x)
+    settings.setValue("y",    mainWindow.y)
 
-        settings.sync()
-    }
+    settings.sync()
+  }
 
-    Settings { id: settings }
+  Settings { id: settings }
 
-    FileDialog {
-        id: fileDialog
-        title: qsTr("Please choose an audio file")
-        currentFolder: StandardPaths.writableLocation(StandardPaths.MusicLocation)
-        fileMode: FileDialog.OpenFiles
-        nameFilters: [
-            "Audio files (*.aac *.ac3 *.alac *.amr *.flac *.m4a *.mp3 *.ogg *.opus *.wav *.wma *.weba)",
-            "Image files (*.jpg *.jpeg *.png *.svg *.tiff *.tif *.gif *.avif *.bmp *.dng *.cr2 *.heic *.heif *.ico *.nef *.webp)",
-            "Video files (*.mp4 *.mkv *.webm *.avi *.flv *.mov *.m4v *.ogv *.wmv *.3gp *.3g2)",
-            "All files (*)"
-        ]
+  FileDialog {
+    id: fileDialog
+    title: qsTr("Please choose an audio file")
+    currentFolder: StandardPaths.writableLocation(StandardPaths.MusicLocation)
+    fileMode: FileDialog.OpenFiles
+    nameFilters: [
+      "Audio files (*.aac *.ac3 *.alac *.amr *.flac *.m4a *.mp3 *.ogg *.opus *.wav *.wma *.weba)",
+      "Image files (*.jpg *.jpeg *.png *.svg *.tiff *.tif *.gif *.avif *.bmp *.dng *.cr2 *.heic *.heif *.ico *.nef *.webp)",
+      "Video files (*.mp4 *.mkv *.webm *.avi *.flv *.mov *.m4v *.ogv *.wmv *.3gp *.3g2)",
+      "All files (*)"
+    ]
 
-        onAccepted: {
-            category    = selectedNameFilter.index == 0 ? FileMan.Audio
-                        : selectedNameFilter.index == 1 ? FileMan.Image
-                        : selectedNameFilter.index == 2 ? FileMan.Video
-                        : FileMan.All
+    onAccepted: {
+//[KEY:FileMan::Category enum usage]
+      var category  = selectedNameFilter.index == 0 ? FileMan.Audio
+            : selectedNameFilter.index == 1 ? FileMan.Image
+            : selectedNameFilter.index == 2 ? FileMan.Video
+            : FileMan.All
 
-            for (var i = 0; i < selectedFiles.length; i++) {
-                var fileUrl = selectedFiles[i]
+      for (var i = 0; i < selectedFiles.length; i++) {
+        var fileUrl = selectedFiles[i]
 
 //[KEY:addFile() usage]
-                var result = FileMan.addFile(fileUrl, category)
+        var result = FileMan.addFile(fileUrl, category)
 
-                if (result.error !== 0) {
-                    console.warn("Fileman::addFile() failed with error:", result.error)
-                    continue
-                }
+        if (result.error !== 0) {
+          console.warn("Fileman::addFile() failed with error:", result.error)
+          continue
+        }
 
 //[KEY:getFileName() usage]
-                var fileName = FileMan.getFileName(fileUrl)
-                var savedPath = result.path
+        var fileName = FileMan.getFileName(fileUrl)
+        var savedPath = result.path
 
-                var newList = mainWindow.audioList.slice()
-                newList.push({ "name": fileName, "path": savedPath })
-                mainWindow.audioList = newList
-                audioListCb.currentIndex = mainWindow.audioList.length - 1
-            }
-        }
+        var newList = mainWindow.audioList.slice()
+        newList.push({ "name": fileName, "path": savedPath })
+        mainWindow.audioList = newList
+        audioListCb.currentIndex = mainWindow.audioList.length - 1
+      }
     }
+  }
 
-    Page {
-        anchors.fill: parent
+  Page {
+    anchors.fill: parent
 
-        Flickable {
-            anchors.fill: parent
-            focus: true
-            clip: true
-            boundsBehavior: Flickable.StopAtBounds
+    Flickable {
+      anchors.fill: parent
+      focus: true
+      clip: true
+      boundsBehavior: Flickable.StopAtBounds
 
-            Keys.onUpPressed: scrollBar.decrease()
-            Keys.onDownPressed: scrollBar.increase()
+      Keys.onUpPressed: scrollBar.decrease()
+      Keys.onDownPressed: scrollBar.increase()
 
-            ScrollBar.vertical: ScrollBar {
-                id: scrollBar
-            }
+      ScrollBar.vertical: ScrollBar {
+        id: scrollBar
+      }
 
-            contentWidth: parent.width
-            contentHeight: col.implicitHeight + 20
+      contentWidth: parent.width
+      contentHeight: col.implicitHeight + 20
 
-            ColumnLayout {
-                id: col
-                spacing: 10
-                width: parent.width - 40
-                anchors.top: parent.top
-                anchors.topMargin: 10
-                anchors.horizontalCenter: parent.horizontalCenter
+      ColumnLayout {
+        id: col
+        spacing: 10
+        width: parent.width - 40
+        anchors.top: parent.top
+        anchors.topMargin: 10
+        anchors.horizontalCenter: parent.horizontalCenter
 
-                ComboBox {
-                    id: audioListCb
-                    model: mainWindow.audioList
-                    Layout.fillWidth: true
-                    textRole: "name"
-                }
+        ComboBox {
+          id: audioListCb
+          model: mainWindow.audioList
+          Layout.fillWidth: true
+          textRole: "name"
+        }
 
-                RowLayout {
-                    spacing: 10
-                    Layout.alignment: Qt.AlignHCenter
+        RowLayout {
+          spacing: 10
+          Layout.alignment: Qt.AlignHCenter
 
-                    Button {
-                        text: "Add"
-                        onClicked: fileDialog.open()
-                    }
+          Button {
+            text: "Add"
+            onClicked: fileDialog.open()
+          }
 
-                    Button {
-                        text: "Remove"
+          Button {
+            text: "Remove"
 
-                        onClicked: {
-                            var rmIdx = audioListCb.currentIndex
+            onClicked: {
+              var rmIdx = audioListCb.currentIndex
 
 //[KEY:rmFile() usage with default category]
-                            var status = FileMan.rmFile(mainWindow.audioList[rmIdx].name)
-                            if (status !== 0) {
-                                console.warn("Fileman::rmFile() failed with error:", status)
-                                return
-                            }
+              var status = FileMan.rmFile(mainWindow.audioList[rmIdx].name)
+              if (status !== 0) {
+                console.warn("Fileman::rmFile() failed with error:", status)
+                return
+              }
 
-                            var newList = mainWindow.audioList.slice()
-                            newList.splice(rmIdx, 1)
-                            mainWindow.audioList = newList
-                        }
-                    }
-                }
+              var newList = mainWindow.audioList.slice()
+              newList.splice(rmIdx, 1)
+              mainWindow.audioList = newList
             }
+          }
         }
+      }
     }
+  }
 
-    Shortcut {
-        sequences: [StandardKey.Quit]
-        context: Qt.ApplicationShortcut
-        onActivated: Qt.quit()
-    }
+  Shortcut {
+    sequences: [StandardKey.Quit]
+    context: Qt.ApplicationShortcut
+    onActivated: Qt.quit()
+  }
 }

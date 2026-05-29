@@ -20,30 +20,31 @@ cmake_minimum_required(VERSION 3.16...4.3)
 set(TARGET_NAME fileman-qml-legacy)
 
 if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
-	project(${TARGET_NAME}
-		DESCRIPTION "Example QML program implementing FileMan"
-		LANGUAGES CXX
-	)
+  project(${TARGET_NAME}
+    DESCRIPTION "Example QML program implementing FileMan"
+    LANGUAGES CXX
+  )
 
 #[KEY:BEGIN:Recommended]
-	set(CMAKE_CXX_EXTENSIONS			 OFF)
-	set(CMAKE_CXX_STANDARD					17)
-	set(CMAKE_CXX_STANDARD_REQUIRED	ON)
+  set(CMAKE_CXX_EXTENSIONS  OFF)
+  set(CMAKE_CXX_STANDARD  17)
+  set(CMAKE_CXX_STANDARD_REQUIRED ON)
 #[KEY:END]
 
-	set(CMAKE_EXPORT_COMPILE_COMMANDS	ON)
-	find_program(CCACHE_PROGRAM ccache)
-	if(CCACHE_PROGRAM)
-		set(CMAKE_CXX_COMPILER_LAUNCHER "${CCACHE_PROGRAM}")
-	endif()
+  set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+  find_program(CCACHE_PROGRAM ccache)
+  if(CCACHE_PROGRAM)
+    set(CMAKE_CXX_COMPILER_LAUNCHER "${CCACHE_PROGRAM}")
+  endif()
 endif()
 
+#[KEY:Qml is required]
 find_package(Qt6 REQUIRED COMPONENTS Core Qml Quick Widgets)
 
 if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
 
 #[KEY:Recommended]
-	qt_standard_project_setup(REQUIRES 6.9)
+  qt_standard_project_setup(REQUIRES 6.9)
 endif()
 
 if(TARGET FileMan)
@@ -51,62 +52,70 @@ if(TARGET FileMan)
 else()
 
 #[KEY]
-	find_package(FileMan REQUIRED)
+  find_package(FileMan REQUIRED)
 endif()
 
 set(default_build_type "Release")
 
-if((CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR) AND NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
-	message(STATUS
-		"Setting build type to '${default_build_type}' as none was specified."
-	)
-	set(CMAKE_BUILD_TYPE "${default_build_type}"
-		CACHE
-		STRING	"Choose the type of build."
-		FORCE
-	)
-	set_property(CACHE CMAKE_BUILD_TYPE
-		PROPERTY
-			STRINGS
-				"Debug"
-				"MinSizeRel"
-				"Release"
-				"RelWithDebInfo"
-	)
+if((CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
+    AND
+    NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
+  message(STATUS
+    "Setting build type to '${default_build_type}' as none was specified."
+  )
+  set(CMAKE_BUILD_TYPE "${default_build_type}"
+    CACHE
+    STRING  "Choose the type of build."
+    FORCE
+  )
+  set_property(CACHE CMAKE_BUILD_TYPE
+    PROPERTY
+      STRINGS
+        "Debug"
+        "MinSizeRel"
+        "Release"
+        "RelWithDebInfo"
+  )
 endif()
 
 qt_add_resources(QRC_FILES qml.qrc)
 qt_add_executable(${TARGET_NAME} main.cpp ${QRC_FILES})
 
-	# target_compile_definitions(${TARGET_NAME} PRIVATE
-	#     QT_ENABLE_STRICT_MODE_UP_TO=0x060900
-	# )
-	# target_compile_features(${TARGET_NAME} PRIVATE cxx_std_17)
+target_compile_definitions(${TARGET_NAME} PRIVATE
+  QT_ENABLE_STRICT_MODE_UP_TO=0x060900
+)
 target_compile_options(${TARGET_NAME} PRIVATE
-	-Wp,-D_FORTIFY_SOURCE=3
-	-Wp,-D_GLIBCXX_ASSERTIONS
-	-fexceptions
-	-fstack-protector-strong
-	-fasynchronous-unwind-tables
-	-fstack-clash-protection
-	-fcf-protection
-	-mno-omit-leaf-frame-pointer
-	-pipe
-	$<$<CONFIG:Release>:-O3>
-	$<$<OR:$<CONFIG:Debug>,$<CONFIG:RelWithDebInfo>>:-O2 -g -grecord-gcc-switches>
+  $<$<CXX_COMPILER_ID:GNU,Clang>:
+    -Wp,-D_FORTIFY_SOURCE=3
+    -Wp,-D_GLIBCXX_ASSERTIONS
+    -fexceptions
+    -fstack-protector-strong
+    -fasynchronous-unwind-tables
+    -fstack-clash-protection
+    -fcf-protection
+    -mno-omit-leaf-frame-pointer
+    -pipe
+    $<$<OR:$<CONFIG:Debug>,$<CONFIG:RelWithDebInfo>>:
+      -grecord-gcc-switches
+    >
+  >
 )
 target_link_libraries(${TARGET_NAME} PRIVATE
-	Qt::Core
-	Qt::Qml
-	Qt::Quick
-	Qt::Widgets
+  Qt::Core
+  Qt::Quick
+  Qt::Widgets
 
-#[KEY]
-	HasanEsa::FileMan
+#[KEY:BEGIN]
+  Qt::Qml
+  HasanEsa::FileMan
+#[KEY:END]
 )
 target_link_options(${TARGET_NAME} PRIVATE
-	-fuse-ld=lld
-	$<$<NOT:$<OR:$<CONFIG:Debug>,$<CONFIG:RelWithDebInfo>>>:-Wl,-z,relro,-z,now -Wl,--as-needed>
+  $<$<CXX_COMPILER_ID:Clang>:-fuse-ld=lld>
+  $<$<NOT:$<OR:$<CONFIG:Debug>,$<CONFIG:RelWithDebInfo>>>:
+    -Wl,-z,relro,-z,now
+    -Wl,--as-needed
+  >
 )
 
 set_target_properties(${TARGET_NAME} PROPERTIES INTERPROCEDURAL_OPTIMIZATION ON)

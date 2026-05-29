@@ -50,7 +50,7 @@ int main(int argc, char *argv[])
 
     QApplication::setStyle(QStyleFactory::create("fusion"));
 
-//[KEY:BEGIN]
+//[KEY:BEGIN:Registers enums, flags & types inside QML namespaces]
     FileMan fileman;
     qmlRegisterUncreatableMetaObject(
         FileMan::staticMetaObject,
