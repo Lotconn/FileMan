@@ -103,10 +103,10 @@ target_compile_options(${TARGET_NAME} PRIVATE
 target_link_libraries(${TARGET_NAME} PRIVATE
   Qt::Core
   Qt::Quick
+  Qt::Qml
   Qt::Widgets
 
 #[KEY:BEGIN]
-  Qt::Qml
   HasanEsa::FileMan
 #[KEY:END]
 )

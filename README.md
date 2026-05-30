@@ -202,8 +202,6 @@ On your project's main `CMakeLists` add/modify these invocations: [^1]
 ```CMakeLists.txt
 cmake_minimum_required(VERSION 3.16)
 
-find_package(Qt6 REQUIRED COMPONENTS Qml)
-
 add_subdirectory(libs/HasanEsa/FileMan)
 
 qt_add_executable(${PROJECT_NAME} main.cpp)
@@ -224,7 +222,7 @@ qt_add_qml_module(${PROJECT_NAME}
     DEPENDENCIES TARGET FileMan
 )
 
-target_link_libraries(${PROJECT_NAME} PRIVATE Qt::Qml FileMan)
+target_link_libraries(${PROJECT_NAME} PRIVATE FileMan)
 
 # Required for clang+LLVM
 target_link_options(${PROJECT_NAME} PRIVATE $<$<CXX_COMPILER_ID:Clang>:-fuse-ld=lld>)
@@ -250,6 +248,8 @@ var result = FileMan.addFile(fileUrl, FileMan.Audio | FileMan.Video)
 For static building, build FileMan as [static](#available-build-flags) and link against the FileMan plugin instead:
 
 ```CMakelists.txt
+find_package(Qt6 REQUIRED COMPONENTS Qml)
+
 set(FM_BUILD_AS "STATIC" CACHE STRING "Set FileMan build type")
 # Alternatively, pass -DFM_BUILD_AS=STATIC during configuring cmake
 
@@ -279,7 +279,6 @@ On your project's main `CMakeLists` add/modify these invocations: [^1]
 ```CMakeLists.txt
 cmake_minimum_required(VERSION 3.16)
 
-find_package(Qt6 REQUIRED COMPONENTS Qml)
 find_package(FileMan REQUIRED)
 
 qt_add_executable(${PROJECT_NAME} main.cpp)
@@ -300,7 +299,7 @@ qt_add_qml_module(${PROJECT_NAME}
     DEPENDENCIES HasanEsa.FileMan
 )
 
-target_link_libraries(${PROJECT_NAME} PRIVATE Qt::Qml HasanEsa::FileMan)
+target_link_libraries(${PROJECT_NAME} PRIVATE HasanEsa::FileMan)
 
 # Required for clang+LLVM
 target_link_options(${PROJECT_NAME} PRIVATE $<$<CXX_COMPILER_ID:Clang>:-fuse-ld=lld>)
@@ -319,6 +318,8 @@ var result = FileMan.addFile(file://path/to/myVideo.mkv, FileMan.Audio | FileMan
 For statically linking however, make sure the system-installed instance has been built [statically](#available-build-flags). On your root `CMakeLists` compared to previous, just modify these lines:
 
 ```CMakeLists.txt
+find_package(Qt6 REQUIRED COMPONENTS Qml)
+
 target_link_libraries(${PROJECT_NAME} PRIVATE Qt::Qml HasanEsa::FileManplugin)
 ```
 

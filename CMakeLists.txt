@@ -140,8 +140,12 @@ target_include_directories(${PROJECT_NAME} PUBLIC
   $<INSTALL_INTERFACE:include>
 )
 
+#
 # Versionless invokes are preferred
-target_link_libraries(${PROJECT_NAME} PRIVATE Qt::Core Qt::Qml)
+#
+# Return types depends on Qt::Core & ::Qml, needs to be PUBLIC
+#
+target_link_libraries(${PROJECT_NAME} PUBLIC Qt::Core Qt::Qml)
 target_link_options(${PROJECT_NAME} PRIVATE
   # necessary because ld fails to link on clang+llvm
   $<$<CXX_COMPILER_ID:Clang>:-fuse-ld=lld>

@@ -102,7 +102,7 @@ target_compile_options(${TARGET_NAME} PRIVATE
 )
 
 #[KEY:Include HasanEsa::FileMan]
-target_link_libraries(${TARGET_NAME} PRIVATE Qt::Core Qt::Qml HasanEsa::FileMan)
+target_link_libraries(${TARGET_NAME} PRIVATE Qt::Core HasanEsa::FileMan)
 target_link_options(${TARGET_NAME} PRIVATE
   $<$<CXX_COMPILER_ID:Clang>:-fuse-ld=lld>
   $<$<NOT:$<OR:$<CONFIG:Debug>,$<CONFIG:RelWithDebInfo>>>:

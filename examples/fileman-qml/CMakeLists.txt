@@ -142,7 +142,6 @@ target_compile_options(${TARGET_NAME} PRIVATE
 )
 target_link_libraries(${TARGET_NAME} PRIVATE
   Qt::Core
-#[KEY]
   Qt::Qml
   Qt::Quick
   Qt::Widgets
