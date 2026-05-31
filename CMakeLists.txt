@@ -6,7 +6,7 @@ include(CMakePrintHelpers)
 include(CMakePackageConfigHelpers)
 
 project(FileMan
-  VERSION     1.0.0
+  VERSION     1.0.1
   DESCRIPTION "A file manager library for Qt6 apps written in C++"
   LANGUAGES   CXX
   # SPDX_LICENSE  MIT  # SPDX_LICENSE doesn't work before cmake 4.1
@@ -232,17 +232,21 @@ install(EXPORT  ${PROJECT_NAME}Targets
 install(FILES
     "${CMAKE_CURRENT_SOURCE_DIR}/${PROJECT_NAME}Config.cmake"
     "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}ConfigVersion.cmake"
-  DESTINATION  "${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME}"
-  COMPONENT devel
+  DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME}"
+  COMPONENT   devel
 )
-install(FILES
-    README.md
-    CHANGELOG.md
-  TYPE DOC
-  COMPONENT runtime
-)
-install(FILES
-    LICENSE
-  DESTINATION "${CMAKE_INSTALL_DATADIR}/license/${FM_NS}/${PROJECT_NAME}"
-  COMPONENT   runtime
-)
+
+# Install the docs and licenses only if building as a root project
+if(CMAKE_SOURCE_DIR STREQUAL PROJECT_SOURCE_DIR)
+  install(FILES
+      README.md
+      CHANGELOG.md
+    TYPE DOC
+    COMPONENT runtime
+  )
+  install(FILES
+      LICENSE
+    DESTINATION "${CMAKE_INSTALL_DATADIR}/licenses/${FM_NS}/${PROJECT_NAME}"
+    COMPONENT   runtime
+  )
+endif()

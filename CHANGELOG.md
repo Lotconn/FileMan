@@ -2,6 +2,34 @@ This file contains a brief lists of notable changes for each version. Refer to r
 
 ---
 
+# v1.0.1
+
+This is a minor bug-fix release, mostly concerning CMake build system
+
+## Bug fixes
+- Do not propagate Qt API strictness to consumers
+- Scope build flags for GCC & clang only
+- Scope `lld` linker to clang conditionally, gcc doesn't need explicit linker override anymore
+
+## Improvements
+- Remove redundant compile options already handled by cmake
+- Move in-tree example building to the very last stage of the build process
+- Split development and runtime related components to separate `devel` & `runtime` components that can be separately installed
+- Do not install documentations and license files when used as a submodule
+- Documentation improvements, fix typos and code snippets, reformat for better readability
+- Rename the example apps `fileman-cpp` as `fileman-cli-qt` & `fileman-app` as `fileman-qml-legacy`
+
+## New
+- `FM_BUILD_AS` option can also be implicitly set with more common and general `BUILD_SHARED_LIBS` but not vice-versa
+- Add a section about using the system-installed library
+
+## Others
+
+
+Full changelog: [`v1.0.0...v1.0.1`](https://gitlab.com/hasanesa/fileman/-/compare/v1.0.0...v1.0.1)
+
+---
+
 # v1.0.0
 
 FileMan can now be used as a QML module with QML apps. This allows convenient integration over the legacy approach of setting context properties from C++ backend. Refer to README.md for the details.

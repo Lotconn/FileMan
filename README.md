@@ -193,7 +193,7 @@ FileMan can also be used as a QML module to integrate with QML apps very easily.
 This is a very common way of integrating third-party libraries within a project. Decide where to add the FileMan submodule first. For our guide here, we'll add it under `libs/` from the project root. Whichever location you choose, just make sure the trailing directories are `HasanEsa/FileMan/` complying with Qt's expected URI translated lookup:
 
 ```bash
-git clone --depth 1 --branch v1.0.0 --recurse-submodules https://gitlab.com/hasanesa/fileman libs/HasanEsa/FileMan
+git clone --depth 1 --branch v1.0.1 --recurse-submodules https://gitlab.com/hasanesa/fileman libs/HasanEsa/FileMan
 git submodule add https://gitlab.com/hasanesa/fileman libs/HasanEsa/FileMan
 ```
 
