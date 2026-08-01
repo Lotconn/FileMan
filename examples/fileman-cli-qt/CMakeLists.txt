@@ -2,7 +2,7 @@
 
                           MIT License
 
-                      Copyright HasanEsa 2026
+                      Copyright Lotconn 2026
 
 This is the CMakeLists file for the example interactive cli app demonstrating
 the integration of FileMan class in a Qt/C++ implementation.
@@ -16,7 +16,7 @@ or [KEY::extra comments].
 ]]
 
 #[KEY:Minimum 3.16 recommended]
-cmake_minimum_required(VERSION 3.16...4.3)
+cmake_minimum_required(VERSION 3.16...4.4)
 set(TARGET_NAME fileman-cli-qt)
 
 if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
@@ -45,7 +45,7 @@ find_package(Qt6 REQUIRED COMPONENTS Core Qml)
 if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
 
 #[KEY:Recommended]
-  qt_standard_project_setup(REQUIRES 6.9)
+  qt_standard_project_setup(REQUIRES 6.8)
 endif()
 
 if(TARGET FileMan)
@@ -82,8 +82,14 @@ endif()
 qt_add_executable(${TARGET_NAME} main.cpp)
 
 target_compile_definitions(${TARGET_NAME} PRIVATE
-  QT_ENABLE_STRICT_MODE_UP_TO=0x060900
+  QT_ENABLE_STRICT_MODE_UP_TO=0x060800
 )
+
+set(CF_PROTECTION_FLAG -fcf-protection=none)
+if(CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64|amd64")
+  message(STATUS "Enabling Intel CET for x86_64/amd64")
+  set(CF_PROTECTION_FLAG -fcf-protection)
+endif()
 target_compile_options(${TARGET_NAME} PRIVATE
   $<$<CXX_COMPILER_ID:GNU,Clang>:
     -Wp,-D_FORTIFY_SOURCE=3
@@ -92,7 +98,7 @@ target_compile_options(${TARGET_NAME} PRIVATE
     -fstack-protector-strong
     -fasynchronous-unwind-tables
     -fstack-clash-protection
-    -fcf-protection
+    ${CF_PROTECTION_FLAG}
     -mno-omit-leaf-frame-pointer
     -pipe
     $<$<OR:$<CONFIG:Debug>,$<CONFIG:RelWithDebInfo>>:
@@ -101,8 +107,8 @@ target_compile_options(${TARGET_NAME} PRIVATE
   >
 )
 
-#[KEY:Include HasanEsa::FileMan]
-target_link_libraries(${TARGET_NAME} PRIVATE Qt::Core HasanEsa::FileMan)
+#[KEY:Include Lotconn::FileMan]
+target_link_libraries(${TARGET_NAME} PRIVATE Qt::Core Lotconn::FileMan)
 target_link_options(${TARGET_NAME} PRIVATE
   $<$<CXX_COMPILER_ID:Clang>:-fuse-ld=lld>
   $<$<NOT:$<OR:$<CONFIG:Debug>,$<CONFIG:RelWithDebInfo>>>:

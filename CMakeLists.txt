@@ -1,12 +1,12 @@
 # Qt recommends minimum version of 3.16
-cmake_minimum_required(VERSION 3.16...4.3)
+cmake_minimum_required(VERSION 3.16...4.4)
 
 # CMakePrintHelpers for printing variables easily
 include(CMakePrintHelpers)
 include(CMakePackageConfigHelpers)
 
 project(FileMan
-  VERSION     1.0.1
+  VERSION     2.0.0
   DESCRIPTION "A file manager library for Qt6 apps written in C++"
   LANGUAGES   CXX
   # SPDX_LICENSE  MIT  # SPDX_LICENSE doesn't work before cmake 4.1
@@ -18,7 +18,7 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)   # Some IDEs need this for linter servers
 set(CMAKE_PROJECT_SPDX_LICENSE "MIT")
-set(FM_NS HasanEsa)
+set(FM_NS Lotconn)
 string(TOLOWER ${PROJECT_NAME} PROJECT_NAME_LOWER)
 
 option(FM_BUILD_EXAMPLES "Build examples in the project" OFF)
@@ -32,9 +32,9 @@ if(CCACHE_PROGRAM)
   set(CMAKE_CXX_COMPILER_LAUNCHER "${CCACHE_PROGRAM}")
 endif()
 
-qt_standard_project_setup(REQUIRES 6.9)
+qt_standard_project_setup(REQUIRES 6.8)
 #
-# Strictly standardize on Qt 6.9
+# Strictly standardize on Qt 6.8
 #
 # These CMake policies are in effect:
 # QTP0001: ':/qt/qml/' is the default resource prefix for QML modules (Qt 6.5)
@@ -71,12 +71,24 @@ if(DEFINED BUILD_SHARED_LIBS AND NOT BUILD_SHARED_LIBS)
 endif()
 
 qt_add_qml_module(${PROJECT_NAME}
-  URI     HasanEsa.FileMan
-  VERSION 1.0
+  URI     Lotconn.FileMan
+  VERSION 2.0
   ${FM_BUILD_AS}
   SOURCES
-    fileman.cpp
+    fileman
     fileman.hpp
+    fileman_p.hpp
+    internal-helpers.hpp
+    fileman.cpp
+    fileman_p.cpp
+    internal-helpers.cpp
+    addFile.cpp
+    categoryToString.cpp
+    getCategoryDir.cpp
+    getDataDir.cpp
+    getFileName.cpp
+    refreshStore.cpp
+    rmFile.cpp
 
   #
   # qt_add_qml_module() creates some object targets that need to be
@@ -104,25 +116,34 @@ qt_query_qml_module(${PROJECT_NAME}
 add_library(${FM_NS}::${PROJECT_NAME} ALIAS ${PROJECT_NAME})
 
 #
-# Disable policies older than Qt 6.9. The format is 0xMMmmrr
+# Disable policies older than Qt 6.8. The format is 0xMMmmrr
 # MM = Major (06); mm = minor (09); rr = revision (00)
 #
 # Refer to https://doc.qt.io/qt-6/qtglobal.html#QT_ENABLE_STRICT_MODE_UP_TO
 # for a complete list of disabled APIs
 #
 target_compile_definitions(${PROJECT_NAME} PRIVATE
-  QT_ENABLE_STRICT_MODE_UP_TO=0x060900
+  QT_ENABLE_STRICT_MODE_UP_TO=0x060800
 )
 target_compile_features(${PROJECT_NAME} PUBLIC cxx_std_17)
+
+set(CF_PROTECTION_FLAG -fcf-protection=none)
+if(CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64|amd64")
+  message(STATUS "Enabling Intel CET for x86_64/amd64")
+  set(CF_PROTECTION_FLAG -fcf-protection)
+endif()
+
 target_compile_options(${PROJECT_NAME} PRIVATE
   $<$<CXX_COMPILER_ID:GNU,Clang>:
+    -Wall
+    -Wextra
     -Wp,-D_FORTIFY_SOURCE=3
     -Wp,-D_GLIBCXX_ASSERTIONS
     -fexceptions
     -fstack-protector-strong
     -fasynchronous-unwind-tables
     -fstack-clash-protection
-    -fcf-protection
+    ${CF_PROTECTION_FLAG}
     -mno-omit-leaf-frame-pointer
     -pipe
     $<$<OR:$<CONFIG:Debug>,$<CONFIG:RelWithDebInfo>>:
@@ -154,7 +175,13 @@ target_link_options(${PROJECT_NAME} PRIVATE
     -Wl,--as-needed
   >
 )
-target_sources(${PROJECT_NAME} PUBLIC FILE_SET HEADERS FILES fileman.hpp)
+target_sources(${PROJECT_NAME} PUBLIC
+  FILE_SET
+    HEADERS
+      FILES
+        fileman
+        fileman.hpp
+)
 
 set_target_properties(${PROJECT_NAME}
   PROPERTIES
@@ -222,12 +249,12 @@ write_basic_package_version_file(
 )
 
 # Install the handwritten *Targets.cmake file. Library can now be invoked during
-# linking as HasanEsa::FileMan
+# linking as Lotconn::FileMan
 install(EXPORT  ${PROJECT_NAME}Targets
   FILE        ${PROJECT_NAME}Targets.cmake
   DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME}"
   COMPONENT   devel
-  NAMESPACE   HasanEsa::
+  NAMESPACE   Lotconn::
 )
 install(FILES
     "${CMAKE_CURRENT_SOURCE_DIR}/${PROJECT_NAME}Config.cmake"
@@ -239,8 +266,9 @@ install(FILES
 # Install the docs and licenses only if building as a root project
 if(CMAKE_SOURCE_DIR STREQUAL PROJECT_SOURCE_DIR)
   install(FILES
-      README.md
-      CHANGELOG.md
+  CHANGELOG.md
+  CONTRIBUTING.md
+  README.md
     TYPE DOC
     COMPONENT runtime
   )

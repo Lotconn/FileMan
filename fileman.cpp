@@ -1,664 +1,744 @@
-#include <QCryptographicHash>
-#include <QDebug>
-#include <QDir>
-#include <QFile>
-#include <QFileInfo>
+#include <QCoreApplication>
 #include <QMimeDatabase>
-#include <QQmlEngine>
-#include <QSaveFile>
+#include <QNtfsPermissionCheckGuard>
 #include <QStandardPaths>
-#include <QStorageInfo>
-#include <QUrl>
-#include <QVariant>
-#include <cerrno>
-#include <cstring>
 
-#include <fileman.hpp>
+#include "fileman_p.hpp"
+#include "internal-helpers.hpp"
+#include <fileman>
 
-#ifdef Q_OS_UNIX
-#include <unistd.h>
-#endif
+Q_LOGGING_CATEGORY(fileman, "FileMan")
 
-FileMan::FileMan(QObject *parent) : QObject(parent) {}
-
-static const QList categoryList = { FileMan::Audio, FileMan::Image, FileMan::Video };
-static const qsizetype catListSize = categoryList.size();
-
-// FileMan is meant to be a singleton
+// [Private] FileMan is meant to be a singleton
 FileMan *FileMan::s_singletonInstance = nullptr;
 
-// Translate enums (i.e. integers) to strings, string is never empty
-constexpr static QLatin1StringView catStr(FileMan::Categories category) noexcept
-{
-    switch (category) {
-        case FileMan::Audio: return QLatin1StringView("audio");
-        case FileMan::Image: return QLatin1StringView("image");
-        case FileMan::Video: return QLatin1StringView("video");
-    }
-    Q_UNREACHABLE();
-}
+//
+// The QML_SINGLETON factory referer. Qt/QML calls this itself when QML
+// code touches FileMan.foo. Required as long as QML_SINGLETON is on the class.
+//
+FileMan *FileMan::create(QQmlEngine * /*unused*/, QJSEngine * /*unused*/) {
 
-// Show the app's data dir; never returns null
-QString FileMan::getDataDir()
-{ return QStandardPaths::writableLocation(QStandardPaths::AppDataLocation); }
+  if (FileMan::s_singletonInstance == nullptr)
+    qFatal("FileMan: no instance constructed. FileMan must be explicitly "
+           "instantiated before the QML engine loads");
 
-static QString mkDataDir()
-{
-    const QDir dataDir(FileMan::getDataDir());
+  // The singleton's lifetime is owned by this TU (main()/first construction),
+  // not by the QQmlEngine. Make that explicit so the engine never attempts
+  // to garbage-collect or delete it.
+  QQmlEngine::setObjectOwnership(FileMan::s_singletonInstance,
+                                 QQmlEngine::CppOwnership);
 
-    // dataDir/common is the place for all raw blobs
-    if (!dataDir.mkpath("common")) {
-        qCritical().noquote() << "FileMan:\tFailed to create" << dataDir.filePath("common");
-        return {};
-    }
-    return dataDir.absoluteFilePath("common");
-}
-
-// Overload function, takes the enum as argument e.g. mkDataDir(FileMan::Audio)
-static QString mkDataDir(FileMan::Categories category)
-{
-    const QDir dataDir(FileMan::getDataDir());
-    const QString categoryStr = catStr(category);
-    if (!dataDir.mkpath(categoryStr)) {
-        qCritical().noquote() << "FileMan:\tFailed to create" << dataDir.filePath(categoryStr);
-        return {};
-    }
-    return dataDir.absoluteFilePath(categoryStr);
-}
-
-// Validator function before adding to store
-static int preAddValidate(const QString &path, FileMan::Categories category)
-{
-    QFileInfo file(path);
-
-    if (file.isSymLink()) {
-        //
-        // A fuzzy function to test symlink recursion
-        //
-        // Someone could be joking or could actually be their OPSEC, but we
-        // shouldn't allow it too far. Note, this is also handled by the
-        // filesystem natively but just in case
-        //
-        QString p = QFileInfo(file.symLinkTarget()).absoluteFilePath();
-        int i = 0;
-        constexpr int loopDepth = 41;
-        for (; i < loopDepth; i++) {
-            const QFileInfo t(p);
-            if (!t.isSymLink()) break;
-            p = QFileInfo(t.symLinkTarget()).absoluteFilePath();
-        }
-        if (i >= 41) return ELOOP;
-    }
-
-    // Check existence & file type; only take regular files - from wherever
-    // accessible (including from /sys as long as permission allows but we
-    // handle these unacceptable files next)
-    if (const bool exists = QFileInfo::exists(path); !exists || !file.isFile())
-        return exists ? EINVAL : ENOENT;
-
-    // regular, but unusual files; e.g. textstreams or files under /proc
-    if (file.size() <= 0) return EINVAL;
-
-    // A 5 mins long 96 kHz 24-bit audio file could easily reach this ceiling
-    // images are much more forgiving though
-    constexpr int gibVal = 1073741824;
-    if (file.size() > gibVal) {
-        qCritical().noquote() << "FileMan:\tFile size exceeding 1GB not supported";
-        return EFBIG;
-    }
-
-    const QMimeDatabase mimeDb;
-    const QString mime = mimeDb
-        .mimeTypeForFile(file.canonicalFilePath(), QMimeDatabase::MatchContent)
-        .name().toLower();
-    qDebug().noquote() << "FileMan:\tMIME:" << mime;
-    // only take files having <category>/* mime types, e.g. audio/ogg,
-    // audio/flac, image/svg+xml, image/png, video/mp4 etc
-    // this rules out text files common under unacceptable paths like /sys
-    if (const QLatin1StringView c = catStr(category); mime.isEmpty() ||
-        !mime.startsWith(c + u"/")) {
-        // .mkv appears as application/x-matroska instead of video/x-matroska
-        if (c == "video" && mime.contains("/x-matroska")) return 0;
-        qCritical().noquote() << "FileMan:\tFile type not supported for this operation";
-        return EOPNOTSUPP;
-    }
-
-    return 0;
-}
-
-// File digest (SHA256) computer
-static QString sha256File(const QString &path)
-{
-    QFile file(path);
-    if (!file.open(QIODeviceBase::ReadOnly)) return {};
-    QCryptographicHash hash(QCryptographicHash::Sha256);
-    // Read in chunks; readAll() crashes
-    // 64KiB is a good chunk size for almost all purposes including network
-    // files, although 1MiB would've been more ideal for local disk files
-    constexpr qint64 chunkSize = 65536;
-    while (!file.atEnd()) {
-        if (const auto chunk = file.read(chunkSize); !chunk.isEmpty())
-            hash.addData(chunk);
-    }
-    return hash.result().toHex();
-}
-
-// This is only for invoking from qml
-QString FileMan::getFileName(const QUrl &fileUrl) { return fileUrl.fileName(); }
-
-// A separate function for a small job, but keeps the clutter isolated
-static QString renameFile(const QString &fileName, const QDir &location)
-{
-    // Find the first empty rename suffix; e.g. existing-name_2.ext
-    // having even anything near 1000 rename-suffixed same files is atypical
-    const QString baseName = QFileInfo(fileName).completeBaseName();
-    const QString suffix = QLatin1StringView(".")
-                            + QFileInfo(fileName).suffix();
-    constexpr qint64 lim = 1024;
-    for (int i = 1; i < lim; ++i) {
-        const QString candid = baseName
-                                + QLatin1StringView("_")
-                                + QString::number(i) + suffix;
-        if (!location.exists(candid)) return candid;
-    }
-    qWarning().noquote() << "FileMan:\tFile count limit exceeded"; return {};
+  return FileMan::s_singletonInstance;
 }
 
 //
-// Take URL schemes as input, since this is common output from both file dialogs
-// and qml. Use regular paths internally
+// Wrap the instance pointer in an accessor rather than exposing
+// plainly. Returns a (maybe null) reference to the instance. Can be used to
+// refer to an externally constructed, but not referenced FileMan object.
 //
-// Outputs K-V pairs; {{ "error": <int> }, { "path": <url> }}
-// We use .toInt() and .toString() to extract the V[alues] from K[eys]
+FileMan &FileMan::instance() {
+  Q_ASSERT_X(FileMan::s_singletonInstance, "FileMan::create",
+             "s_singletonInstance must be set before the QML engine loads");
+
+  return *s_singletonInstance;
+}
+
+// Constructor/Initializer
+FileMan::FileMan(QObject *parent)
+    : QObject(parent), d(std::make_unique<Private>()) {
+
+  Q_ASSERT(QCoreApplication::instance());
+
+  if (s_singletonInstance != nullptr)
+    qFatal("FileMan: A second FileMan instance was constructed; only one "
+           "instance may exist per process");
+
+  if (QCoreApplication::applicationName().isEmpty())
+    qFatal("FileMan: QCoreApplication::applicationName() is empty. "
+           "FileMan cannot safely isolate its data store. Aborting");
+
+  d->dataDir = resolveDataDir();
+  d->hashDir = createPathComp(d->dataDir, "common"_L1);
+  d->categoryDirs = Private::createCategoryDirList(d->dataDir);
+  d->categoryList = Private::createCategoryList(d->dataDir);
+  d->storeLock = std::make_unique<QLockFile>(
+      QDir(d->dataDir).absoluteFilePath(".fileman.lock"_L1));
+
+  FileMan::s_singletonInstance = this;
+}
+
+// Destructor, clears the static pointer
+FileMan::~FileMan() {
+
+  if (FileMan::s_singletonInstance == this)
+    FileMan::s_singletonInstance = nullptr;
+}
+
 //
-QVariantMap FileMan::addFile(const QUrl &fileUrl, FileMan::Categories category)
-{
+// Opaque/PIMPL structs add_file_t and rm_file_t for maintaining ABI
+// compatiblity
+//
+
+// Empty constructors
+add_file_t::add_file_t() : d(new AddFileType) {}
+rm_file_t::rm_file_t() : d(new RmFileType) {}
+
+// Constructors having references to members
+add_file_t::add_file_t(int status, const QUrl &location) : d(new AddFileType) {
+  d->status = status;
+  d->location = location;
+}
+
+rm_file_t::rm_file_t(int status_l, int status_h) : d(new RmFileType) {
+  d->status_l = status_l;
+  d->status_h = status_h;
+}
+
+// Copy/Move constructors
+add_file_t::add_file_t(const add_file_t &) = default;
+add_file_t &add_file_t::operator=(const add_file_t &) = default;
+add_file_t::add_file_t(add_file_t &&) noexcept = default;
+add_file_t &add_file_t::operator=(add_file_t &&) noexcept = default;
+
+rm_file_t::rm_file_t(const rm_file_t &) = default;
+rm_file_t &rm_file_t::operator=(const rm_file_t &) = default;
+rm_file_t::rm_file_t(rm_file_t &&) noexcept = default;
+rm_file_t &rm_file_t::operator=(rm_file_t &&) noexcept = default;
+
+// Destructors
+add_file_t::~add_file_t() = default;
+rm_file_t::~rm_file_t() = default;
+
+// Accesors
+int add_file_t::status() const { return d->status; }
+QUrl add_file_t::location() const { return d->location; }
+
+int rm_file_t::status_h() const { return d->status_h; }
+int rm_file_t::status_l() const { return d->status_l; }
+
+////////////////////////////////////////////////////////////////////////////////
+//  Private definitions
+////////////////////////////////////////////////////////////////////////////////
+
+//
+// Acquires explicit thread lock & lock on the store for serialized
+// access and preventing race conditions. Returns 0 on success, errno on
+// failure.
+//
+int FileMan::acquireStoreLock() {
+
+  constexpr qint32 lockLifetime = 40000; // 40 sec
+  constexpr qint32 waitDuration = 5000;  // 5 sec
+
+  d->storeMutex.lock();
+
+  d->storeLock->setStaleLockTime(lockLifetime);
+
+  if (!d->storeLock->tryLock(waitDuration)) {
+    int e = EIO;
+
+    switch (d->storeLock->error()) {
+    case QLockFile::LockFailedError:
+      logCritical << "Store busy, could not acquire lock";
+      e = EBUSY;
+      break;
+    case QLockFile::PermissionError:
+      logCritical << "Permission error in store, could not acquire lock";
+      e = EACCES;
+      break;
+    default:
+      logCritical << "IO error in store, could not acquire lock";
+      break;
+    }
+
+    d->storeMutex.unlock();
+
+    return e;
+  }
+
+  return 0;
+}
+
+//
+// Clears all entries in the dictionaries.
+//
+void FileMan::clearAllEntries() {
+  const QWriteLocker locker(&d->dictLock);
+
+  d->hashToLinkDict.clear();
+  d->linkToHashDict.clear();
+}
+
+//
+// Concatenates two path components and returns the combined
+// clean path with platform relevant directory separator. Never returns empty
+// string.
+//
+QString FileMan::createPathComp(const QString &comp1, const QString &comp2) {
+  return QDir::cleanPath(QDir::toNativeSeparators(comp1 + '/'_L1 + comp2));
+}
+
+//
+// Dumps all entries in both the dictionaries.
+//
+void FileMan::dumpAllEntries() {
+  const QReadLocker locker(&d->dictLock);
+
+  logDebug << "hashToLinkDict:";
+  for (const auto &[key, value] :
+       std::as_const(d->hashToLinkDict).asKeyValueRange())
+    logDebug << qPrintable(key) << ": " << value;
+
+  logDebug << "linkToHashDict:";
+  for (const auto &[key, value] :
+       std::as_const(d->linkToHashDict).asKeyValueRange())
+    logDebug << qPrintable(key) << ": " << value;
+}
+
+//
+// Attempts appropriate repairs on `dir` following the provided `error`. Returns
+// true if repairs were successful, false otherwise.
+//
+bool FileMan::fixDirHealth(const QString &dir, int error,
+                           FileMan::Category category) {
+
+  if (error != 0 && error != EAGAIN && error != ECANCELED && error != EPERM) {
+    logCritical << "Critical error on store, can't continue";
+    logDebug << "Error branch [" << dir << "]:" << error;
+
+    return false;
+  }
+
+  if (error == EPERM) {
+    // Attempt to fix permissions
+    const std::filesystem::path dir_stl = dir.toStdString();
+    std::error_code ec;
+
+    if (!setDirPerms(dir_stl, ec)) {
+      logCritical << "Couldn't set appropriate permissions on" << dir;
+      logDebug << "Error branch [" << dir << "]:" << error;
+      logDebug << "Error code: " << ec.value();
+
+      return false;
+    }
+
+    return true;
+  }
+
+  if (error == ECANCELED) {
+    const QString dirName = QDir(dir).dirName();
+
+    if (!QDir(dir).remove(dirName)) {
+      logCritical << "Critical error on store, can't continue";
+      logDebug << "Error branch [" << dir << "]:" << error;
+
+      return false;
+    }
+
+    error = EAGAIN;
+  }
+
+  if (error == EAGAIN) {
+
+    const bool dirCreated = (category == FileMan::None)
+                                ? this->mkDataDir()
+                                : this->mkDataDir(category);
+
+    if (!dirCreated) { // Could be other advanced permission errors
+                       // (e.g.
+                       // ACL)
+      logCritical << "Critical error on store, please check" << dir
+                  << "and its parent dirs for permission issues";
+      logDebug << "Error status [" << dir << "]:" << error;
+
+      return false;
+    }
+
+    // Redundant, but future-proof
+    return true;
+  }
+
+  return true;
+}
+
+//
+// Checks whether dictionary is empty or not. Returns true if it is,
+// false if not
+//
+bool FileMan::isDictEmpty(const QHash<QString, QString> &dict) {
+  const QReadLocker locker(&d->dictLock);
+
+  return dict.isEmpty();
+}
+
+//
+// Looks-up the hash entry for `lnkEntry` in the in-memory hash-table.
+// Returns the entry string. Empty if entry doesn't exists.
+//
+QString FileMan::lookupHashByLink(const QString &lnkEntry) {
+
+  const QReadLocker locker(&d->dictLock);
+
+  return d->linkToHashDict.value(lnkEntry, {});
+}
+
+//
+// Looks-up the symlink entry for `hash` in the in-memory hash-table.
+// Returns the entry string. Empty if entry doesn't exists.
+//
+QString FileMan::lookupLinkByHash(const QString &hash) {
+
+  const QReadLocker locker(&d->dictLock);
+
+  return d->hashToLinkDict.value(hash, {});
+}
+
+//
+// Creates the full path to dataDir/common as required. Returns true
+// if path successfully created or exists, false otherwise.
+//
+bool FileMan::mkDataDir() {
+
+  if (!QDir().mkpath(d->hashDir)) {
+    logCritical << "Failed to create" << d->hashDir;
+
+    return false;
+  }
+
+  return true;
+}
+
+//
+// Overload of `mkDataDir()`. Creates the full path to
+// dataDir/<category> as required. Returns true if path successfully created or
+// exists, false otherwise.
+//
+bool FileMan::mkDataDir(FileMan::Category category) {
+
+  const QString &categoryDirPath(d->categoryList.value(category).location);
+
+  if (!QDir().mkpath(categoryDirPath)) {
+    logCritical << "Failed to create" << categoryDirPath;
+
+    return false;
+  }
+
+  return true;
+}
+
+//
+// Validator function before adding `file` to store. Returns a
+// `pre_add_validate_t` struct containing {int, FileMan::Categories} members.
+// Returns {0, FileMan::<valid_categories>} if successful, {errno,
+// FileMan::None} if otherwise. `errno` maybe one of `{EFBIG, EINVAL, ELOOP,
+// EOPNOTSUPP, ENOENT}`.
+//
+FileMan::pre_add_validate_t FileMan::preAddValidate(const QFileInfo &file) {
+
+  if (file.isSymLink()) {
+
     //
-    // URL  =>  Translated path
+    // A fuzzy function to test symlink recursion
     //
-    // file:thisFileOnCurrentDir.txt    =>  ./thisFileOnCurrentDir.txt
-    // file:///path/to/file =>  /path/to/file
-    // servername:///path/to/file   =>  //servername/path/to/file
-    // ftp://servername.com/path/to/folder/ =>  ""
-    // /path/to/file    =>  ""
+    // Someone could be joking or could actually be their OPSEC, but we
+    // shouldn't allow it too far. Note, this is also handled by the
+    // filesystem natively but just in case
     //
-    const QString filePath = fileUrl.toLocalFile();
-    const QString src = QFileInfo(filePath).canonicalFilePath();
-    if (src.isEmpty()) {
-        qCritical().noquote() << "FileMan:\tNo such file:" << filePath;
-        return {{"error", ENOENT}, {"path", {}}};
-    }
-    qDebug().noquote() << "FileMan:\tResolved file:" << src;
+    QString p = QFileInfo(file.symLinkTarget()).absoluteFilePath();
 
-    // File validation
+    qint8 allowedLimit = 41;
 
-    // Also find the matching category for the file
-    int idx = -1;
-    int err = 0;
-    for (int i = 0; i < catListSize; ++i) {
-        const auto c = categoryList.at(i);
-        if ((category & c) == 0) continue;
-        qDebug().noquote() << "FileMan:\tValidating for category" << catStr(c);
-        if (err = preAddValidate(src, c); err == 0) { idx = i; break; }
+    while (allowedLimit-- > 0) {
+      const QFileInfo t(p);
+      if (!t.isSymLink())
+        break;
+      p = QFileInfo(t.symLinkTarget()).absoluteFilePath();
     }
 
-    //
-    // C++ implementations can check compile-time for invalid enum/flags
-    // but unfortunately, no such checks exists for QML. Ensure "category"
-    // is valid before proceeding
-    //
+    if (allowedLimit < 0)
+      return {ELOOP, FileMan::None};
+  }
 
-    if (idx < 0 || idx >= catListSize) {
-        qCritical().noquote() << "FileMan:\tNo valid category found for" << src;
-        return {{"error", err}, {"path", {}}};
+  // A 5 mins long 96 kHz 24-bit audio file could easily reach this ceiling
+  // images are much more forgiving though
+  constexpr qint32 gibVal = 1073741824;
+
+  if (const int e = validateFile(file, gibVal); e != 0)
+    return {e, FileMan::None};
+
+  //
+  // only take files having <category>/* mime types, e.g. audio/ogg,
+  // audio/flac, image/svg+xml, image/png, video/mp4 etc
+  // this rules out text files common under unacceptable paths like /sys
+  //
+  const QMimeDatabase mimeDb;
+  const QString &mime = mimeDb
+                            .mimeTypeForFile(file.canonicalFilePath(),
+                                             QMimeDatabase::MatchContent)
+                            .name()
+                            .toLower();
+
+  logDebug << "MIME:" << mime;
+
+  if (mime.isEmpty()) {
+    logCritical << "MIME type could not be determined";
+
+    return {EOPNOTSUPP, FileMan::None};
+  }
+
+  FileMan::Categories categories = FileMan::None;
+
+  for (const auto &[cat, catInfo] : d->categoryList.asKeyValueRange())
+    if (mime.startsWith(catInfo.name + '/'_L1) ||
+        (catInfo.name == "video"_L1 && mime.contains("/x-matroska"_L1)))
+      categories |= cat;
+
+  if (categories == FileMan::None) {
+    logCritical << "File type not supported for this operation";
+    return {EOPNOTSUPP, FileMan::None};
+  }
+
+  return {0, categories};
+}
+
+//
+// Validates the provided absolute path of file `lnkPath`. Returns a
+// `pre_rm_validate_t` struct `{int status, QString lnkEntry, QString
+// hashEntry}`. Takes an optional `enforcedCheck` bool for stricter validation.
+// On validation passed, `status` is 0, `lnkEntry` contains the constructed
+// entry for `lnkPath` and `hashEntry` may either contain the name of the hash
+// file in store or empty if `lnkPath` is resolved to be dangling. Orphaned hash
+// files are never returned. On error, `status` is errno:{EAGAIN, ECANCELED,
+// EINVAL, ENOENT}, `lnkEntry` may be empty but `hash` is always empty.
+//
+FileMan::pre_rm_validate_t FileMan::preRmValidate(const QString &lnkPath,
+                                                  const bool enforcedCheck) {
+
+  const QFileInfo lnkFile(lnkPath);
+  const QString &lnkFileName = lnkFile.fileName();
+  const QDir &lnkDir = lnkFile.dir();
+  const QString &lnkDirName = lnkDir.dirName(); // i.e. parent dir name
+  const QString &lnkDirPath = QDir::cleanPath(lnkDir.absolutePath());
+  const QString &lnkEntry = FileMan::createPathComp(lnkDirName, lnkFileName);
+
+  // `lnkPath` could be a directory path or TLD /, C: etc
+  if (lnkFileName.isEmpty() || lnkDirName.isEmpty()) {
+    logCritical << lnkPath << "is an invalid path. Refusing to proceed.";
+
+    return {EINVAL, {}, {}};
+  }
+
+  const QString categoryDirPath = d->categoryDirs.value(lnkDirName, {});
+  const QDir categoryDir(categoryDirPath);
+
+  if (categoryDirPath.isEmpty()) {
+    logCritical << lnkPath << "is not a valid file in store";
+
+    return {EINVAL, {}, {}};
+  }
+
+  if (lnkDirPath != categoryDirPath) {
+    logCritical << lnkPath << "is not a path to store";
+
+    return {EINVAL, {}, {}};
+  }
+
+  // Files under dataDir/<category> are usually symlinks
+  if (!lnkFile.isSymLink() && !lnkFile.exists()) {
+    // This file actually doesn't exist
+    logWarning << lnkPath << "doesn't exist in store";
+
+    return {ENOENT, {}, {}};
+  }
+
+  // See the target of the symlink first but don't resolve yet
+  // QDir::filePath() cleverly returns the target path unchanged if it's
+  // absolute, lexically manipulates the string if it's relative
+  const QDir hashDir(d->hashDir);
+  const QString lnkTargetPath =
+      QDir::cleanPath(categoryDir.filePath(lnkFile.symLinkTarget()));
+  const QFileInfo lnkTarget(lnkTargetPath);
+  const QString lnkTargetFileName = lnkTarget.fileName();
+
+  logDebug << "Symlink target:" << lnkTargetPath;
+
+  // All healthy symlinks canonically point to `hashDir`
+  if (lnkTarget.absolutePath() != hashDir.absolutePath()) {
+    // An alien symlink in the store, disallow symlink resolution
+    logWarning << lnkPath
+               << "points to outside the store or not a symbolic link";
+
+    return {0, lnkEntry, {}};
+  }
+
+  // Target path may still be a crafted jump-symlink residing in the store
+  if (lnkTarget.isSymLink()) {
+    logWarning << lnkTargetPath << "is unexpectedly a symlink";
+
+    return {0, lnkEntry, {}};
+  }
+
+  // Target may not exist
+  if (!lnkTarget.exists()) {
+    logWarning << lnkTargetPath << "doesn't exist on store";
+
+    return {0, lnkEntry, {}};
+  }
+
+  //
+  // reaching here means provided symlink & target are both valid & safe
+  // and not dangling. Proceed to check the hashFile next
+  //
+
+  // Target may not pass our expected validations, `preAddValidate()` handles
+  // some of this already, but do only when called for an enforced check since
+  // this is a costly function and redos some jobs already done. Use the lighter
+  // `validateFile()` otherwise
+
+  int e = 0;
+  e = (enforcedCheck) ? this->preAddValidate(lnkTarget).status
+                      : validateFile(lnkTarget);
+
+  if (e != 0) {
+    logWarning << lnkTargetPath << "didn't pass validations";
+    logDebug << "Error:" << e;
+
+    return {0, lnkEntry, {}};
+  }
+
+  // Valid files ought to have 64 characters exactly (sha256 digest length)
+  constexpr qint8 nameLength = 64;
+  if (const qint64 s = lnkTargetFileName.size(); s != nameLength) {
+    logWarning << lnkTargetPath << "is not a valid file in store (wrong name)";
+    logDebug << "Base name size:" << s << "vs" << nameLength;
+
+    return {0, lnkEntry, {}};
+  }
+
+  // They also have exactly hex characters: [a-fA-F] & [0-9]
+  for (const QChar &c : lnkTargetFileName)
+    if (!isHexDigit(c)) {
+      logWarning << lnkTargetPath
+                 << "is not a valid file in store (wrong name)";
+      logDebug << "Base name" << lnkTargetFileName
+               << "doesn't look like a sha256 hash";
+
+      return {0, lnkEntry, {}};
     }
-    const auto catSelected = categoryList.at(idx);
-    qDebug().noquote() << "FileMan:\tSelected category:" << catStr(catSelected);
 
-    // Hash the file to get unanimous identity
-    const QString hash = sha256File(src);
-    if (hash.isEmpty()) {
-        qCritical().noquote() << "FileMan:\tHash computation failed";
-        return {{"error", EIO}, {"path", {}}};
+  // Validate the digest against file name. This is a costly operation so
+  // saving this for last and only when called for enforced check
+  if (enforcedCheck)
+    if (const QString h = hashFile(lnkTargetPath); h != lnkTargetFileName) {
+      logWarning << "Digest mismatch for" << lnkTargetPath;
+
+      return {0, lnkEntry, {}};
     }
 
-    // Raw data files/blobs as dataDir/common/<hash>
-    QString dest("");
-    if (const QString d = mkDataDir(); d.isEmpty()) {
-        return {{"error", ENOENT}, {"path", {}}};
-    } else dest = QDir(d).filePath(hash);
+  return {0, lnkEntry, lnkTargetFileName};
+}
 
-    QDir lnkDir;
-    if(const QString d = mkDataDir(catSelected); d.isEmpty())
-        return {{"error", ENOENT}, {"path", {}}};
-    else lnkDir.setPath(d);
+//
+// Registers the entries to the in-memory hash-tables.
+//
+void FileMan::registerEntry(const QString &lnkEntry, const QString &hash) {
 
-    // Return the present symlink if adding same file with a different name
-    if (QFile::exists(dest)) {
-        qInfo().noquote() << "FileMan:\t" << src << "already available on store";
+  const QWriteLocker locker(&d->dictLock);
 
-        const QList<QFileInfo> contents = lnkDir.entryInfoList(QDir::AllEntries | QDir::NoDotAndDotDot);
-        if (contents.isEmpty()) {
-        // Either the store state is unreliable for now or permission issues
-        // fail now to let user try again later
-            qCritical().noquote() << "FileMan:\tNo known files found, store is inconsistent";
-            return {{"error", ENOENT}, {"path", {}}};
-        }
+  d->hashToLinkDict.insert(hash, lnkEntry);
+  d->linkToHashDict.insert(lnkEntry, hash);
+}
 
-        // Search for symlinks and compare the target with `dest`
-        for (const auto &f : std::as_const(contents)) {
-            if (!f.isSymLink()) continue;
-            const QString t = QDir::cleanPath(lnkDir.filePath(f.symLinkTarget()));
-            if (t == dest)
-                return {{"error", EEXIST}, {"path", QUrl::fromLocalFile(f.absoluteFilePath())}};
-        }
+//
+// Removes the entries from the in-memory hash-tables.
+//
+void FileMan::removeEntry(const QString &lnkEntry, const QString &hash) {
 
-        // If nothing matched, then store is surely unreliable (for now)
-        qCritical().noquote() << "FileMan:\tStore is unreliable, please try again";
-        return {{"error", EAGAIN}, {"path", {}}};
-    }
+  const QWriteLocker locker(&d->dictLock);
 
-    // Opportunistically try hardlinking the file, fallback to regular copying
-    // if fails. Only UNIX for now
-#ifdef Q_OS_UNIX
-    bool hlStatus = false;
-    {
-        //
-        // std::link(const char* source, const char* dest), returns -1 if
-        // unsuccessful. The system-call error is assigned to "errno"
-        //
-        // Qt is utf16. toUtf8() translates that inline and constData()
-        // provides the const char* type value, required by std::link()
-        //
-        if (::link(src.toUtf8().constData(), dest.toUtf8().constData()) == 0) {
-            qDebug().noquote() << "FileMan:\tHardlinked" << src << "to" << dest;
-            hlStatus = true;
-        } else {
-            const int e = errno;
-            // EFAULT, EPERM & EXDEV are values for usual hardlinking errors
-            if (e != EFAULT && e != EPERM && e != EXDEV) {
-                qCritical().noquote() << "FileMan:\tProblem occured, can't operate";
-                return {{"error", e}, {"path", {}}};
-            }
-            qWarning().noquote() << "FileMan:\tHardlinking failed, falling back to regular copy";
-            qDebug().noquote() << "FileMan:\tError:" << e;
-        }
-    }
+  d->hashToLinkDict.remove(hash);
+  d->linkToHashDict.remove(lnkEntry);
+}
 
+//
+// Releases the explicit thread lock & lock on the store.
+//
+void FileMan::releaseStoreLock() {
 
-#elif defined(Q_OS_WIN)
-    constexpr bool hlStatus = false;
-    // Something with CreateLink or whatever
-#endif
-    if (!hlStatus) {
-        QFile srcFile(src);
-        if (!srcFile.open(QIODeviceBase::ReadOnly)) {
-            qCritical().noquote() << "FileMan:\tCouldn't open" << src << "for reading";
-            return {{"error", EPERM}, {"path", {}}};
-        }
+  d->storeLock->unlock();
+  d->storeMutex.unlock();
+}
 
-        const QString destDir = QFileInfo(dest).absolutePath();
+//
+// Returns the absolute path to app's data dir as string; never returns null.
+// Note this function doesn't guarranty existence.
+//
+QString FileMan::resolveDataDir() {
+  const QString appDataDir =
+      QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
 
-        // Check available (quota) free space before copying
-        // bytesAvailable() needs to be guarded first
-        if (qint64 s1 = QStorageInfo(destDir).bytesAvailable(); s1 == -1)
-            qWarning().noquote() << "FileMan:\tCannot retrieve file system free space, copy may fail";
-        else {
-            if (qint64 free = s1 - srcFile.size(); free <= 0) {
-                qCritical().noquote() << "FileMan:\tNot enough free space available";
-                return {{"error", ENOSPC}, {"path", {}}};
-            }
-        }
+  // Edge-case when `applicationName()` may not be set
+  Q_ASSERT_X(!appDataDir.isEmpty(), "FileMan::getDataDir",
+             "AppDataLocation resolved empty - was applicationName() set "
+             "before first call?");
 
-        // QSaveFile is a safer alternative than QFile::write()
-        QSaveFile destFile(dest);
-        if (!destFile.open(QIODeviceBase::WriteOnly)) {
-            qCritical().noquote() << "FileMan:\tCouldn't open" << dest << "for writing";
-            return {{"error", EPERM}, {"path", {}}};
-        }
+  return appDataDir;
+}
 
-        constexpr qint64 chunkSize = 65536;
-        while (!srcFile.atEnd()) {
-            const QByteArray buffer = srcFile.read(chunkSize);
-            if (buffer.isEmpty()) break;
-            if (destFile.write(buffer) != buffer.size()) {
-                qCritical().noquote() << "FileMan:\tWrite failed";
-                return {{"error", EIO}, {"path", {}}};
-            }
-        }
-        if (!destFile.commit()) {
-            qCritical().noquote() << "FileMan:\tCommit failed";
-            return {{"error", EIO}, {"path", {}}};
-        }
-    }
+//
+// Function to reverse lookup an absolute-path `target` from symlinks in
+// `searchDir`. Returns a `rev_lookup_symlink_t` struct having members {status,
+// location}. `location` is a string to either absolute path of the symlink or
+// empty if none is found or faced other issues. `status` is errno:{0, EPERM}.
+//
+FileMan::rev_lookup_symlink_t
+FileMan::revLookupSymlink(const QDir &searchDir, const QString &targetPath) {
 
-    QString srcFileName = QFileInfo(src).fileName();
-    QString savedPath = QDir::cleanPath(lnkDir.absoluteFilePath(srcFileName));
 #ifdef Q_OS_WIN
-    constexpr QLatin1StringView winLnkExt(".lnk");
-    savedPath += winLnkExt;
+  // Enables permission lookup on NTFS on Windows within this scope
+  QNtfsPermissionCheckGuard permissionGuard;
 #endif
 
-    if (QFileInfo::exists(savedPath)) {
-        // Rename the supplied file with rename-suffix, e.g. existing-file_2.ext
-        // and org.munadi.Munadi.png_2.svg (weird naming to begin with)
-        QString f = renameFile(srcFileName, lnkDir);
-        qWarning().noquote() << "FileMan:\tSaving" << srcFileName << "as" << f << "since it already exists";
-        srcFileName = f;
-        savedPath = QDir::cleanPath(lnkDir.absoluteFilePath(srcFileName));
-#ifdef Q_OS_WIN
-        // Windows requires .lnk extension for a valid symlink
-        savedPath += winLnkExt;
-#endif
+  // Just for logging purposes, should show the original format it was
+  // constructed with
+  const QString &searchDirPath = searchDir.path();
+
+  // Searching files and looking up symlink targets only need the executable
+  // permission
+  if (const QFileInfo f(searchDir, "."_L1); !f.isExecutable())
+    return {EPERM, {}};
+
+  // Let's assume `targetPath` is hashDir/hash and try some shortcuts
+  const QString targetName = QFileInfo(targetPath).fileName();
+  const QString lnkEntry = lookupLinkByHash(targetName);
+  const bool entryExists = !lnkEntry.isEmpty();
+  const bool isManaged = d->storeManaged;
+
+  if (isManaged && entryExists) {
+
+    const QFileInfo lnkFile(QDir(d->dataDir).filePath(lnkEntry));
+    const QString lnkPath = lnkFile.absoluteFilePath();
+    // Implies existence _and_ symlink type (dangling or not)
+    const bool lnkExists = lnkFile.isSymLink();
+
+    if (lnkExists) {
+      const QString lnkTarget =
+          QDir::cleanPath(searchDir.absoluteFilePath(lnkFile.symLinkTarget()));
+
+      if (lnkTarget == QDir::cleanPath(targetPath))
+        return {0, QDir::cleanPath(lnkFile.absoluteFilePath())};
     }
 
-    // Symlink the unanimous hashed file as the supplied file name under
-    // corresponding category
-    if (!QFile::link(lnkDir.relativeFilePath(dest), savedPath)) {
-        qCritical().noquote() << "FileMan:\tFailed to symlink" << dest << "to" << savedPath;
-        return {{"error", EACCES}, {"path", {}}};
+    // Either symlink doesn't match target in reality or it doesn't exist on
+    // fs. Either way, remove stale entry from the dictionaries, and proceed
+    // to full dir check
+
+    this->removeEntry(lnkEntry, targetName);
+  }
+
+  const QList<QFileInfo> &dirContents = searchDir.entryInfoList(
+      QDir::Files | QDir::Hidden | QDir::NoDotAndDotDot | QDir::System);
+
+  if (dirContents.isEmpty()) {
+
+    // Nothing present to lookup anyway
+    logDebug << searchDirPath << "is empty.";
+
+    return {EAGAIN, {}};
+  }
+
+  // Search for symlinks and compare the resolved target with `target`
+  for (const QFileInfo &file : dirContents) {
+
+    if (!file.isSymLink())
+      continue;
+
+    const QString &resolvedTarget =
+        QDir::cleanPath(searchDir.absoluteFilePath(file.symLinkTarget()));
+
+    if (resolvedTarget == QDir::cleanPath(targetPath)) {
+
+      if (isManaged) {
+        const QString lnkEntry =
+            FileMan::createPathComp(file.dir().dirName(), file.fileName());
+
+        logDebug << "Updating hash-tables with missing [" << lnkEntry << ","
+                 << targetName << "] entry";
+
+        this->registerEntry(lnkEntry, targetName);
+      }
+
+      return {0, QDir::cleanPath(file.absoluteFilePath())};
     }
+  }
 
-    qInfo().noquote() << "FileMan:\t" << src << "successfully added as" << dest;
-    return {{"error", 0}, {"path", QUrl::fromLocalFile(savedPath)}};
-}
+  // Reaching here means no symlinks match `target`
 
-// Qt provides no way (as of now) to validate hex chars
-// u'<char>' is necessary to avoid implicit locale translations
-static bool isHexDigit(QChar ch) noexcept
-{
-    const char16_t c = ch.unicode();
-    return (c >= u'0' && c <= u'9') || (c >= u'a' && c <= u'f') || (c >= u'A' && c <= u'F');
-}
+  if (!isManaged && entryExists) // Stale entry in dictionaries
+    this->removeEntry(lnkEntry, targetName);
 
-//
-// Validate the file lnkFileName on store before removing; this needs to be -
-// and allows to be - a lot more stricter than preAddValidate() for obvious
-// reasons
-//
-static QVariantMap preRmValidate(const QString &lnkFileName, FileMan::Categories category, const bool enforcedCheck = false)
-{
-    // Fail early if dataDir is actually a symlink
-    if (QFileInfo(FileMan::getDataDir()).isSymLink()) {
-        qWarning().noquote() << "FileMan:\tStore directory is a symlink";
-        return {{"lnkOk", ECANCELED}, {"lnkName", {}}, {"hashPath", {}}};
-    }
-
-    QString dir = QDir(FileMan::getDataDir())
-                                .absoluteFilePath(QLatin1StringView("common"));
-    qDebug().noquote() << "FileMan:\tStore path (common):" << dir;
-
-    if (dir.isEmpty() || !QFileInfo::exists(dir)) {
-        qWarning().noquote() << "FileMan:\tStore doesn't exist yet";
-        return {{"lnkOk", EAGAIN}, {"lnkName", {}}, {"hashPath", {}}};
-    }
-    if (QFileInfo(dir).isSymLink()) {
-        qWarning().noquote() << "FileMan:\t" << dir << "is a symlink";
-        return {{"lnkOk", ECANCELED}, {"lnkName", {}}, {"hashPath", {}}};
-    }
-    const QDir storeDir(dir);
-
-    dir = QDir(FileMan::getDataDir()).absoluteFilePath(catStr(category).toString());
-    qDebug().noquote() << "FileMan:\tStore path (categorized):" << dir;
-
-    if (dir.isEmpty() || !QFileInfo::exists(dir)) {
-        qWarning().noquote() << "FileMan:\tStore doesn't exist yet";
-        return {{"lnkOk", EAGAIN}, {"lnkName", {}}, {"hashPath", {}}};
-    }
-    if (QFileInfo(dir).isSymLink()) {
-        qWarning().noquote() << "FileMan:\t" << dir << "is a symlink";
-        return {{"lnkOk", ECANCELED}, {"lnkName", {}}, {"hashPath", {}}};
-    }
-    const QDir categoryDir(dir);
-
-     // lnkFileName can also be a full path
-#ifdef Q_OS_WIN
-    // Valid Windows symlinks present in store should be having .lnk extensions
-    const QString file = QFileInfo(lnkFileName).fileName()
-                        + QLatin1StringView(".lnk");
-#else
-    const QString file = QFileInfo(lnkFileName).fileName();
-#endif
-
-    const QFileInfo lnkFile(categoryDir.absoluteFilePath(file));
-
-    // Files under dataDir/<category> are usually symlinks
-    if (!lnkFile.isSymLink() && !lnkFile.exists()) {
-        // This file actually doesn't exist
-        return {{"lnkOk", ENOENT}, {"lnkName", {}}, {"hashPath", {}}};
-    }
-
-    // See the target of the symlink first but don't resolve yet
-    const QString target = QDir::cleanPath(categoryDir.filePath(lnkFile.symLinkTarget()));
-    const QFileInfo targetFile(target);
-    qDebug().noquote() << "FileMan:\tSymlink target:" << target;
-
-    // All healthy symlinks canonically point to "dataDir/common/<hashFile>"
-    if (targetFile.absolutePath() != storeDir.absolutePath()) {
-        // An alien symlink in the store, disallow symlink resolution
-        qWarning().noquote() << "FileMan:\t" << file << "points to forbidden path or not a symbolic link";
-        return {{"lnkOk", 0}, {"lnkName", file}, {"hashPath", {}}};
-    }
-
-    // Target path may still be a crafted jump-symlink residing in the store
-    if (targetFile.isSymLink()) {
-        qWarning().noquote() << "FileMan:\t" << target << "is an unknown file (a symlink)";
-        return {{"lnkOk", 0}, {"lnkName", file}, {"hashPath", {}}};
-    }
-
-    //
-    // reaching here means provided symlink & target are both valid & safe
-    // (even if it's dangling). Proceed to check the hashFile next
-    //
-
-    // Target may not exist
-    if (!QFileInfo::exists(target)) {
-        qWarning().noquote() << "FileMan:\t" << file << "doesn't exist on store";
-        return {{"lnkOk", 0}, {"lnkName", file}, {"hashPath", {}}};
-    }
-
-    // ...or doesn't pass our expected validations, preAddValidate() handles
-    // some of this already, but only when called for an enforced check since
-    // this is a costly function
-
-    if (enforcedCheck) {
-        if (const int e = preAddValidate(target, category); e != 0) {
-            qWarning().noquote() << "FileMan:\t" << target << "didn't pass validations";
-            qDebug().noquote() << "FileMan:\tError:" << e;
-            return {{"lnkOk", 0}, {"lnkName", file}, {"hashPath", {}}};
-        }
-    } else {
-        if (!targetFile.isFile() || targetFile.size() <= 0) {
-        // Regular, but unusual files; e.g. textstreams or files under /proc
-            qWarning().noquote() << "FileMan:\t" << target << "is not a valid file";
-            return {{"lnkOk", 0}, {"lnkName", file}, {"hashPath", {}}};
-        }
-    }
-
-    // Valid files ought to have 64 characters exactly (sha256 digest length)
-    const QString targetBaseName = targetFile.completeBaseName();
-    constexpr int nameLength = 64;
-    if (qint64 s = targetBaseName.size(); s != nameLength) {
-        qWarning().noquote()    << "FileMan:\t" << target
-                                << "is not a valid file in store (wrong name)";
-        qDebug().noquote()  << "FileMan:\tBase name size:" << s
-                            << "vs" << nameLength;
-        return {{"lnkOk", 0}, {"lnkName", file}, {"hashPath", {}}};
-    }
-
-    // They also have exactly hex characters: [a-fA-F] & [0-9]
-    for (QChar c : targetBaseName) {
-        if (!isHexDigit(c)) {
-            qWarning().noquote() << "FileMan:\t" << target
-                                << "is not a valid file in store (wrong name)";
-            qDebug().noquote()  << "FileMan:\tBase name" << targetBaseName
-                                << "doesn't look like a sha256 hash";
-            return {{"lnkOk", 0}, {"lnkName", file}, {"hashPath", {}}};
-        }
-    }
-
-    // Validate the digest against file name. This is a costly operation so
-    // saving this for last and only when called for enforced check
-    if (enforcedCheck) {
-        if (QString h = sha256File(target); h != targetBaseName) {
-            qWarning().noquote() << "FileMan:\tDigest mismatch for" << target;
-            return {{"lnkOk", 0}, {"lnkName", file}, {"hashPath", {}}};
-        }
-    }
-
-    return {{"lnkOk", 0}, {"lnkName", file}, {"hashPath", target}};
+  return {ENOENT, {}};
 }
 
 //
-// Function to remove the file of specified category from store. Takes only the
-// file name & not a path. Strips the file name (i.e. "basename" as on Linux)
-// from a path even if supplied
+// Shrinks the dictionary sizes to their contents size
 //
-int FileMan::rmFile(const QString &fileName, FileMan::Categories category)
-{
-    bool entered = false;
-    int err = 0;
-    for (const auto &c : std::as_const(categoryList)) {
-        const auto cat = category & c;
-        if (cat == 0) continue;
+void FileMan::squeezeDicts() {
+  QWriteLocker locker(&d->dictLock);
 
-        // Gate for invalid "category" similarly
-        entered = true;
-
-        const QString categoryName = catStr(cat);
-
-        qDebug().noquote() << "FileMan:\tSearching category" << categoryName;
-        const QVariantMap result = preRmValidate(fileName, cat);
-        const QString linkName = result["lnkName"].toString();
-        qDebug().noquote() << "FileMan:\tFile name in store:" << linkName;
-
-        if (int e = result["lnkOk"].toInt(); e != 0 || linkName.isEmpty()) {
-            qCritical().noquote() << "FileMan:\tRefusing to proceed with" << fileName
-                                << "on category" << categoryName;
-            qDebug().noquote() << "FileMan:\tError:" << e;
-            if (err != 0) err = e; continue;
-        }
-
-        // Following are all hopefully reliable operations onwards
-        QDir categoryDir = QDir(FileMan::getDataDir())
-                            .filePath(categoryName);
-
-        if (QString f = result["hashPath"].toString(); f.isEmpty()) {
-            qWarning().noquote() << "FileMan:\tNo valid hashed file found in store for" << linkName;
-        } else {
-            // Remove the raw blob from the store first
-            if (!QFile(f).remove()) {
-                qCritical().noquote() << "FileMan:\tCouldn't remove" << f;
-                if (err != 0) err = EACCES; continue;
-            }
-        }
-
-        // Remove the symlink next
-        if (!categoryDir.remove(linkName)) {
-            qCritical().noquote() << "FileMan:\tCouldn't remove" << linkName;
-            if (err != 0) err = EACCES; continue;
-        }
-
-        qInfo().noquote() << "FileMan:\t" << linkName
-            << "removed successfully from" << categoryName << "store";
-    }
-
-    if (!entered) {
-        qCritical().noquote() << "FileMan:\t" << category << "is an invalid category";
-        err = EINVAL;
-    }
-
-    return err;
+  d->hashToLinkDict.squeeze();
+  d->linkToHashDict.squeeze();
 }
 
 //
-// A housekeeper for the store. Should run on application/component startup
+// Validates and attempts repairs on dataDir, hashDir and categoryDir(s).
+// Returns validate_store_t struct having {int d_status, int h_status, int
+// c_status}. Values are 0 on success, errno on failure.
 //
-int FileMan::storeHouseKeeping()
-{
-    QStringList contents;
-    QHash<QString, QString> contentsDict;
+FileMan::validate_store_t FileMan::validateStore() {
 
-    for (const auto &category : std::as_const(categoryList)) {
-        QDir categoryDir;
-        if (const QString d = mkDataDir(category); d.isEmpty()) {
-            qCritical().noquote() << "FileMan:\tCouldn't create" << category << "store";
-            return EACCES;
-        }
-        else categoryDir.setPath(d);
+  FileMan::validate_store_t status = {-1, -1, {}};
 
-        // Enlist all top-level files (unsorted) in the directory. QDir::System
-        // is necessary to enlist dangling symlinks
-        contents = categoryDir.entryList(QDir::AllEntries | QDir::System | QDir::NoDotAndDotDot);
-        if (contents.isEmpty()) {
-            qWarning().noquote() << "FileMan:\t" << catStr(category) << "store doesn't have any contents yet";
-            continue;
-        }
+  for (const QString &dir : {d->dataDir, d->hashDir}) {
 
-        qDebug().noquote() << "FileMan:\tContents in" << categoryDir.path() << ":";
-        qDebug() << contents;
+    const int e = dirHealth(dir);
+    int &dirStatus = (dir == d->dataDir) ? status.d_status : status.h_status;
 
-        const qsizetype size = contents.size();
+    logDebug << dir << "directory health:" << e;
 
-        // A good estimate in good circumstances
-        contentsDict.reserve(size);
+    if (!fixDirHealth(dir, e)) {
+      dirStatus = e;
 
-        // Build a dictionary of valid files in the store
-        for (const auto &f : std::as_const(contents)) {
-            const QVariantMap r = preRmValidate(f, category, true);
-            if (r["lnkOk"].toInt() != 0) {
-                qWarning().noquote() << "FileMan:\t" << f << "not available in store";
-                continue;
-            }
+      // The checks are serialized based on hierarchy so any errors are fatal,
+      // blocking further continuation
+      // logDebug << "Error status [d, h, c]:" << status.d_status
+      //  << status.h_status << status.c_status;
 
-            const QString h = QFileInfo(r["hashPath"].toString()).fileName();
-            if (h.isEmpty()) {
-                if (!categoryDir.remove(f))
-                    qWarning().noquote() << "FileMan:\tCouldn't remove" << f;
-
-                continue;
-            }
-
-            contentsDict.insert(h, r["lnkName"].toString());
-        }
+      return status;
     }
 
-    // Compact the dictionary after finished building
-    qDebug().noquote() << "FileMan:\tHash table keys:";
-    qDebug() << contentsDict.keys();
-    qDebug().noquote() << "FileMan:\tHash table values:";
-    qDebug() << contentsDict.values();
-    contentsDict.squeeze();
+    dirStatus = 0;
+  }
 
-    if (contentsDict.isEmpty()) {
-    // This means there's nothing in the "common" store anyway
-    // Our job here is done
-        qWarning().noquote() << "FileMan:\tCommon store doesn't have any valid contents";
-        return 0;
+  for (const auto &[cat, catInfo] : d->categoryList.asKeyValueRange()) {
+
+    logDebug << "Store path (categorized):" << catInfo.location;
+
+    const int e = dirHealth(catInfo.location);
+
+    logDebug << catInfo.name << "directory health:" << e;
+
+    if (!fixDirHealth(catInfo.location, e, cat)) {
+      status.c_status.insert(cat, e);
+
+      continue;
     }
 
-    QDir dataDir;
-    if (const QString d = mkDataDir(); d.isEmpty()) {
-    // This is most probably caused by mkDataDir(), but we still consider it
-        qCritical().noquote() << "FileMan:\tCouldn't create \"common\" store";
-        return EACCES;
-    }
-    else dataDir.setPath(d);
+    status.c_status.insert(cat, 0);
+  }
 
-    contents = dataDir.entryList(QDir::AllEntries | QDir::System | QDir::NoDotAndDotDot);
-    if (contents.isEmpty())
-    { qWarning().noquote() << "FileMan:\tCan't access" << dataDir; return 0; }
+  // logDebug << "Error status [d, h, c]:" << status.d_status << status.h_status
+  //  << status.c_status;
 
-    for (const auto &h : std::as_const(contents)) {
-        if (const QString &f = contentsDict.value(h, ""); f.isEmpty()) {
-            if (!dataDir.remove(h)) {
-                qWarning().noquote() << "FileMan:\tCouldn't remove" << h;
-                continue;
-            }
-        }
-    }
-
-    qInfo().noquote() << "FileMan:\tHousekeeping done on store";
-
-    return 0;
+  return status;
 }

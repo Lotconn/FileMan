@@ -1,0 +1,33 @@
+{
+    "workbench.editorAssociations": {
+        "{git}:/**/*.qrc": "default",
+        "{git}:/**/*.ui": "default",
+        "*.qrc": "qt-core.qrcEditor"
+    },
+    "qt-core.additionalQtPaths": [
+        {
+            "name": "Qt-6.11.1-linux-g++-x86_64_from_PATH",
+            "path": "/usr/bin/qmake"
+        }
+    ],
+    "clangd.arguments": [
+        "--background-index",
+        "-clang-tidy",
+        "--header-insertion=iwyu",
+        "--completion-style=detailed"
+    ],
+    "[markdown]": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode",
+        "editor.formatOnSave": true
+    },
+    "C_Cpp.intelliSenseEngine": "disabled",
+    "editor.defaultFormatter": "llvm-vs-code-extensions.vscode-clangd",
+    "editor.rulers": [
+        80
+    ],
+    "editor.tabSize": 2,
+    "editor.formatOnSave": true,
+    "cmake.sourceDirectory": "${workspaceFolder}",
+    "cmake.buildDirectory": "${workspaceFolder}",
+    "cmake.generator": "Ninja"
+}
