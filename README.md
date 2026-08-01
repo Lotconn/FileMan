@@ -1,108 +1,265 @@
 # FileMan
 
-Simple file manager library for Qt/QML apps written in Qt6/C++
+Smart, Secure & Simple file manager library for Qt/QML apps written in Qt6/C++
 
 ---
 
-FileMan provides simple APIs and a robust backend for managing a data store for Qt/QML applications.
+FileMan provides simple APIs and a robust backend for managing the data store for Qt/QML applications.
 
-**Note:** FileMan is a singleton, moderately hardened, async-safe, thread-safe, and reentrant.
+**Note:** FileMan is a singleton, moderately hardened, async-safe & thread-safe.
 
 ## FileMan Class
 
-| Use case | Integration |
-|----------|-------------|
-| Header:  | `#include <HasanEsa/FileMan/fileman.hpp>` |
-| CMake:   | `find_package(FileMan REQUIRED)`<br>`target_link_libraries(mytarget PRIVATE HasanEsa::FileMan)`<br>`target_link_libraries(mytarget PRIVATE HasanEsa::FileManplugin)` \[static building\]<br>`qt_add_qml_module(mytarget DEPENDENCIES HasanEsa.FileMan)` \[QML module\] |
-| QML:     | `import HasanEsa.FileMan` |
-| CPP:     | `#include <QtQml/QQmlExtensionPlugin>`<br>`Q_IMPORT_QML_PLUGIN(HasanEsa_FileManPlugin)` \[static building\] |
-
+| Use case | Integration                                                                                                                                                                                                                                                         |
+| -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Header:  | `#include <Lotconn/FileMan/fileman>`                                                                                                                                                                                                                                |
+| CMake:   | `find_package(FileMan REQUIRED)`<br>`target_link_libraries(mytarget PRIVATE Lotconn::FileMan)`<br>`target_link_libraries(mytarget PRIVATE Lotconn::FileManplugin)` \[static building\]<br>`qt_add_qml_module(mytarget DEPENDENCIES Lotconn.FileMan)` \[QML module\] |
+| QML:     | `import Lotconn.FileMan`                                                                                                                                                                                                                                            |
+| CPP:     | `#include <QtQml/QQmlExtensionPlugin>`<br>`Q_IMPORT_QML_PLUGIN(Lotconn_FileManPlugin)` \[static building\]                                                                                                                                                          |
 
 ### Public Types
-| Type | Description |
-|------|-------------|
-| enum | [Category](#category-enum) |
-| flag | [Categories](#category-enum) |
+
+| Type   | Description                  |
+| ------ | ---------------------------- |
+| struct | [add_file_t](#add-file-type) |
+| enum   | [Category](#category-enum)   |
+| flag   | [Categories](#category-enum) |
+| enum   | [Errno](#errno-enum)         |
+| struct | [rm_file_t](#rm-file-type)   |
 
 ### Public Functions
 
-| Return type | Function |
-|--:|:--|
-| [QVariantMap](https://doc.qt.io/qt-6/qvariant.html) | [addFile](#addfile)([QUrl](https://doc.qt.io/qt-6/qurl.html) &fileURL, [FileMan::Categories](#fileman-category) category = FileMan::All) |
-| [QString](https://doc.qt.io/qt-6/qstring.html) | [getFileName](#getfilename)([QUrl](https://doc.qt.io/qt-6/qurl.html) &fileURL) |
-| int | [rmFile](#rmfile)([QString](https://doc.qt.io/qt-6/qstring.html) fileName, [FileMan::Categories](#fileman-category) category = FileMan::All) |
-| int | [storeHouseKeeping()](#storehousekeeping) |
+|                                                     Return type | Function                                                                                                                                      |
+| --------------------------------------------------------------: | :-------------------------------------------------------------------------------------------------------------------------------------------- |
+|                                                                 | [FileMan()](#fileman-constructor)                                                                                                             |
+|                                                                 | [~FileMan()](#fileman-destructor)                                                                                                             |
+|                                    [add_file_t](#add-file-type) | [addFile](#addfile)(_const_ [QUrl](https://doc.qt.io/qt-6/qurl.html) &fileUrl, [FileMan::Categories](#category-enum) category = FileMan::All) |
+| [QString](https://doc.qt.io/qt-6/qstring.html)<br>[[nodiscard]] | [categoryToString](#categorytostring)([FileMan::Category](#category-enum) category) _const_                                                   |
+| [QString](https://doc.qt.io/qt-6/qstring.html)<br>[[nodiscard]] | [getCategoryDir](#getcategorydir)([FileMan::Category](#category-enum) category) _const_                                                       |
+| [QString](https://doc.qt.io/qt-6/qstring.html)<br>[[nodiscard]] | [getDataDir](#getdatadir)() _const_                                                                                                           |
+|                  [QString](https://doc.qt.io/qt-6/qstring.html) | [getFileName](#getfilename)(_const_ [QUrl](https://doc.qt.io/qt-6/qurl.html) &fileUrl)                                                        |
+|                                                             int | [refreshStore()](#refreshStore)                                                                                                               |
+|                                      [rm_file_t](#rm-file-type) | [rmFile](#rmfile)([QUrl](https://doc.qt.io/qt-6/qurl.html) fileUrl)                                                                           |
 
 ### Static Public Members
 
-| Return type | Function |
-|--:|:--|
-| [QString](https://doc.qt.io/qt-6/qstring.html) | getDataDir() |
+|                                    Return type | Function                                                                             |
+| ---------------------------------------------: | :----------------------------------------------------------------------------------- |
+|                                        FileMan | &FileMan::[instance()](#fileman-instance)                                            |
+| [QString](https://doc.qt.io/qt-6/qstring.html) | [getFileName](#getfilename)(const [QUrl](https://doc.qt.io/qt-6/qurl.html) &fileUrl) |
 
-***
+---
 
 ## Detailed Description
-FileMan is a file manager backend for managing the application store. It creates and manages the application store under `$XDG_DATA_HOME/<appName>/`. FileMan matches the MIME type of the file against the specified [category](#category-enum) during adding, cryptographically hashes it (currently using SHA256) and stores the raw "blob" with the digest name under `$XDG_DATA_HOME/<appName>/common`. A symlink to this blob is placed under a folder matching the category with the file name retained. For example, for an audio file named `MyAudio.ogg` matching `audio/ogg` MIME type having SHA256 digest `64988b348af3acf583d57260b44528f85da378b4dbcf4e55d36f9fac420a0ccd`:
+
+FileMan is a file manager backend for managing the application store. It creates and manages the store under `<AppLocalDataLocation>` which on Unix expands as `$XDG_DATA_HOME/<APPNAME>/` or `~/.local/share/<APPNAME>`, and `C:/Users/<USER>/AppData/Local/<APPNAME>`, `<APPDIR>`, `<APPDIR>/data` or `<APPDIR>/data/<APPNAME>` on Windows (`<APPDIR>` is the directory containing the application executable). FileMan matches the MIME type of the file against the specified [category](#category-enum) during adding, cryptographically hashes it (currently using SHA256) and stores the raw "blob" with the digest name under `<AppLocalDataLocation>/common`. A symlink to this blob is placed under a folder matching the category with the file name retained. For example:
+
+```cpp
+//  MIT License : Lotconn 2026
+
+#include <QtCore>
+#include <fileman>
+
+int main(int argc, char *argv[]) {
+  QCoreApplication app(argc, argv);
+  QCoreApplication::setApplicationName("myapp");
+  FileMan fileman;
+
+  const QUrl file("file://home/user/Music/MyAudio.ogg");
+  const add_file_t result = fileman.addFile(file, FileMan::Audio | FileMan::Video);
+
+  if (result.status() != 0) {
+    qWarning() << file.toDisplayString() << "adding failed";
+
+    return 1;
+  }
+
+  qInfo() << "Saved location:" << result.location().toDisplayString();
+
+  return 0;
+}
+```
+
+outputs:
 
 ```sh
-~/.local/share/appName/
+$ ./myapp
+Saved location: file://home/user/.local/share/myapp/audio/MyAudio.ogg
+```
+
+On a linux distribution, the audio file named `MyAudio.ogg` matching `audio/ogg` MIME type having the SHA256 digest `64988b348af3acf583d57260b44528f85da378b4dbcf4e55d36f9fac420a0ccd` will be stored as:
+
+```sh
+~/.local/share/<APPNAME>/
     ├── common/
     │   └── 64988b348af3acf583d57260b44528f85da378b4dbcf4e55d36f9fac420a0ccd
     └── audio/
         └── MyAudio.ogg -> ../common/64988b348af3acf583d57260b44528f85da378b4dbcf4e55d36f9fac420a0ccd
 ```
 
-FileMan doesn't rely on any registry files for the store contents - it's *stateless*. It goes through various sanity and hardening checks for files being added and removed including, but not limited to path traversals, recursive symlink loops, DoS using big files, crafted symlinks pointing outside the store etc, and tries to follow least privilege principles. Stale, corrupted, or otherwise invalid files are pruned during cleanup and during add/remove operations. It's highly recommended to use only the provided APIs to place and remove files in the store, placing files misappropriately can have unreliable consequences, e.g. being deleted or not shown.
+### Performance, Security & Reliability
 
-FileMan relies heavily on [QMimeDatabase](https://doc.qt.io/qt-6/qmimedatabase.html), discards duplicate files during adding, opportunistically tries to hardlink the added file (UNIX only for now) and tries to lean towards performance. File copying is also fail safe - writes are committed atomically & failed transactions are discarded.
+FileMan doesn't rely on any persistent file for registering its state - it's _stateless_ by design. It instead uses a O(1) fast-lookup in-memory cache representing the current store-state which helps bypassing majority of costly IO. That too however, is validated at the cost of minimal O(1) IO checks with on-disk store state before finally relying on. Despite so, memory requirements for FileMan's internal processing alone is generally low and can be reliably adopted on systems with constrained resources.
 
-The code is intended to be C++17 standardized and Qt >=6.9 compatible.
+FileMan goes through various sanity and hardening checks for files being added or removed including, but not limited to path traversals, recursive symlink loops, DoS using big files, crafted symlinks pointing outside the store etc, and tries to follow least privilege & RAII principles. Stale, corrupted, or otherwise invalid files are pruned during add/remove operations or at explicit store refresh requests. It's highly recommended to use only the provided APIs to place and remove files in the store, placing files misappropriately can have unforseeable consequences, e.g. being deleted or not registered.
 
-> [!NOTE]
-> `$XDG_DATA_HOME` defaults to `~/.local/share` if empty
+FileMan relies heavily on [QMimeDatabase](https://doc.qt.io/qt-6/qmimedatabase.html), reuses matching duplicates or orphaned blobs during adding, opportunistically tries to hardlink the added file and ensures performance while assuring thread-safety and security. File copying is also fail safe - writes are committed atomically & failed transactions are discarded.
 
-***
+The code is intended to be C++17 standardized and Qt >=6.8 compatible.
 
-## Documentation
+> [!Warning]
+> FileMan will abort fatally if `<APPNAME>` resolves empty. Please ensure your implementation at least has `QCoreApplication::applicationName()` set and FileMan is instantiated only after that.
 
-<a name="category-enum"/>
+### The Singleton Design
 
-#### *enum* FileMan::Category
-#### *flag* FileMan::Categories
+Explicit instantiation is required as usual to access members other than static. FileMan being a singleton means only one instance can ever exist per process, and it's the first created instance. Attempt to create a second FileMan instance will abort fatally. However, the already-created instance can be referred externally without holding reference through `FileMan::instance()`:
 
-The enum values describe the category options available on FileMan. These flags can be *OR*ed to specify multiple categories.
+```cpp
+// A cleanup routine connected elsewhere, with no `fileman` in scope
+void onAboutToQuit() {
 
-| Constant | Value | Description |
-| :-- | :-- | :-- |
-| `FileMan::Audio` | `0x01` | Operate on the **audio** store; located under `$XDG_DATA_HOME/appName/audio`. Takes only files with `audio/*` MIME types |
-| `FileMan::Image` | `0x02` | Operate on the **image** store; located under `$XDG_DATA_HOME/appName/image`. Takes only files with `image/*` MIME types |
-| `FileMan::Video` | `0x04` | Operate on the **video** store; located under `$XDG_DATA_HOME/appName/video`. Takes only files with `video/*` MIME types |
-| `FileMan::All`   | `Audio` \| `Image` \| `Video` | Operate on all categories. Takes files with all preceding MIME types |
+  FileMan localMan; // <--- wrong! will abort fatally
+
+  const int status = FileMan::instance().refreshStore(); // <-- right, call the
+                                                        // already available
+                                                       // instance
+
+  if (status != 0)
+    qWarning() << "refreshStore() failed on exit:" << status;
+}
+
+int main(int argc, char *argv[]) {
+  QCoreApplication app(argc, argv);
+  QCoreApplication::setApplicationName("myapp");
+
+  FileMan fileman; // the one and only instance, held locally here
+
+  QObject::connect(&app, &QCoreApplication::aboutToQuit, &onAboutToQuit);
+
+  return app.exec();
+}
+```
+
+For QML integrations, FileMan exposes a QML_SINGELTON factory `FileMan::*create()` which is invoked by QQmlEngine during accessing any public members. In such cases, explicit instantiation from C++ backend is not necessary. However, although discouraged, instantiation is necessary for embedding FileMan's context properties in QML's namespace root. The recommended method is to use FileMan as a QML module which is detailed in [QML Integarion Guide](#qml-integration) section.
+
+### Thread safety
+
+FileMan doesn't use concurrency in-code, however, it is possible to async-call FileMan's public APIs (e.g. from QML). In such cases, race conditions are avoided by acquiring exclusive locks at the on-disk application store and on the in-memory store-state cache during read & write asserts. Additional thread-serialization is also ensured by implementing thread-locks/mutex during async-critical processes. In broader view, FileMan methods _can_ be called concurrently from any number-of-threads but with a wait-interrupt cost.
+
+### Reentrancy
+
+FileMan is not designed to be reentrant. It's defined to be a leaf class and therefore cannot be derived from or sub-classed. APIs therefore cannot be recursively called nor re-entered from the same thread before a previous call returns.
+
+### Stability
+
+FileMan is API-stable as of current version and is also expected to be ABI-stable within a major version. ABI-stability however, is still not proven yet, testers are called for. Proposed LTS release models are in consideration and planned to be maintained for three-years at least.
+
+### RESTful API conformity
+
+Although FileMan doesn't work with network-bound/web URLs yet, the input/output of the APIs closely follow RESTful API conventions (e.g. [addFile()](#addfile), [rmFile()](#rmfile)). Network-bound/web URL support are in the plans.
+
+### QML Support
+
+It is also possible to integrate FileMan directly with QML as either a dynamically loadable module or persistently linked static module. A C++ backend is not required. For static linking the module, only a minimal C++ backend addition is necessary whose sole purpose is to import the static module. For details and elaborate guidance, refer to the [QML Integration Guide](#qml-integration) section.
+
+---
+
+## Member Type Documentation
+
+<div><a id="add-file-type"></a></div>
+<div><a name="add-file-type"></a></div>
+
+#### add_file_t
+
+Struct type holding members _int_ type _status()_ and _QUrl_ type _location()_. Both are marked `[[nodiscard]]`.
+
+<div><a id="category-enum"></a></div>
+<div><a name="category-enum"></a></div>
+
+#### _enum_ FileMan::Category
+
+#### _flag_ FileMan::Categories
+
+These enums describe the category options available. They can be *OR*ed to specify multiple categories.
+
+| Constant         | Value                         | Description                                                                                                              |
+| :--------------- | :---------------------------- | :----------------------------------------------------------------------------------------------------------------------- |
+| `FileMan::None`  | `0x00`                        | Does nothing, for internal use only. Using it on public calls may crash programs                                         |
+| `FileMan::Audio` | `0x01`                        | Operate on the **audio** store; located under `<AppLocalDataLocation>/audio`. Takes only files with `audio/*` MIME types |
+| `FileMan::Image` | `0x02`                        | Operate on the **image** store; located under `<AppLocalDataLocation>/image`. Takes only files with `image/*` MIME types |
+| `FileMan::Video` | `0x04`                        | Operate on the **video** store; located under `<AppLocalDataLocation>/video`. Takes only files with `video/*` MIME types |
+| `FileMan::All`   | `Audio` \| `Image` \| `Video` | Operate on all categories. Takes files with all preceding MIME types                                                     |
 
 > [!Note]
 > Qt's MIME database recognizes matroska (.mkv) files as application/x-matroska. These are whitelisted for `FileMan::Video`.
 
-<a name="addfile"/>
+<div><a id="errno-enum"></a></div>
+<div><a name="errno-enum"></a></div>
 
-#### [QVariantMap](https://doc.qt.io/qt-6/qvariant.html) FileMan::addFile([QUrl](https://doc.qt.io/qt-6/qurl.html) &fileURL, [FileMan::Categories](#fileman-category) category = FileMan::All)
+#### _enum_ FileMan::Errno
 
-Adds the file from *fileURL* to store with an optional *category* specified. The URL must follow local file specifiers: `file:///path/to/myfile.img` for absolute or `file:myfile.img` for relative path to `myfile.img`. Returns two KV-paired QVariantMap/struct output:
+These map the common API errno return enums to _FileMan_ scoped enums. Useful for referring to return values from FileMan's APIs within QML or namespaces having limited access to [_cerrno_](https://en.cppreference.com/cpp/header/cerrno). Note, some non-POSIX platforms may not support few errno values (e.g. Windows). Developers are discouraged from using raw errno values as they may vary depending on platforms.
 
-| Entry (Type) | Value (Type) |
-|--|--|
-| `error` (QString) | 0/`errno` (int) |
-| `path` (QString) | `<path_to_symlink>`/empty (QString) |
+| Constant                    | Value              | Description                       |
+| :-------------------------- | :----------------- | :-------------------------------- |
+| `FileMan::Success`          | `0`                | Success value                     |
+| `FileMan::Busy`             | `EBUSY`/`16`       | Device or resource busy           |
+| `FileMan::Cancelled`        | `ECANCELLED`/`125` | Operation canceled                |
+| `FileMan::Exists`           | `EEXIST`/`17`      | File exists                       |
+| `FileMan::FileTooBig`       | `EFBIG`/`27`       | File too large                    |
+| `FileMan::Invalid`          | `EINVAL`/`22`      | Invalid argument                  |
+| `FileMan::IOError`          | `EIO`/`5`          | Input/output error                |
+| `FileMan::Loop`             | `ELOOP`/`40`       | Too many levels of symbolic links |
+| `FileMan::NotFound`         | `ENOENT`/`2`       | No such file or directory         |
+| `FileMan::NotSupported`     | `EOPNOTSUPP`/`95`  | Operation not supported           |
+| `FileMan::PermissionDenied` | `EPERM`/`1`        | Operation not permitted           |
+| `FileMan::TryAgain`         | `EAGAIN`/`11`      | Resource temporary unavailable    |
 
-Failed returns follow [`errno`](https://www.man7.org/linux/man-pages/man3/errno.3.html) values. On success (`"error": 0`), a path to the symlink under matching category is returned. For the example above, `"path": ~/.local/share/appName/audio/MyAudio.ogg`. Unsuccessful operations return corresponding non-zero `errno` value for `"error"` and an empty string for `"path"`.
+<div><a id="rm-file-type"></a></div>
+<div><a name="rm-file-type"></a></div>
 
-ORing *category* adds *fileURL* to the first matching category flag, even if it matches multiple categories. In this case, if adding fails, the error for adding the last category is returned. *category* can also be omitted, in which case, *fileURL* is matched against all valid categories. Due to performance impact, it is recommended to explicitly specify *category* as narrowly as possible.
+#### rm_file_t
 
-Duplicate detection is done on the blobs, not on symlink names. Adding duplicate files to the store, i.e. files having same digests, fails ambiguously; path to the existing symlink is returned if it exists (an empty string otherwise) but unlike a successful operation, `EEXIST` is returned.
+Struct type holding members _int_ type _status_l()_ and _int_ type _status_h()_. Both are marked `[[nodiscard]]`.
+
+## Member Function Documentation
+
+<div><a id="fileman-constructor"></a></div>
+<div><a name="fileman-constructor"></a></div>
+
+#### FileMan()
+
+Creates the _FileMan_ singleton instance.
+
+<div><a id="fileman-destructor"></a></div>
+<div><a name="fileman-destructor"></a></div>
+
+#### ~FileMan()
+
+Destroys the _FileMan_ singleton instance.
+
+<div><a id="addfile"></a></div>
+<div><a name="addfile"></a></div>
+
+#### [add_file_t](#add-file-type) FileMan::addFile(_const_ [QUrl](https://doc.qt.io/qt-6/qurl.html) _&fileUrl_, [FileMan::Categories](#category-enum) _category_ = FileMan::All)
+
+Adds the file from _fileUrl_ to the store with an optional _category_ specified. The URL must follow local file specifiers: `file:///path/to/myfile.img` for absolute or `file:myfile.img` for relative path to `myfile.img`. Returns a [add_file_t](#add-file-type) struct:
+
+| Member (Type)       | Value                                    |
+| ------------------- | ---------------------------------------- |
+| `status()` (int)    | 0/`errno`                                |
+| `location()` (QUrl) | `<fully_qualified_url_to_symlink>`/empty |
+
+Failed returns follow [`errno`](https://en.cppreference.com/cpp/header/cerrno) values. On success (`status() == 0`), a path to the symlink in store is returned. For the example above, `location()` holds `file:///home/user/.local/share/<APPNAME>/audio/MyAudio.ogg`. Unsuccessful operations return corresponding non-zero `errno` value for `status()` and an empty URL for `location()`.
+
+ORing _category_ adds _fileUrl_ to the first matching category flag, even if it matches multiple categories. _category_ can also be omitted, in which case, _fileUrl_ is matched against all valid categories. Due to this ambiguity, it is recommended to explicitly specify _category_ as narrowly as possible.
+
+Duplicate detection is done on the blobs, not on symlink names. Adding duplicate files to the store, i.e. files having same digests, fails unambiguously; path to the existing symlink is returned if it exists, or the orphaned blob is reused if it is not linked to any other symlinks. However, unlike a successful operation, `EEXIST` is returned.
 
 > [!Note]
-> - Symlinks are added `.lnk` extension on Windows
 >
-> - Operations will continue even if storage info checks fail
+> - Symlinks bear `.lnk` extension on Windows
+> - Operations will continue even if storage free-space checks fail
 
 > [!Warning]
 > addFile() relies entirely on how QMimeDatabase recognizes the file. On some distributions, Qt's mime database is known to provide generic mime types even for obvious files in which case addFile() fails. This is an ongoing issue, if you encounter this, please do file a bug report.
@@ -110,46 +267,69 @@ Duplicate detection is done on the blobs, not on symlink names. Adding duplicate
 Example:
 
 ```cpp
-//  MIT License : Hasan Esa 2026
+//  MIT License : Lotconn 2026
 
 #include <QtCore>
 #include <QTextStream>
-#include <QVariant>
-#include <HasanEsa/FileMan/fileman.hpp>
+#include <Lotconn/FileMan/fileman>
 
 int main(int argc, char *argv[])
 {
     QCoreApplication app(argc, argv);
     app.setApplicationName("myapp");
-
-    FileMan fileman;
     QTextStream in(stdin);
+    FileMan fileman;
 
     while (!in.atEnd()) {
-        qInfo() << "Provide file URL:";
-        QString fileUrl = in.readLine().trimmed();
-        if (fileUrl.isEmpty()) continue;
-        
-        QVariantMap result = fileman.addFile(QUrl(fileUrl), FileMan::Audio | FileMan::Video);
 
-        qInfo() << "Program returned saved path:" << result["path"].toString();
-        if (int e = result["error"].toInt(); e != 0) return e;
+        qInfo() << "Provide file URL:";
+
+        QString fileUrl = in.readLine().trimmed();
+
+        if (fileUrl.isEmpty())
+          continue;
+
+        add_file_t result = fileman.addFile(QUrl(fileUrl));
+        // omitting `category` means `fileUrl` is matched against all known
+        // categories
+
+        qInfo() << "Program returned saved path:" << result.location();
+
+        if (int e = result.status(); e != 0)
+          return e;
     }
+
     return 0;
 }
 ```
 
-<a name="getdatadir"/>
+<div><a id="categorytostring"></a></div>
+<div><a name="categorytostring"></a></div>
 
-#### [QString](https://doc.qt.io/qt-6/qstring.html) FileMan::getDataDir()
+#### _[[nodiscard]]_ [QString](https://doc.qt.io/qt-6/qstring.html) FileMan::categoryToString([FileMan::Category](#category-enum) category) _const_
 
-Returns the path to the application data directory as a string. This is `$XDG_DATA_HOME/<appName>/` or `~/.local/share/<appName>/` if `$XDG_DATA_HOME` is unset. The returned string is never empty.
+Returns a [QString](https://doc.qt.io/qt-6/qstring.html) containing the name of _category_. `FileMan::All` is a composite _flag_ and therefore not supported.
 
-<a name="getfilename"/>
+<div><a id="getcategorydir"></a></div>
+<div><a name="getcategorydir"></a></div>
 
-#### [QString](https://doc.qt.io/qt-6/qstring.html) FileMan::getFileName([QUrl](https://doc.qt.io/qt-6/qurl.html) &fileURL)
+#### _[[nodiscard]]_ [QString](https://doc.qt.io/qt-6/qstring.html) FileMan::getCategoryDir([FileMan::Category](#category-enum) category) _const_
 
-Extracts and returns the filename component from *fileURL*. Returns an empty string if *fileURL* ends with a trailing `/` or if resolution fails for any other reason.
+Returns a [QString](https://doc.qt.io/qt-6/qstring.html) containing the absolute directory of _category_ items in store. `FileMan::All` is a composite _flag_ and therefore not supported. Empty on invalid category.
+
+<div><a id="getdatadir"></a></div>
+<div><a name="getdatadir"></a></div>
+
+#### _[[nodiscard]]_ [QString](https://doc.qt.io/qt-6/qstring.html) FileMan::getDataDir() _const_
+
+Returns a [QString](https://doc.qt.io/qt-6/qstring.html) containing the absolute directory of `<AppLocalDataLocation>`. String is never empty.
+
+<div><a id="getfilename"></a></div>
+<div><a name="getfilename"></a></div>
+
+#### [QString](https://doc.qt.io/qt-6/qstring.html) FileMan::getFileName(_const_ [QUrl](https://doc.qt.io/qt-6/qurl.html) &fileURL)
+
+Extracts and returns the filename component from _fileUrl_. Returns an empty string if _fileURL_ ends with a trailing `/` or if resolution fails for any other reason.
 
 ```cpp
 QString fileUrl = "file:///absolute/path to/.my/audio.ogg";
@@ -162,47 +342,89 @@ qInfo() << "FileName:" << fileman.getFileName(QUrl(folderPath));
 // FileName: ""
 ```
 
-<a name="rmfile"/>
+<div><a id="instance"></a></div>
+<div><a name="instance"></a></div>
 
-#### int FileMan::rmFile([QString](https://doc.qt.io/qt-6/qstring.html) fileName, [FileMan::Categories](#fileman-category) category = FileMan::All)
+#### FileMan &FileMan::instance()
 
-Removes the file with the name *fileName* from the application store under the optionally specified *category*. Paths are not necessary. Removes both the hashed blob and the symlink pointing to it. Returns 0 if successful and non-zero `errno` if *fileName* doesn't exist or failed to remove. Hashed blob is always removed first, so chances of blob orphanage is low.
+<div><a id="refreshstore"></a></div>
+<div><a name="refreshstore"></a></div>
 
-rmFile() will remove *any* files or folders matching *fileName* from the categorized directory. Incomplete removal is possible, e.g. backing hashed file removed but symlink removal was unsuccessful. However, the resulting dangling symlinks can be cleaned up on the next call, provided the caller checks error returns appropriately.
+Returns a reference to the already-constructed _FileMan_ singleton instance. Meant for code that has no reference to the instance handed to it — e.g. a helper function, a slot, or a different translation unit entirely — and would otherwise need _FileMan_ passed down or made global just to reach it. Asserts if called before any _FileMan_ instance has been constructed.
 
-ORing lets rmFile() look for additional category directories; files with the same name inside all supplied categories will also be removed. Returns successful if removal succeeds under any one of the category. If unsuccessful, returns the error for the last category where removal failed. Empty *category* lets rmFile() look for *fileName* in all valid categories available. Due to performance impact, it is recommended to explicitly specify *category*, and as narrowly as possible.
+```cpp
+// A cleanup routine connected elsewhere, with no `fileman` in scope
+void onAboutToQuit() {
 
-<a name="storehousekeeping"/>
+  FileMan localMan; // <--- wrong! will abort fatally
 
-#### int FileMan::storeHouseKeeping()
+  const int status = FileMan::instance().refreshStore(); // <-- right, call the
+                                                        // already available
+                                                       // instance
 
-Executes cleanup routines to prune stale or invalid files (e.g. dangling symlinks, corrupted blobs) from the store. Cleans both the `common` directory and all categorized directories. Recommended to call on application startup or before exit. Returns 0 on success, `errno` on failure.
+  if (status != 0)
+    qWarning() << "refreshStore() failed on exit:" << status;
+}
 
-***
+int main(int argc, char *argv[]) {
+  QCoreApplication app(argc, argv);
+  QCoreApplication::setApplicationName("myapp");
 
-<a name="qml-integration">
+  FileMan fileman; // the one and only instance, held locally here
+
+  QObject::connect(&app, &QCoreApplication::aboutToQuit, &onAboutToQuit);
+
+  return app.exec();
+}
+```
+
+#### int FileMan::refreshStore()
+
+Executes cleanup routines on store pruning stale or invalid files (e.g. dangling symlinks, corrupted or orphaned blobs), attempts generic fixes on store directories (e.g. permission errors, non-existent or symlinked directories) and rebuilds store-state cache. Highly recommended to be exposed as an interactable state like [`addFile()`](#addfile) or [`rmFile()`](#rmfile). Implementations should at least call the method on process startup or before exit. Returns 0 on success, `errno` on failure.
+
+<div><a id="rmfile"></a></div>
+<div><a name="rmfile"></a></div>
+
+#### [rm_file_t](#rm-file-type) FileMan::rmFile(_const_ [QUrl](https://doc.qt.io/qt-6/qurl.html) &fileUrl)
+
+Removes the file _fileUrl_ from the application store. _fileUrl_ must be a fully-qualified local URL referring to a file in store. Removes both the referred file and the backing hashed blob. Returns a [rm_file_t](#rm-file-type) struct:
+
+| Member (Type)      | Values       |
+| ------------------ | ------------ |
+| `status_l()` (int) | 0/`errno`    |
+| `status_h()` (int) | 0/-1/`errno` |
+
+_fileUrl_ validations are always performed before its backing blob. Failed returns follow [`errno`](https://en.cppreference.com/cpp/header/cerrno) values. `status_l()` is non-zero if _fileUrl_ doesn't exist, is not a symlink, points to an invalid location or when failed to remove. `status_h()` is `-1` if `rmFile()` fails early before backing blob checks and non-zero positive if the backing hashed blob doesn't exist or failed to remove.
+
+rmFile() follows RESTful API convention; it will remove valid symlink files that _fileUrl_ refers to within the categorized directories provided it exists but will refuse if _fileUrl_ points to any other location outside the categorized store. Incomplete removal is possible, e.g. backing hashed file removed but symlink removal was unsuccessful. However, the resulting dangling symlinks can be cleaned up on the next call or using [refreshStore()](#refreshstore), provided the caller checks error returns appropriately. The backing hashed blob is always removed first, so chances of blob orphanage is low.
+
+---
+
+<div><a id="qml-integration"></a></div>
+<div><a name="qml-integration"></a></div>
 
 ## QML Integration Guide
 
-FileMan can also be used as a QML module to integrate with QML apps very easily. With this approach, there's no need to set context properties from C++ backend into QML namespace which is also discouraged. There are two ways to integrate FileMan:
+FileMan can also be used as a QML module to integrate with QML apps very easily. With this approach, there's no need to set context properties from C++ backend into QML namespace which is also discouraged. There are three conventional ways to integrate FileMan:
 
-<a name="include-submodule"/>
+<div><a id="include-fetchcontent"></a></div>
+<div><a name="include-fetchcontent"></a></div>
 
-### 1. Including as a submodule
+### 1. Using CMake `FetchContent` module
 
-This is a very common way of integrating third-party libraries within a project. Decide where to add the FileMan submodule first. For our guide here, we'll add it under `libs/` from the project root. Whichever location you choose, just make sure the trailing directories are `HasanEsa/FileMan/` complying with Qt's expected URI translated lookup:
-
-```bash
-git clone --depth 1 --branch v1.0.1 --recurse-submodules https://gitlab.com/hasanesa/fileman libs/HasanEsa/FileMan
-git submodule add https://gitlab.com/hasanesa/fileman libs/HasanEsa/FileMan
-```
+If you're using CMake as your build system, `FetchContent` module makes it very easy to include FileMan as a third-party lib.
 
 On your project's main `CMakeLists` add/modify these invocations: [^1]
 
 ```CMakeLists.txt
 cmake_minimum_required(VERSION 3.16)
+include(FetchContent)
 
-add_subdirectory(libs/HasanEsa/FileMan)
+FetchContent_Declare(FileMan
+  GIT_REPOSITORY  https://gitlab.com/lotconn/fileman
+  GIT_TAG         v2.0.0 # Or use GIT_COMMIT <full commit shasum>
+)
+FetchContent_MakeAvailable(FileMan)
 
 qt_add_executable(${PROJECT_NAME} main.cpp)
 qt_add_qml_module(${PROJECT_NAME}
@@ -223,228 +445,148 @@ qt_add_qml_module(${PROJECT_NAME}
 )
 
 target_link_libraries(${PROJECT_NAME} PRIVATE FileMan)
-
-# Required for clang+LLVM
-target_link_options(${PROJECT_NAME} PRIVATE $<$<CXX_COMPILER_ID:Clang>:-fuse-ld=lld>)
 ```
-
-Import the module on your qml file:
-
-```qml
-import HasanEsa.FileMan
-```
-
-You're now qualified to call and operate on all enums/flags, functions and members [FileMan](#fileman) provides:
-
-```qml
-var result = FileMan.addFile(fileUrl, FileMan.Audio | FileMan.Video)
-```
-
-> [!Important]
-> FileMan's types and members are accessible only inside "FileMan" scope. Qt doesn't allow importing the module on a custom namespace.
 
 ---
 
-For static building, build FileMan as [static](#available-build-flags) and link against the FileMan plugin instead:
+For static building, include the directives to build FileMan as [static](#available-build-flags) and link against the FileMan plugin instead:
 
 ```CMakelists.txt
 find_package(Qt6 REQUIRED COMPONENTS Qml)
 
+# ...
 set(FM_BUILD_AS "STATIC" CACHE STRING "Set FileMan build type")
+FetchContent_MakeAvailable(FileMan)
 # Alternatively, pass -DFM_BUILD_AS=STATIC during configuring cmake
 
 target_link_libraries(${PROJECT_NAME} PRIVATE Qt::Qml FileManplugin)
 ```
 
-Add a QML module import macro on your `main.cpp`
+Add a QML module import macro on your `main.cpp`. For QML-only implementations, this is the only inclusion necessary:
 
 ```cpp
 #include <QtQml/QQmlExtensionPlugin>
 
-Q_IMPORT_QML_PLUGIN(HasanEsa_FileManPlugin)
+Q_IMPORT_QML_PLUGIN(Lotconn_FileManPlugin)
 ```
 
-Then import the module on your qml file as usual. Refer to the [QML example](examples/fileman-qml/) for a basic working implementation.
+<div><a id="include-submodule"></a></div>
+<div><a name="include-submodule"></a></div>
 
+### 2. Including as a submodule
 
-<a name="include-system-installed">
+This is a very common way of integrating third-party libraries within a project. Decide where to add the FileMan submodule first. For our guide here, we'll add it under `libs/` from the project root. Whichever location you choose, just make sure the trailing directories are `Lotconn/FileMan/` complying with Qt's expected URI translated lookup:
 
-### 2. Using system-installed instance
+```bash
+git clone --depth 1 --branch v2.0.0 --recurse-submodules https://gitlab.com/lotconn/fileman libs/Lotconn/FileMan
+git submodule add https://gitlab.com/lotconn/fileman libs/Lotconn/FileMan
+```
+
+On your project's main `CMakeLists` just replace the `FetchContent` block with this: [^1]
+
+```CMakeLists.txt
+# everything before FetchContent_Decalre()
+
+add_subdirectory(libs/Lotconn/FileMan)
+
+# everything after FetchContent_MakeAvailable()
+
+```
+
+The rest follows the same suit as previous.
+
+<div><a id="include-system-installed"></a></div>
+<div><a name="include-system-installed"></a></div>
+
+### 3. Using system-installed instance
 
 > [!IMPORTANT]
 > This requires FileMan to be [built & installed](#building) on your running system first.
 
-On your project's main `CMakeLists` add/modify these invocations: [^1]
+Following previous examples just modify these lines:
 
 ```CMakeLists.txt
-cmake_minimum_required(VERSION 3.16)
-
-find_package(FileMan REQUIRED)
-
-qt_add_executable(${PROJECT_NAME} main.cpp)
 qt_add_qml_module(${PROJECT_NAME}
-    URI your.company.uri
-    QML_FILES
-        main.qml
-        # Enlist *all* your .qml, .js & .mjs files here
+    # ...
 
-    SOURCES
-        main.cpp
-        # Enlist *all* your .c/.cpp and .h/.hpp files here
-
-    RESOURCES
-        brandImg.png
-        # Enlist *all* required resources
-
-    DEPENDENCIES HasanEsa.FileMan
+    DEPENDENCIES Lotconn.FileMan
 )
 
-target_link_libraries(${PROJECT_NAME} PRIVATE HasanEsa::FileMan)
+# ...
 
-# Required for clang+LLVM
-target_link_options(${PROJECT_NAME} PRIVATE $<$<CXX_COMPILER_ID:Clang>:-fuse-ld=lld>)
+target_link_libraries(${PROJECT_NAME} PRIVATE Lotconn::FileMan)
 ```
 
-Import and use the API:
-
-```qml
-import HasanEsa.FileMan
-
-var result = FileMan.addFile("file:///path/to/myVideo.mkv", FileMan.Audio | FileMan.Video)
-```
-
----
-
-For statically linking however, make sure the system-installed instance has been built [statically](#available-build-flags). On your root `CMakeLists` compared to previous, just modify these lines:
+For statically linking however, make sure the system-installed instance has been built [statically](#available-build-flags). Compared to previous examples, just modify these lines:
 
 ```CMakeLists.txt
 find_package(Qt6 REQUIRED COMPONENTS Qml)
 
-target_link_libraries(${PROJECT_NAME} PRIVATE Qt::Qml HasanEsa::FileManplugin)
+target_link_libraries(${PROJECT_NAME} PRIVATE Qt::Qml Lotconn::FileManplugin)
 ```
 
-Add a QML module import macro on your `main.cpp` as previously
+---
 
-```cpp
-#include <QtQml/QQmlExtensionPlugin>
+After completing either of the above methods, import the module on your qml file:
 
-Q_IMPORT_QML_PLUGIN(HasanEsa_FileManPlugin)
+```qml
+import Lotconn.FileMan
 ```
 
-Then import the module on your qml file as usual. Refer to the [QML example](examples/fileman-qml/) for a basic working implementation.
+You're now qualified to call and operate on all enums/flags, functions and members [FileMan](#fileman) provides:
 
-***
+```qml
+var result = FileMan.addFile(fileUrl, FileMan.Image)
+
+console.log("Saved path:", result.location())
+```
+
+> [!Important]
+> FileMan's types and members are accessible only inside "FileMan" scope. Qt doesn't allow importing the module on a custom namespace.
+
+Refer to the [QML example](examples/fileman-qml/) for a basic working implementation.
+
+> [!Important]
+> Example QML apps in the project built statically inside the container are not portable, they fail to run due to missing QT_PRIVATE_API, and won't run properly outside the container itself. Build these static apps on your host instead if you want to run them. Alternatively, build them on a statically built Qt system for them to be truly portable.
+
+---
 
 ## Implementations
 
-- [Munadi](https://gitlab.com/munadi/munadi)
+- ### Munadi
+  - Homepage: <https://munadi.org>
+  - VCS Browser: <https://gitlab.com/munadi/munadi>
 
-***
+---
 
 ## Contributing
 
-This project uses CMake as the build environment. Minimum required is 3.16 with highest policy set to 4.3. clang with LLVM is the recommended compiler used for the project.
-
-### Available Build Flags:
-
-These flags control various behaviors of the build configuration. Prepend the following options/flags with `-D` when configuring cmake.
-
-| Flag | Defaults | Available Values | Description |
-| :-- | :--: | :--: | :-- |
-| `FM_BUILD_AS` | `SHARED` | `STATIC`, `SHARED` | Sets the build type of the library. If not set, the default is to build shared libraries. |
-| `FM_BUILD_EXAMPLES` | `OFF` | `ON`, `OFF` | Enable building example binaries in-tree along with the project. If not set, example binaries are skipped. |
-| `BUILD_SHARED_LIBS` | undefined | `ON`, `OFF` | Compatibility alternative to `FM_BUILD_AS`. Controls library build type to be either shared (`ON`) or static (`OFF`). Undefined by default, which implies `FM_BUILD_AS=SHARED` |
-| `CMAKE_INSTALL_PREFIX` | `/usr/local` | \<any valid path\> | Configures prefix directory to install under. Recommended to be one from `$PATH` variable. Some systems may default to `/usr`. For CMake >= 3.23, `cmake --prefix <path>` can also be used. |
-
-Repository structure follows flat layout as recommended by [`qt_add_qml_module()`](https://doc.qt.io/qt-6/qt-add-qml-module.html#target-structure). In-source building is the preferred way, although out-of-source building is possible but issues a warning about QML module discovery. The latter can be approached for development builds.
-
-### Building
-
-The [repository registry](https://gitlab.com/hasanesa/fileman/container_registry) hosts builder images for development tasks tailored for FileMan.
-
-First, from project root, create a container with the builder image and enter :
-```bash
-podman run --rm -it -v $(pwd):/src:z registry.gitlab.com/hasanesa/fileman/builder:latest
-```
-<details><summary>Further developer notes: Click to expand</summary>
+This project uses CMake as the build environment. Minimum required is 3.16 with highest policy set to 4.4. clang with LLVM is the recommended compiler used for the project. See [CONTRIBUTING.md](./CONTRIBUTING.md) for further details about building, available build flags and contribution guidelines & policies.
 
 ---
-
-To build the image yourself, from project root do:
-
-```bash
-podman build -t localhost/fileman-builder:latest images/
-```
-
-Then create the container and enter:
-```bash
-podman run --rm -it -v $(pwd):/src:z localhost/fileman-builder
-```
-
----
-
-</details>
-
-Replace `podman` with `docker` if using docker instead.
-
-From there execute:
-```bash
-CC=clang CXX=clang++ cmake -B . --fresh -GNinja && cmake --build . --parallel
-```
-Alternatively, just press up arrow key and hit enter! The built libraries can then be installed to the default prefix
-```bash
-# append --prefix path/to/prefix for custom location
-cmake --install .
-```
-
-Separate component-wise installation is supported too. Two components are available: `runtime` & `devel`. To install for example, the development-related files only specify `--component devel` with the previous invocation:
-```bash
-cmake --install . --component devel
-```
-
-The repository contains example apps that can be opted in for building during configuration with `-DFM_BUILD_EXAMPLES=ON`. The built binaries would be available under their respective folders `examples/<program name>` and are not exported or installed. They can also be built standalone without the need for configuring the root project provided the library has already been installed to running system and available in searchable paths. This however, requires a manual change of include directive in `main.cpp` files from `#include <fileman.hpp>` to `#include <HasanEsa/FileMan/fileman.hpp>`. After ensuring the requirements, change working directory to the `examples/` folder, configure and build the binary:
-```bash
-cd examples/
-CC=clang CXX=clang++ cmake -S . -B build/ --fresh -GNinja && cmake --build build/ --parallel
-```
-
-The built binary should be available under `build/`. Try executing the binary:
-```bash
-QT_LOGGING_RULES="*.debug=true;qt.*.debug=false;qt.qml.import=true" build/<app>
-```
-The `QT_LOGGING_RULES` environment variable helps to see detailed logs and useful debugging information. If executing outside the container where FileMan isn't installed, you may need to modify `LD_LIBRARY_PATH` & [`QML_IMPORT_PATH`](https://doc.qt.io/qt-6/qtqml-syntax-imports.html#qml-import-path) environment variables pointing to the appropriate directory holding the FileMan library and the QML module. If built statically however, this is not necessary.
-
-***
-
-If you want to set up the environment on your own or integrate with your own project, building FileMan requires `qt6-qtcore-devel`, `qt6-qtdeclarative-devel`, `ccache`, `cmake`, `clang`, `lld`, `llvm`, `nasm` & `ninja-build`.
-
-> [!Note]
-> Package names here are for Fedora Linux/EL distributions and their derivatives. Refer to your distribution for exact package names
-
-For Qt6/C++ implementations, adjust your CMakeLists file to contain these command invocations in the least:
-
-```CMakeLists
-cmake_minimum_required(VERSION 3.16)
-find_package(Qt6 REQUIRED COMPONENTS Core)
-find_package(FileMan REQUIRED)
-
-qt_standard_project_setup()
-
-target_link_libraries(${PROJECT_NAME} PRIVATE Qt::Core HasanEsa::FileMan)
-
-# lld is required for clang, can be omitted if using gcc instead
-target_link_options(${PROJECT_NAME} PRIVATE $<$<CXX_COMPILER_ID:Clang>:-fuse-ld=lld>)
-```
-
-## AI Contribution Policy
-
-We aim to be transparent about contributions from AI agents, LLMs, and bots. AI-assisted contributions by humans are welcome. Any other autonomous AI contributions — including merge/pull requests, issues, and comments — will be rejected. This includes any "Signed-off-by: `<agent's operator>`" variants, i.e. human-operated agentic submissions. Human contributors are encouraged to include an "Assisted by: " footer in any contribution that involved AI or LLM assistance.
-
-***
 
 ## License
-This project uses CMake as the build environment. Minimum required is 3.16 with highest policy set to 4.3. Clang with LLVM is the recommended compiler for the project.
 
-***
+This project is licensed under MIT, copyright Lotconn, 2026.
+
+---
+
+## Acknowledgements
+
+### Libraries used in this project
+
+- **Qt** by The Qt Company
+  - Project Implementation: UI and core code
+  - License: GPL v3 and LGPL v3
+  - Homepage: <https://www.qt.io/>
+  - Source: <https://code.qt.io/cgit/>
+
+---
+
+### Contributors
+
+- **Project Author:** Hasan Esa [@HasanEsa](https://gitlab.com/HasanEsa)
+
+---
 
 [^1]: For full reference on `qt_add_qml_module()`: https://doc.qt.io/qt-6/qt-add-qml-module.html

@@ -2,7 +2,7 @@
 
                           MIT License
 
-                      Copyright HasanEsa 2026
+                      Copyright Lotconn 2026
 
 This is the CMakeLists file for the example app demonstrating legacy use of
 embedding the FileMan object in QML with context properties.
@@ -16,7 +16,7 @@ or [KEY::extra comments].
 ]]
 
 #[KEY:Minimum 3.16 recommended]
-cmake_minimum_required(VERSION 3.16...4.3)
+cmake_minimum_required(VERSION 3.16...4.4)
 set(TARGET_NAME fileman-qml-legacy)
 
 if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
@@ -32,7 +32,9 @@ if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
 #[KEY:END]
 
   set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
   find_program(CCACHE_PROGRAM ccache)
+
   if(CCACHE_PROGRAM)
     set(CMAKE_CXX_COMPILER_LAUNCHER "${CCACHE_PROGRAM}")
   endif()
@@ -44,7 +46,7 @@ find_package(Qt6 REQUIRED COMPONENTS Core Qml Quick Widgets)
 if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
 
 #[KEY:Recommended]
-  qt_standard_project_setup(REQUIRES 6.9)
+  qt_standard_project_setup(REQUIRES 6.8)
 endif()
 
 if(TARGET FileMan)
@@ -84,6 +86,12 @@ qt_add_executable(${TARGET_NAME} main.cpp ${QRC_FILES})
 target_compile_definitions(${TARGET_NAME} PRIVATE
   QT_ENABLE_STRICT_MODE_UP_TO=0x060900
 )
+
+set(CF_PROTECTION_FLAG -fcf-protection=none)
+if(CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64|amd64")
+  message(STATUS "Enabling Intel CET for x86_64/amd64")
+  set(CF_PROTECTION_FLAG -fcf-protection)
+endif()
 target_compile_options(${TARGET_NAME} PRIVATE
   $<$<CXX_COMPILER_ID:GNU,Clang>:
     -Wp,-D_FORTIFY_SOURCE=3
@@ -92,7 +100,7 @@ target_compile_options(${TARGET_NAME} PRIVATE
     -fstack-protector-strong
     -fasynchronous-unwind-tables
     -fstack-clash-protection
-    -fcf-protection
+    ${CF_PROTECTION_FLAG}
     -mno-omit-leaf-frame-pointer
     -pipe
     $<$<OR:$<CONFIG:Debug>,$<CONFIG:RelWithDebInfo>>:
@@ -107,7 +115,7 @@ target_link_libraries(${TARGET_NAME} PRIVATE
   Qt::Widgets
 
 #[KEY:BEGIN]
-  HasanEsa::FileMan
+  Lotconn::FileMan
 #[KEY:END]
 )
 target_link_options(${TARGET_NAME} PRIVATE

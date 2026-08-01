@@ -2,7 +2,7 @@
 
                             MIT License
 
-                        Copyright HasanEsa 2026
+                        Copyright Lotconn 2026
 
 This is an example app demonstrating modern use of the FileMan library as a QML
 module. This approach is recommended over setting context properties from C++
@@ -25,69 +25,68 @@ or [KEY::extra comments].
 
 //[KEY:BEGIN:Required for static linking]
 #include <QtQml/QQmlExtensionPlugin>
-Q_IMPORT_QML_PLUGIN(HasanEsa_FileManPlugin)
+Q_IMPORT_QML_PLUGIN(Lotconn_FileManPlugin)
 //[KEY:END]
 
 #endif
 
 #if defined(Q_OS_UNIX) && !defined(Q_OS_ANDROID)
+#include <csignal>
 #include <sys/socket.h>
-#include <signal.h>
 #include <unistd.h>
 
-static int sigFd[2] = {-1, -1};
+static std::array<int, 2> sigFd = {-1, -1};
 
-static void unixSignalHandler(int)
-{
-    char a = 'A';
-    [[maybe_unused]] auto trash = ::write(sigFd[1], &a, sizeof(a));
-    // just to avoid compiler warnings
+static void unixSignalHandler(int /*unused*/) {
+  char a = 'A';
+  [[maybe_unused]] auto trash = ::write(sigFd[1], &a, sizeof(a));
+  // just to avoid compiler warnings
 }
 #endif
 
-int main(int argc, char *argv[])
-{
-    QApplication app(argc, argv);
-    app.setOrganizationDomain("hasanesa");
-    app.setApplicationName("FileMan-QML");
+int main(int argc, char *argv[]) {
+  QApplication app(argc, argv);
+  QApplication::setOrganizationDomain("lotconn");
+  QApplication::setApplicationName("FileMan-QML");
 
-    QApplication::setStyle(QStyleFactory::create("fusion"));
+  QApplication::setStyle(QStyleFactory::create("fusion"));
 
-    QQmlApplicationEngine engine;
+  QQmlApplicationEngine engine;
 
-//[KEY:Mind the URL]
-    engine.load(QUrl(QLatin1String("qrc:/qt/qml/FilemanQml/main.qml")));
-    if (engine.rootObjects().isEmpty()) {
-        qCritical("Failed to load QML root object; aborting");
-        return 1;
-    }
+  //[KEY:Mind the URL]
+  engine.load(QUrl(QLatin1String("qrc:/qt/qml/FilemanQml/main.qml")));
+  if (engine.rootObjects().isEmpty()) {
+    qCritical("Failed to load QML root object; aborting");
+    return 1;
+  }
 
 #if defined(Q_OS_UNIX) && !defined(Q_OS_ANDROID)
-    if (::socketpair(AF_UNIX, SOCK_STREAM, 0, sigFd) != 0)
-        qFatal("Failed to create signal socket pair");
+  if (::socketpair(AF_UNIX, SOCK_STREAM, 0, sigFd.data()) != 0)
+    qFatal("Failed to create signal socket pair");
 
-    QSocketNotifier sigNotifier(sigFd[0], QSocketNotifier::Read);
-    QObject::connect(&sigNotifier, &QSocketNotifier::activated, &app, [](QSocketDescriptor) {
-        char tmp;
+  QSocketNotifier sigNotifier(sigFd[0], QSocketNotifier::Read);
+  QObject::connect(
+      &sigNotifier, &QSocketNotifier::activated, &app, [](QSocketDescriptor) {
+        char tmp = 0;
         [[maybe_unused]] auto trash = ::read(sigFd[0], &tmp, sizeof(tmp));
         // just to avoid compiler warnings
         QCoreApplication::quit();
-    });
+      });
 
-    struct sigaction sa {};
-    sa.sa_handler = unixSignalHandler;
-    sigemptyset(&sa.sa_mask);
-    sa.sa_flags = SA_RESTART;
-    sigaction(SIGINT, &sa, nullptr);
-    sigaction(SIGTERM, &sa, nullptr);
+  struct sigaction sa{};
+  sa.sa_handler = unixSignalHandler;
+  sigemptyset(&sa.sa_mask);
+  sa.sa_flags = SA_RESTART;
+  sigaction(SIGINT, &sa, nullptr);
+  sigaction(SIGTERM, &sa, nullptr);
 #endif
 
-    int ret = app.exec();
+  int ret = QApplication::exec();
 
 #if defined(Q_OS_UNIX) && !defined(Q_OS_ANDROID)
-    ::close(sigFd[0]);
-    ::close(sigFd[1]);
+  ::close(sigFd[0]);
+  ::close(sigFd[1]);
 #endif
 
-    return ret;
+  return ret;
 }

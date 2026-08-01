@@ -2,7 +2,7 @@
 
                             MIT License
 
-                        Copyright HasanEsa 2026
+                        Copyright Lotconn 2026
 
 This is an example app demonstrating legacy use of embedding the FileMan object
 in QML with context properties. Although this approach is discouraged in favor
@@ -23,7 +23,7 @@ import QtQuick.Layouts
 import QtQuick.Dialogs
 
 //[KEY:Can also be followed by the registered version number]
-import HasanEsa.FileMan.Enums
+import Lotconn.FileMan.Enums
 
 ApplicationWindow {
   id: mainWindow
@@ -62,9 +62,9 @@ ApplicationWindow {
     mainWindow.x        = settings.value("x",   mainWindow.x)
     mainWindow.y        = settings.value("y",   mainWindow.y)
 
-//[KEY:storeHouseKeeping() usage]
-    var e = fileman.storeHouseKeeping()
-    console.debug("Fileman::storeHouseKeeping() return:", e)
+//[KEY:refreshStore() usage]
+    var e = fileman.refreshStore()
+    console.debug("Fileman::refreshStore() return:", e)
   }
 
   Component.onDestruction: {
@@ -112,14 +112,14 @@ ApplicationWindow {
 //[KEY:addFile() usage]
         var result = fileman.addFile(fileUrl, category)
 
-        if (result.error !== 0) {
+        if (result.status !== 0) {
           console.warn("Fileman::addFile() failed with error:", result.error)
           continue
         }
 
 //[KEY:getFileName() usage]
         var fileName = fileman.getFileName(fileUrl)
-        var savedPath = result.path
+        var savedPath = result.location
 
         var newList = mainWindow.audioList.slice()
         newList.push({ "name": fileName, "path": savedPath })
@@ -177,10 +177,15 @@ ApplicationWindow {
 
             onClicked: {
               var rmIdx = audioListCb.currentIndex
+
 //[KEY:rmFile() usage with default category]
-              var status = fileman.rmFile(mainWindow.audioList[rmIdx].name)
-              if (status !== 0) {
-                console.warn("Fileman::rmFile() failed with error:", status)
+              var status = fileman.rmFile(mainWindow.audioList[rmIdx].path)
+              
+              if (status.status_h !== 0)
+                console.warn("Fileman::rmFile() warning:", status.status_h)
+              
+              if (status.status_l !== 0 && status.status_l != FileMan.Errno.Invalid && status.status_l != FileMan.Errno.NotFound) {
+                console.warn("Fileman::rmFile() failed with error:", status.status_l)
                 return
               }
 

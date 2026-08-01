@@ -1,11 +1,11 @@
-FROM rockylinux/rockylinux:10.1-ubi
+FROM rockylinux/rockylinux:10.2-ubi
 
-RUN dnf install -y --releasever=10.1 --setop=install_weak_deps=False --nodocs \
+RUN dnf install -y --releasever=10.2 --setop=install_weak_deps=False --nodocs \
         https://dl.fedoraproject.org/pub/epel/epel-release-latest-10.noarch.rpm
 RUN sed -i -r '/^\[crb\]/,/^\[/ s/(enabled\s*=\s*)0/\11/g' \
         /etc/yum.repos.d/rocky.repo
-RUN dnf dsync -y --releasever=10.1 --setop=install_weak_deps=False --nodocs
-RUN dnf install -y --releasever=10.1 --setop=install_weak_deps=False --nodocs \
+RUN dnf dsync -y --releasever=10.2 --setop=install_weak_deps=False --nodocs
+RUN dnf install -y --releasever=10.2 --setop=install_weak_deps=False --nodocs \
         ccache clang clang-tools-extra cmake cppcheck git lld llvm nasm \
         ncurses ninja-build qt6-qt{base,declarative}-devel \
         bash-color-prompt bash-completion procps-ng vim
@@ -16,7 +16,8 @@ RUN rm -rf /var/cache/* /var/log/dnf* \
 RUN cp /usr/share/rootfiles/.* /root && \
     echo "CC=clang CXX=clang++ cmake -B . --fresh -GNinja -DFM_BUILD_EXAMPLES=ON && cmake --build . --parallel" >> /root/.bash_history && \
     echo "cmake --install ." >> /root/.bash_history && \
-    echo "CC=clang CXX=clang++ cmake -B . --fresh -GNinja && cmake --build . --parallel" >> /root/.bash_history
+    echo "CC=clang CXX=clang++ cmake -B . --fresh -GNinja && cmake --build . --parallel" >> /root/.bash_history && \
+    git config --system --add safe.directory /src
 
 WORKDIR /src
 ENTRYPOINT /bin/bash
