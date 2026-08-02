@@ -18,10 +18,11 @@
     ],
     "[markdown]": {
         "editor.defaultFormatter": "esbenp.prettier-vscode",
-        "editor.formatOnSave": true
     },
     "C_Cpp.intelliSenseEngine": "disabled",
-    "editor.defaultFormatter": "llvm-vs-code-extensions.vscode-clangd",
+    "[cpp]": {
+        "editor.defaultFormatter": "llvm-vs-code-extensions.vscode-clangd",
+    },
     "editor.rulers": [
         80
     ],
@@ -29,5 +30,15 @@
     "editor.formatOnSave": true,
     "cmake.sourceDirectory": "${workspaceFolder}",
     "cmake.buildDirectory": "${workspaceFolder}",
-    "cmake.generator": "Ninja"
+    "cmake.generator": "Ninja",
+    "[qml]": {
+        "editor.defaultFormatter": "theqtcompany.qt-qml"
+    },
+    "cmake.automaticReconfigure": false,
+    "cmake.configureArgs": [
+        "-DFM_BUILD_EXAMPLES=ON"
+    ],
+    // "qt-qml.qmlls.additionalImportPaths": [
+    //     // "${workspaceFolder}"
+    // ]
 }

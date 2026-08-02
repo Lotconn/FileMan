@@ -26,183 +26,180 @@ import QtQuick.Dialogs
 import Lotconn.FileMan
 
 ApplicationWindow {
-  id: mainWindow
-  visible: true
-  height: 150
-  width: 250
-  minimumWidth: 250
-  minimumHeight: 150
+    id: mainWindow
+    visible: true
+    height: 150
+    width: 250
+    minimumWidth: 250
+    minimumHeight: 150
 
-  property var audioList: []
-  property var imageList: []
-  property var videoList: []
+    property var audioList: []
+    property var imageList: []
+    property var videoList: []
 
-  Component.onCompleted: {
-    settings.category = "Audio"
-    var list = settings.value("list", JSON.stringify(audioList))
-    try {
-      audioList = JSON.parse(list)
-    } catch(_) {}
+    Component.onCompleted: {
+        settings.category = "Audio";
+        let list = settings.value("list", JSON.stringify(audioList));
+        try {
+            audioList = JSON.parse(list);
+        } catch (_) {}
 
-    settings.category = "Image"
-    list = settings.value("list", JSON.stringify(imageList))
-    try {
-      imageList = JSON.parse(list)
-    } catch(_) {}
+        settings.category = "Image";
+        list = settings.value("list", JSON.stringify(imageList));
+        try {
+            imageList = JSON.parse(list);
+        } catch (_) {}
 
-    settings.category = "Video"
-    list = settings.value("list", JSON.stringify(videoList))
-    try {
-      videoList = JSON.parse(list)
-    } catch(_) {}
+        settings.category = "Video";
+        list = settings.value("list", JSON.stringify(videoList));
+        try {
+            videoList = JSON.parse(list);
+        } catch (_) {}
 
-    settings.category   = "Window"
-    mainWindow.width    = settings.value("width",   mainWindow.width)
-    mainWindow.height   = settings.value("height",  mainWindow.height)
-    mainWindow.x        = settings.value("x",   mainWindow.x)
-    mainWindow.y        = settings.value("y",   mainWindow.y)
+        settings.category = "Window";
+        mainWindow.width = settings.value("width", mainWindow.width);
+        mainWindow.height = settings.value("height", mainWindow.height);
+        mainWindow.x = settings.value("x", mainWindow.x);
+        mainWindow.y = settings.value("y", mainWindow.y);
 
-//[KEY:refreshStore() usage]
-    var e = FileMan.refreshStore()
-    console.debug("Fileman::refreshStore() return:", e)
-  }
-
-  Component.onDestruction: {
-    settings.category = "Audio"
-    settings.setValue("list", JSON.stringify(audioList || []))
-
-    settings.category = "Image"
-    settings.setValue("list", JSON.stringify(imageList || []))
-
-    settings.category = "Video"
-    settings.setValue("list", JSON.stringify(videoList || []))
-
-    settings.category = "Window"
-    settings.setValue("width",  mainWindow.width)
-    settings.setValue("height", mainWindow.height)
-    settings.setValue("x",    mainWindow.x)
-    settings.setValue("y",    mainWindow.y)
-
-    settings.sync()
-  }
-
-  Settings { id: settings }
-
-  FileDialog {
-    id: fileDialog
-    title: qsTr("Please choose an audio file")
-    currentFolder: StandardPaths.writableLocation(StandardPaths.MusicLocation)
-    fileMode: FileDialog.OpenFiles
-    nameFilters: [
-      "Audio files (*.aac *.ac3 *.alac *.amr *.flac *.m4a *.mp3 *.ogg *.opus *.wav *.wma *.weba)",
-      "Image files (*.jpg *.jpeg *.png *.svg *.tiff *.tif *.gif *.avif *.bmp *.dng *.cr2 *.heic *.heif *.ico *.nef *.webp)",
-      "Video files (*.mp4 *.mkv *.webm *.avi *.flv *.mov *.m4v *.ogv *.wmv *.3gp *.3g2)",
-      "All files (*)"
-    ]
-
-    onAccepted: {
-//[KEY:FileMan::Category enum usage]
-      var category  = selectedNameFilter.index == 0 ? FileMan.Audio
-            : selectedNameFilter.index == 1 ? FileMan.Image
-            : selectedNameFilter.index == 2 ? FileMan.Video
-            : FileMan.All
-
-      for (var i = 0; i < selectedFiles.length; i++) {
-        var fileUrl = selectedFiles[i]
-
-//[KEY:addFile() usage]
-        var result = FileMan.addFile(fileUrl, category)
-
-        if (result.status !== 0) {
-          console.warn("Fileman::addFile() failed with error:", result.error)
-          continue
-        }
-
-//[KEY:getFileName() usage]
-        var fileName = FileMan.getFileName(fileUrl)
-        var savedPath = result.location
-
-        var newList = mainWindow.audioList.slice()
-        newList.push({ "name": fileName, "path": savedPath })
-        mainWindow.audioList = newList
-        audioListCb.currentIndex = mainWindow.audioList.length - 1
-      }
+        //[KEY:refreshStore() usage]
+        const e = FileMan.refreshStore();
+        console.debug("Fileman::refreshStore() return:", e);
     }
-  }
 
-  Page {
-    anchors.fill: parent
+    Component.onDestruction: {
+        settings.category = "Audio";
+        settings.setValue("list", JSON.stringify(audioList || []));
 
-    Flickable {
-      anchors.fill: parent
-      focus: true
-      clip: true
-      boundsBehavior: Flickable.StopAtBounds
+        settings.category = "Image";
+        settings.setValue("list", JSON.stringify(imageList || []));
 
-      Keys.onUpPressed: scrollBar.decrease()
-      Keys.onDownPressed: scrollBar.increase()
+        settings.category = "Video";
+        settings.setValue("list", JSON.stringify(videoList || []));
 
-      ScrollBar.vertical: ScrollBar {
-        id: scrollBar
-      }
+        settings.category = "Window";
+        settings.setValue("width", mainWindow.width);
+        settings.setValue("height", mainWindow.height);
+        settings.setValue("x", mainWindow.x);
+        settings.setValue("y", mainWindow.y);
 
-      contentWidth: parent.width
-      contentHeight: col.implicitHeight + 20
+        settings.sync();
+    }
 
-      ColumnLayout {
-        id: col
-        spacing: 10
-        width: parent.width - 40
-        anchors.top: parent.top
-        anchors.topMargin: 10
-        anchors.horizontalCenter: parent.horizontalCenter
+    Settings {
+        id: settings
+    }
 
-        ComboBox {
-          id: audioListCb
-          model: mainWindow.audioList
-          Layout.fillWidth: true
-          textRole: "name"
-        }
+    FileDialog {
+        id: fileDialog
+        title: qsTr("Please choose an audio file")
+        currentFolder: StandardPaths.writableLocation(StandardPaths.MusicLocation)
+        fileMode: FileDialog.OpenFiles
+        nameFilters: ["Audio files (*.aac *.ac3 *.alac *.amr *.flac *.m4a *.mp3 *.ogg *.opus *.wav *.wma *.weba)", "Image files (*.jpg *.jpeg *.png *.svg *.tiff *.tif *.gif *.avif *.bmp *.dng *.cr2 *.heic *.heif *.ico *.nef *.webp)", "Video files (*.mp4 *.mkv *.webm *.avi *.flv *.mov *.m4v *.ogv *.wmv *.3gp *.3g2)", "All files (*)"]
 
-        RowLayout {
-          spacing: 10
-          Layout.alignment: Qt.AlignHCenter
+        onAccepted: {
+            //[KEY:FileMan::Category enum usage]
+            const category = selectedNameFilter.index == 0 ? FileMan.Audio : selectedNameFilter.index == 1 ? FileMan.Image : selectedNameFilter.index == 2 ? FileMan.Video : FileMan.All;
 
-          Button {
-            text: "Add"
-            onClicked: fileDialog.open()
-          }
+            for (const i = 0; i < selectedFiles.length; i++) {
+                const fileUrl = selectedFiles[i];
 
-          Button {
-            text: "Remove"
+                //[KEY:addFile() usage]
+                const result = FileMan.addFile(fileUrl, category);
 
-            onClicked: {
-              var rmIdx = audioListCb.currentIndex
+                if (result.status !== 0) {
+                    console.warn("Fileman::addFile() failed with error:", result.error);
+                    continue;
+                }
 
-//[KEY:rmFile() usage with default category]
-              var status = FileMan.rmFile(mainWindow.audioList[rmIdx].path)
-              
-              if (status.status_h !== 0)
-                console.warn("Fileman::rmFile() warning:", status.status_h)
-              
-              if (status.status_l !== 0 && status.status_l != FileMan.Errno.Invalid && status.status_l != FileMan.Errno.NotFound) {
-                console.warn("Fileman::rmFile() failed with error:", status.status_l)
-                return
-              }
+                //[KEY:getFileName() usage]
+                const fileName = FileMan.getFileName(fileUrl);
+                const savedPath = result.location;
 
-              var newList = mainWindow.audioList.slice()
-              newList.splice(rmIdx, 1)
-              mainWindow.audioList = newList
+                const newList = mainWindow.audioList.slice();
+                newList.push({
+                    "name": fileName,
+                    "path": savedPath
+                });
+                mainWindow.audioList = newList;
+                audioListCb.currentIndex = mainWindow.audioList.length - 1;
             }
-          }
         }
-      }
     }
-  }
 
-  Shortcut {
-    sequences: [StandardKey.Quit]
-    context: Qt.ApplicationShortcut
-    onActivated: Qt.quit()
-  }
+    Page {
+        anchors.fill: parent
+
+        Flickable {
+            anchors.fill: parent
+            focus: true
+            clip: true
+            boundsBehavior: Flickable.StopAtBounds
+
+            Keys.onUpPressed: scrollBar.decrease()
+            Keys.onDownPressed: scrollBar.increase()
+
+            ScrollBar.vertical: ScrollBar {
+                id: scrollBar
+            }
+
+            contentWidth: parent.width
+            contentHeight: col.implicitHeight + 20
+
+            ColumnLayout {
+                id: col
+                spacing: 10
+                width: parent.width - 40
+                anchors.top: parent.top
+                anchors.topMargin: 10
+                anchors.horizontalCenter: parent.horizontalCenter
+
+                ComboBox {
+                    id: audioListCb
+                    model: mainWindow.audioList
+                    Layout.fillWidth: true
+                    textRole: "name"
+                }
+
+                RowLayout {
+                    spacing: 10
+                    Layout.alignment: Qt.AlignHCenter
+
+                    Button {
+                        text: "Add"
+                        onClicked: fileDialog.open()
+                    }
+
+                    Button {
+                        text: "Remove"
+
+                        onClicked: {
+                            const rmIdx = audioListCb.currentIndex;
+
+                            //[KEY:rmFile() usage with default category]
+                            const status = FileMan.rmFile(mainWindow.audioList[rmIdx].path);
+
+                            if (status.status_h !== 0)
+                                console.warn("Fileman::rmFile() warning:", status.status_h);
+
+                            if (status.status_l !== 0 && status.status_l != FileMan.Errno.Invalid && status.status_l != FileMan.Errno.NotFound) {
+                                console.warn("Fileman::rmFile() failed with error:", status.status_l);
+                                return;
+                            }
+
+                            let newList = mainWindow.audioList.slice();
+                            newList.splice(rmIdx, 1);
+                            mainWindow.audioList = newList;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    Shortcut {
+        sequences: [StandardKey.Quit]
+        context: Qt.ApplicationShortcut
+        onActivated: Qt.quit()
+    }
 }
