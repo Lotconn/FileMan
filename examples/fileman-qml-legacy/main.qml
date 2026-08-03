@@ -116,7 +116,7 @@ ApplicationWindow {
                 const fileName = fileman.getFileName(fileUrl);
                 const savedPath = result.location;
 
-                const newList = mainWindow.audioList.slice();
+                let newList = mainWindow.audioList.slice();
                 newList.push({
                     "name": fileName,
                     "path": savedPath
@@ -190,6 +190,21 @@ ApplicationWindow {
                             let newList = mainWindow.audioList.slice();
                             newList.splice(rmIdx, 1);
                             mainWindow.audioList = newList;
+                        }
+                    }
+                }
+
+                RowLayout {
+                    spacing: 10
+                    Layout.alignment: Qt.AlignHCenter
+
+                    Button {
+                        text: "Refresh Store"
+
+                        onClicked: {
+                            //[KEY:refreshStore() usage]
+                            const e = fileman.refreshStore();
+                            console.debug("Fileman::refreshStore() return:", e);
                         }
                     }
                 }

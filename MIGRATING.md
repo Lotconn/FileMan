@@ -1,6 +1,8 @@
 # Migration Guide: v1.0.1 to v2.0.0
 
-This guide outlines the necessary changes to migrate your project from FileMan v1.0.1 to v2.0.0. This release involves significant breaking changes regarding namespaces, API signatures, and build configurations.
+This guide outlines the necessary changes to migrate your project from FileMan
+v1.0.1 to v2.0.0. This release involves significant breaking changes regarding
+namespaces, API signatures, and build configurations.
 
 ## 1. Namespace & Import Updates
 
@@ -72,7 +74,8 @@ In main.cpp:
 
 ### `addFile()` Return Type
 
-The function no longer returns a `QVariantMap`. It now returns a strongly typed `add_file_t` struct.
+The function no longer returns a `QVariantMap`. It now returns a strongly typed
+`add_file_t` struct.
 
 **Old (v1.0.1):**
 
@@ -98,7 +101,9 @@ else
 
 ### `rmFile()` Overhaul
 
-The signature has changed significantly. It now accepts a `QUrl` pointing to the file in the store and returns `rm_file_t` with separate status codes for symlink and blob removal.
+The signature has changed significantly. It now accepts a `QUrl` pointing to the
+file in the store and returns `rm_file_t` with separate status codes for symlink
+and blob removal.
 
 **Old (v1.0.1):**
 
@@ -128,7 +133,8 @@ if (status.status_h() != 0)
 
 ### `storeHouseKeeping()` Renamed
 
-The housekeeping function has been renamed to `refreshStore()` and now returns `int` (errno) directly.
+The housekeeping function has been renamed to `refreshStore()` and now returns
+`int` (errno) directly.
 
 **Old:**
 
@@ -144,7 +150,8 @@ int err = fileman.refreshStore();
 
 ### Static vs. Instance Access
 
-`getDataDir()` is no longer static. You must instantiate `FileMan` or use the singleton accessor.
+`getDataDir()` is no longer static. You must instantiate `FileMan` or use the
+singleton accessor.
 
 **Old:**
 
@@ -170,21 +177,28 @@ Ensure your `CMakeLists.txt` meets the new minimum requirements:
 - **Qt:** Strict mode set to 6.8 (`QT_ENABLE_STRICT_MODE_UP_TO=0x060800`).
 - **Compiler:** Clang/LLVM with Ninja is strongly recommended.
 
-If you were manually setting compiler flags, note that v2.0.0 now enforces security hardening flags automatically (Fortify, Stack Protector, CET on x86_64).
+If you were manually setting compiler flags, note that v2.0.0 now enforces
+security hardening flags automatically (Fortify, Stack Protector, CET on
+x86_64).
 
 ## 4. Singleton Behavior
 
 FileMan is strictly a singleton.
 
-- **C++:** Instantiating `FileMan` twice will cause a fatal abort. Use `FileMan::instance()` to access the existing instance.
-- **QML:** The singleton is auto-managed. Do not attempt to manually construct it in C++ if you intend to use it purely via QML context properties unless you need to embed it in the root context.
+- **C++:** Instantiating `FileMan` twice will cause a fatal abort. Use
+  `FileMan::instance()` to access the existing instance.
+- **QML:** The singleton is auto-managed. Do not attempt to manually construct
+  it in C++ if you intend to use it purely via QML context properties unless you
+  need to embed it in the root context.
 
 ## 5. Checklist for Migration
 
 - [ ] Replace all `HasanEsa` occurrences with `Lotconn` in code and CMake.
 - [ ] Update `#include` directives to `<Lotconn/FileMan/fileman>`.
-- [ ] Refactor `addFile()` calls to use `result.status()` and `result.location()`.
-- [ ] Refactor `rmFile()` calls to accept `QUrl` and check `status_l()`/`status_h()`.
+- [ ] Refactor `addFile()` calls to use `result.status()` and
+      `result.location()`.
+- [ ] Refactor `rmFile()` calls to accept `QUrl` and check
+      `status_l()`/`status_h()`.
 - [ ] Rename `storeHouseKeeping()` to `refreshStore()`.
 - [ ] Update `getDataDir()` calls to use an instance or `FileMan::instance()`.
 - [ ] Verify CMake policies and Qt strict mode settings.
@@ -192,4 +206,6 @@ FileMan is strictly a singleton.
 
 ## 6. Rollback
 
-If you encounter critical issues, you can revert to v1.0.1 by checking out the tag `v1.0.1` and updating your dependencies accordingly. Note that v1.0.1 uses the `HasanEsa` namespace and the older `QVariantMap` API.
+If you encounter critical issues, you can revert to v1.0.1 by checking out the
+tag `v1.0.1` and updating your dependencies accordingly. Note that v1.0.1 uses
+the `HasanEsa` namespace and the older `QVariantMap` API.
