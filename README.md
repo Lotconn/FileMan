@@ -138,9 +138,11 @@ failed transactions are discarded.
 
 The code is intended to be C++17 standardized and Qt >=6.8 compatible.
 
-> [!Warning] FileMan will abort fatally if `<APPNAME>` resolves empty. Please
-> ensure your implementation at least has `QCoreApplication::applicationName()`
-> set and FileMan is instantiated only after that.
+> [!Warning]
+>
+> FileMan will abort fatally if `<APPNAME>` resolves empty. Please ensure your
+> implementation at least has `QCoreApplication::applicationName()` set and
+> FileMan is instantiated only after that.
 
 ### The Singleton Design
 
@@ -253,8 +255,10 @@ specify multiple categories.
 | `FileMan::Video` | `0x04`                        | Operate on the **video** store; located under `<AppLocalDataLocation>/video`. Takes only files with `video/*` MIME types |
 | `FileMan::All`   | `Audio` \| `Image` \| `Video` | Operate on all categories. Takes files with all preceding MIME types                                                     |
 
-> [!Note] Qt's MIME database recognizes matroska (.mkv) files as
-> application/x-matroska. These are whitelisted for `FileMan::Video`.
+> [!Note]
+>
+> Qt's MIME database recognizes matroska (.mkv) files as application/x-matroska.
+> These are whitelisted for `FileMan::Video`.
 
 <div><a id="errno-enum"></a></div>
 <div><a name="errno-enum"></a></div>
@@ -345,10 +349,12 @@ it is not linked to any other symlinks. However, unlike a successful operation,
 > - Symlinks bear `.lnk` extension on Windows
 > - Operations will continue even if storage free-space checks fail
 
-> [!Warning] addFile() relies entirely on how QMimeDatabase recognizes the file.
-> On some distributions, Qt's mime database is known to provide generic mime
-> types even for obvious files in which case addFile() fails. This is an ongoing
-> issue, if you encounter this, please do file a bug report.
+> [!Warning]
+>
+> addFile() relies entirely on how QMimeDatabase recognizes the file. On some
+> distributions, Qt's mime database is known to provide generic mime types even
+> for obvious files in which case addFile() fails. This is an ongoing issue, if
+> you encounter this, please do file a bug report.
 
 Example:
 
@@ -629,8 +635,10 @@ The rest follows the same suit as previous.
 
 ### 3. Using system-installed instance
 
-> [!IMPORTANT] This requires FileMan to be
-> [built & installed](CONTRIBUTING.md/#building) on your running system first.
+> [!IMPORTANT]
+>
+> This requires FileMan to be [built & installed](CONTRIBUTING.md/#building) on
+> your running system first.
 
 Following previous examples just modify these lines:
 
@@ -674,17 +682,21 @@ var result = FileMan.addFile(fileUrl, FileMan.Image)
 console.log("Saved path:", result.location())
 ```
 
-> [!Important] FileMan's types and members are accessible only inside "FileMan"
-> scope. Qt doesn't allow importing the module on a custom namespace.
+> [!Important]
+>
+> FileMan's types and members are accessible only inside "FileMan" scope. Qt
+> doesn't allow importing the module on a custom namespace.
 
 Refer to the [QML example](examples/fileman-qml/) for a basic working
 implementation.
 
-> [!Important] Example QML apps in the project built statically inside the
-> container are not portable, they fail to run due to missing QT_PRIVATE_API,
-> and won't run properly outside the container itself. Build these static apps
-> on your host instead if you want to run them. Alternatively, build them on a
-> statically built Qt system for them to be truly portable.
+> [!Important]
+>
+> Example QML apps in the project built statically inside the container are not
+> portable, they fail to run due to missing QT_PRIVATE_API, and won't run
+> properly outside the container itself. Build these static apps on your host
+> instead if you want to run them. Alternatively, build them on a statically
+> built Qt system for them to be truly portable.
 
 ---
 

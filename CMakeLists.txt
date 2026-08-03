@@ -17,6 +17,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON) # Some IDEs need this for linter servers
+set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_RELEASE ON)
 set(CMAKE_PROJECT_SPDX_LICENSE "MIT")
 set(FM_NS Lotconn)
 string(TOLOWER ${PROJECT_NAME} PROJECT_NAME_LOWER)
@@ -97,10 +98,6 @@ qt_add_qml_module(${PROJECT_NAME}
   # those required objects in the variable
   #
   OUTPUT_TARGETS fm_qml_mod_output_targets
-)
-set_target_properties(${PROJECT_NAME}plugin
-  PROPERTIES
-  INTERPROCEDURAL_OPTIMIZATION ON
 )
 
 # Some variables worth noting down
@@ -185,7 +182,6 @@ target_sources(${PROJECT_NAME} PUBLIC
 
 set_target_properties(${PROJECT_NAME}
   PROPERTIES
-  INTERPROCEDURAL_OPTIMIZATION ON
   OUTPUT_NAME ${PROJECT_NAME_LOWER} # Outputs (lib)FileMan.* otherwise
   VERSION ${PROJECT_VERSION}
   SOVERSION ${PROJECT_VERSION_MAJOR}
@@ -245,7 +241,7 @@ install(FILES
 write_basic_package_version_file(
   ${PROJECT_NAME}ConfigVersion.cmake
   VERSION ${PROJECT_VERSION}
-  COMPATIBILITY AnyNewerVersion
+  COMPATIBILITY SameMajorVersion
 )
 
 # Install the handwritten *Targets.cmake file. Library can now be invoked during
@@ -268,6 +264,7 @@ if(CMAKE_SOURCE_DIR STREQUAL PROJECT_SOURCE_DIR)
   install(FILES
     CHANGELOG.md
     CONTRIBUTING.md
+    MIGRATING.md
     README.md
     TYPE DOC
     COMPONENT runtime

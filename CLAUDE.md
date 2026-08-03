@@ -50,9 +50,11 @@ mention Concise Mode.
 
 - **Hosted at:** <https://gitlab.com/lotconn/fileman>
 - The repository tree is at `repotree.txt`, or run:
+
   ```bash
   git ls-files --full-name -s
   ```
+
 - Same filenames may appear at multiple locations across the repo. Understand
   context before picking one.
 - Try **not** to traverse or refer to submodules unless necessary. Submodule

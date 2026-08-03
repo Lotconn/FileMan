@@ -130,7 +130,9 @@ project, building FileMan requires `qt6-qtcore-devel`,
 `qt6-qtdeclarative-devel`, `ccache`, `cmake`, `clang`, `lld`, `llvm`, `nasm` &
 `ninja-build`.
 
-> [!Note] Package names here are for Fedora Linux/EL distributions and their
+> [!Note]
+>
+> Package names here are for Fedora Linux/EL distributions and their
 > derivatives. Refer to your distribution for exact package names
 
 For Qt6/C++ implementations, adjust your CMakeLists file to contain these
