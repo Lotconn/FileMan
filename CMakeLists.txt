@@ -6,9 +6,9 @@ include(CMakePrintHelpers)
 include(CMakePackageConfigHelpers)
 
 project(FileMan
-  VERSION     2.0.0
+  VERSION 2.0.0
   DESCRIPTION "A file manager library for Qt6 apps written in C++"
-  LANGUAGES   CXX
+  LANGUAGES CXX
   # SPDX_LICENSE  MIT  # SPDX_LICENSE doesn't work before cmake 4.1
 )
 
@@ -16,7 +16,7 @@ set(CMAKE_AUTOMOC ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_EXPORT_COMPILE_COMMANDS ON)   # Some IDEs need this for linter servers
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON) # Some IDEs need this for linter servers
 set(CMAKE_PROJECT_SPDX_LICENSE "MIT")
 set(FM_NS Lotconn)
 string(TOLOWER ${PROJECT_NAME} PROJECT_NAME_LOWER)
@@ -55,14 +55,14 @@ if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
   )
   set(CMAKE_BUILD_TYPE "${default_build_type}"
     CACHE
-    STRING  "Choose the type of build."
+    STRING "Choose the type of build."
     FORCE
   )
   set_property(CACHE
-      CMAKE_BUILD_TYPE
+    CMAKE_BUILD_TYPE
     PROPERTY
-      STRINGS
-        "Debug" "MinSizeRel" "Release" "RelWithDebInfo"
+    STRINGS
+    "Debug" "MinSizeRel" "Release" "RelWithDebInfo"
   )
 endif()
 
@@ -71,24 +71,24 @@ if(DEFINED BUILD_SHARED_LIBS AND NOT BUILD_SHARED_LIBS)
 endif()
 
 qt_add_qml_module(${PROJECT_NAME}
-  URI     Lotconn.FileMan
+  URI Lotconn.FileMan
   VERSION 2.0
   ${FM_BUILD_AS}
   SOURCES
-    fileman
-    fileman.hpp
-    fileman_p.hpp
-    internal-helpers.hpp
-    fileman.cpp
-    fileman_p.cpp
-    internal-helpers.cpp
-    addFile.cpp
-    categoryToString.cpp
-    getCategoryDir.cpp
-    getDataDir.cpp
-    getFileName.cpp
-    refreshStore.cpp
-    rmFile.cpp
+  fileman
+  fileman.hpp
+  fileman_p.hpp
+  internal-helpers.hpp
+  fileman.cpp
+  fileman_p.cpp
+  internal-helpers.cpp
+  addFile.cpp
+  categoryToString.cpp
+  getCategoryDir.cpp
+  getDataDir.cpp
+  getFileName.cpp
+  refreshStore.cpp
+  rmFile.cpp
 
   #
   # qt_add_qml_module() creates some object targets that need to be
@@ -96,20 +96,20 @@ qt_add_qml_module(${PROJECT_NAME}
   # especially necessary on static builds. OUTPUT_TARGETS enlists all
   # those required objects in the variable
   #
-  OUTPUT_TARGETS  fm_qml_mod_output_targets
+  OUTPUT_TARGETS fm_qml_mod_output_targets
 )
 set_target_properties(${PROJECT_NAME}plugin
   PROPERTIES
-    INTERPROCEDURAL_OPTIMIZATION  ON
+  INTERPROCEDURAL_OPTIMIZATION ON
 )
 
 # Some variables worth noting down
 qt_query_qml_module(${PROJECT_NAME}
-  URI         fm_qml_mod_uri
-  VERSION     fm_qml_mod_version
+  URI fm_qml_mod_uri
+  VERSION fm_qml_mod_version
   TARGET_PATH fm_qml_mod_target_path
-  QMLDIR      fm_qml_mod_qmldir
-  TYPEINFO    fm_qml_mod_typeinfo
+  QMLDIR fm_qml_mod_qmldir
+  TYPEINFO fm_qml_mod_typeinfo
 )
 
 # Namespaces are always a good idea
@@ -135,20 +135,20 @@ endif()
 
 target_compile_options(${PROJECT_NAME} PRIVATE
   $<$<CXX_COMPILER_ID:GNU,Clang>:
-    -Wall
-    -Wextra
-    -Wp,-D_FORTIFY_SOURCE=3
-    -Wp,-D_GLIBCXX_ASSERTIONS
-    -fexceptions
-    -fstack-protector-strong
-    -fasynchronous-unwind-tables
-    -fstack-clash-protection
-    ${CF_PROTECTION_FLAG}
-    -mno-omit-leaf-frame-pointer
-    -pipe
-    $<$<OR:$<CONFIG:Debug>,$<CONFIG:RelWithDebInfo>>:
-      -grecord-gcc-switches
-    >
+  -Wall
+  -Wextra
+  -Wp,-D_FORTIFY_SOURCE=3
+  -Wp,-D_GLIBCXX_ASSERTIONS
+  -fexceptions
+  -fstack-protector-strong
+  -fasynchronous-unwind-tables
+  -fstack-clash-protection
+  ${CF_PROTECTION_FLAG}
+  -mno-omit-leaf-frame-pointer
+  -pipe
+  $<$<OR:$<CONFIG:Debug>,$<CONFIG:RelWithDebInfo>>:
+  -grecord-gcc-switches
+  >
   >
 )
 target_include_directories(${PROJECT_NAME} PUBLIC
@@ -171,24 +171,24 @@ target_link_options(${PROJECT_NAME} PRIVATE
   # necessary because ld fails to link on clang+llvm
   $<$<CXX_COMPILER_ID:Clang>:-fuse-ld=lld>
   $<$<NOT:$<OR:$<CONFIG:Debug>,$<CONFIG:RelWithDebInfo>>>:
-    -Wl,-z,relro,-z,now
-    -Wl,--as-needed
+  -Wl,-z,relro,-z,now
+  -Wl,--as-needed
   >
 )
 target_sources(${PROJECT_NAME} PUBLIC
   FILE_SET
-    HEADERS
-      FILES
-        fileman
-        fileman.hpp
+  HEADERS
+  FILES
+  fileman
+  fileman.hpp
 )
 
 set_target_properties(${PROJECT_NAME}
   PROPERTIES
-    INTERPROCEDURAL_OPTIMIZATION  ON
-    OUTPUT_NAME ${PROJECT_NAME_LOWER} # Outputs (lib)FileMan.* otherwise
-    VERSION     ${PROJECT_VERSION}
-    SOVERSION   ${PROJECT_VERSION_MAJOR}
+  INTERPROCEDURAL_OPTIMIZATION ON
+  OUTPUT_NAME ${PROJECT_NAME_LOWER} # Outputs (lib)FileMan.* otherwise
+  VERSION ${PROJECT_VERSION}
+  SOVERSION ${PROJECT_VERSION_MAJOR}
 )
 
 if(FM_BUILD_EXAMPLES)
@@ -198,24 +198,24 @@ if(FM_BUILD_EXAMPLES)
 endif()
 
 install(TARGETS
-    ${PROJECT_NAME}
-    ${fm_qml_mod_output_targets} # install those qml module object targets
-  EXPORT  ${PROJECT_NAME}Targets
+  ${PROJECT_NAME}
+  ${fm_qml_mod_output_targets} # install those qml module object targets
+  EXPORT ${PROJECT_NAME}Targets
 
   ARCHIVE
-    COMPONENT devel
+  COMPONENT devel
   LIBRARY
-    COMPONENT runtime
+  COMPONENT runtime
 
   # QML module objects go under the INSTALL_LIBDIR (/lib, /lib64 etc)
   OBJECTS
-    COMPONENT   devel
-    DESTINATION "${CMAKE_INSTALL_LIBDIR}/${FM_NS}/${PROJECT_NAME}"
+  COMPONENT devel
+  DESTINATION "${CMAKE_INSTALL_LIBDIR}/${FM_NS}/${PROJECT_NAME}"
 
   # This installs the header (.hpp) file properly
   FILE_SET HEADERS
-    COMPONENT   devel
-    DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/${FM_NS}/${PROJECT_NAME}"
+  COMPONENT devel
+  DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/${FM_NS}/${PROJECT_NAME}"
 )
 
 #
@@ -224,57 +224,57 @@ install(TARGETS
 # set but QT6_INSTALL_QML already has the structure right
 #
 install(TARGETS
-    "${PROJECT_NAME}plugin"
-  EXPORT  ${PROJECT_NAME}Targets
+  "${PROJECT_NAME}plugin"
+  EXPORT ${PROJECT_NAME}Targets
   ARCHIVE
-    COMPONENT   devel
-    DESTINATION "${QT6_INSTALL_QML}/${FM_NS}/${PROJECT_NAME}"
+  COMPONENT devel
+  DESTINATION "${QT6_INSTALL_QML}/${FM_NS}/${PROJECT_NAME}"
   LIBRARY
-    COMPONENT   runtime
-    DESTINATION "${QT6_INSTALL_QML}/${FM_NS}/${PROJECT_NAME}"
+  COMPONENT runtime
+  DESTINATION "${QT6_INSTALL_QML}/${FM_NS}/${PROJECT_NAME}"
 )
 install(FILES
-    "${fm_qml_mod_qmldir}"
-    "${fm_qml_mod_typeinfo}"
+  "${fm_qml_mod_qmldir}"
+  "${fm_qml_mod_typeinfo}"
   DESTINATION "${QT6_INSTALL_QML}/${FM_NS}/${PROJECT_NAME}"
-  COMPONENT   runtime
+  COMPONENT runtime
 )
 
 # Auto create the *ConfigVersion.cmake file
 # requires including CMakePackageConfigHelpers
 write_basic_package_version_file(
   ${PROJECT_NAME}ConfigVersion.cmake
-  VERSION       ${PROJECT_VERSION}
+  VERSION ${PROJECT_VERSION}
   COMPATIBILITY AnyNewerVersion
 )
 
 # Install the handwritten *Targets.cmake file. Library can now be invoked during
 # linking as Lotconn::FileMan
-install(EXPORT  ${PROJECT_NAME}Targets
-  FILE        ${PROJECT_NAME}Targets.cmake
+install(EXPORT ${PROJECT_NAME}Targets
+  FILE ${PROJECT_NAME}Targets.cmake
   DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME}"
-  COMPONENT   devel
-  NAMESPACE   Lotconn::
+  COMPONENT devel
+  NAMESPACE Lotconn::
 )
 install(FILES
-    "${CMAKE_CURRENT_SOURCE_DIR}/${PROJECT_NAME}Config.cmake"
-    "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}ConfigVersion.cmake"
+  "${CMAKE_CURRENT_SOURCE_DIR}/${PROJECT_NAME}Config.cmake"
+  "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}ConfigVersion.cmake"
   DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME}"
-  COMPONENT   devel
+  COMPONENT devel
 )
 
 # Install the docs and licenses only if building as a root project
 if(CMAKE_SOURCE_DIR STREQUAL PROJECT_SOURCE_DIR)
   install(FILES
-  CHANGELOG.md
-  CONTRIBUTING.md
-  README.md
+    CHANGELOG.md
+    CONTRIBUTING.md
+    README.md
     TYPE DOC
     COMPONENT runtime
   )
   install(FILES
-      LICENSE
+    LICENSE
     DESTINATION "${CMAKE_INSTALL_DATADIR}/licenses/${FM_NS}/${PROJECT_NAME}"
-    COMPONENT   runtime
+    COMPONENT runtime
   )
 endif()
