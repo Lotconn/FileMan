@@ -618,12 +618,16 @@ FileMan::revLookupSymlink(const QDir &searchDir, const QString &targetPath) {
 
     const QFileInfo lnkFile(QDir(d->dataDir).filePath(lnkEntry));
     const QString lnkPath = lnkFile.absoluteFilePath();
+    logDebug << "targetPath:" << targetPath;
     // Implies existence _and_ symlink type (dangling or not)
     const bool lnkExists = lnkFile.isSymLink();
 
     if (lnkExists) {
       const QString lnkTarget =
           QDir::cleanPath(searchDir.absoluteFilePath(lnkFile.symLinkTarget()));
+      logDebug << "searchDir:" << searchDirPath;
+      logDebug << "lnkTarget:" << lnkFile.symLinkTarget();
+      logDebug << "lnkTarget (cleaned):" << lnkTarget;
 
       if (lnkTarget == QDir::cleanPath(targetPath))
         return {0, QDir::cleanPath(lnkFile.absoluteFilePath())};

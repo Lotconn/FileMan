@@ -279,9 +279,18 @@ add_file_t FileMan::addFile(const QUrl &fileUrl,
     }
   }
 
+#ifdef Q_OS_WIN
+  // .lnk shortcuts resolve relative targets against the app's CWD, not
+  // lnkDir; use an absolute target to avoid CWD-dependent resolution.
+  const QString &targetPath = hashPath;
+#else
+  const QString &targetPath = lnkDir.relativeFilePath(hashPath);
+#endif
+  logDebug << "Linking" << lnkPath << "to" << targetPath;
+
   // Symlink the unanimous hashed file as the supplied file name under
   // corresponding category
-  if (!QFile::link(lnkDir.relativeFilePath(hashPath), lnkPath)) {
+  if (!QFile::link(targetPath, lnkPath)) {
     logCritical << "Failed to symlink" << hashPath << "to" << lnkPath;
 
     return {EACCES, {}};

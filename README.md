@@ -75,7 +75,7 @@ int main(int argc, char *argv[]) {
   QCoreApplication::setApplicationName("myapp");
   FileMan fileman;
 
-  const QUrl file("file://home/user/Music/MyAudio.ogg");
+  const QUrl file("file:///home/user/Music/MyAudio.ogg");
   const add_file_t result = fileman.addFile(file, FileMan::Audio | FileMan::Video);
 
   if (result.status() != 0) {
@@ -198,10 +198,13 @@ concurrently from any number-of-threads but with a wait-interrupt cost.
 
 ### Reentrancy
 
-FileMan is not designed to be reentrant. It's defined to be a leaf class and
-therefore cannot be derived from or sub-classed. APIs therefore cannot be
-recursively called nor re-entered from the same thread before a previous call
-returns.
+FileMan is not designed to be reentrant. APIs therefore cannot be recursively
+called nor re-entered from the same thread before a previous call returns.
+
+FileMan shouldn't be sub-classed. Although it's not defined to be a leaf class,
+the QML singleton registration mechanism is Qt-internal and the class remains a
+leaf type with respect to its public API. Consumers are therefore strongly
+advised against it.
 
 ### Stability
 

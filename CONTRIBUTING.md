@@ -28,20 +28,19 @@ approached for development builds.
 
 ## Building
 
-The
-[repository registry](https://quay.io/repository/lotconn/fileman/builder?tab=tags)
+The [repository registry](https://ghcr.io/lotconn/fileman/builder?tab=tags)
 hosts builder images for development tasks tailored for FileMan.
 
 First, from project root, create a container with the builder image and enter :
 
 ```bash
-podman run --rm -it -v $(pwd):/src:z quay.io/lotconn/fileman/builder:latest
+podman run --rm -it -v $(pwd):/src:z ghcr.io/lotconn/fileman/builder:latest
 ```
 
 If using docker:
 
 ```bash
-docker run --rm -it -v $(pwd):/src:z,shared quay.io/lotconn/fileman/builder:latest
+docker run --rm -it -v $(pwd):/src:z,shared ghcr.io/lotconn/fileman/builder:latest
 ```
 
 <details><summary>Further developer notes: Click to expand</summary>

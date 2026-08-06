@@ -6,10 +6,18 @@
 #include <QSharedDataPointer>
 #include <memory>
 
+#if defined(FM_STATIC_LIB)
+#define FM_SYM_ATTR
+#elif defined(FM_LIB_BUILD)
+#define FM_SYM_ATTR Q_DECL_EXPORT
+#else
+#define FM_SYM_ATTR Q_DECL_IMPORT
+#endif
+
 class AddFileType;
 class RmFileType;
 
-struct alignas(8) add_file_t final {
+struct alignas(8) add_file_t {
   Q_GADGET
   Q_PROPERTY(int status READ status CONSTANT)
   Q_PROPERTY(QUrl location READ location CONSTANT)
@@ -34,7 +42,7 @@ private:
   QExplicitlySharedDataPointer<AddFileType> d;
 };
 
-struct alignas(8) rm_file_t final {
+struct alignas(8) rm_file_t {
   Q_GADGET
   Q_PROPERTY(int status_l READ status_l CONSTANT)
   Q_PROPERTY(int status_h READ status_h CONSTANT)
@@ -59,7 +67,7 @@ private:
   QExplicitlySharedDataPointer<RmFileType> d;
 };
 
-class FileMan final : public QObject {
+class FM_SYM_ATTR FileMan : public QObject {
   Q_OBJECT
   Q_CLASSINFO("RegisterEnumClassesUnscoped", "false")
   QML_ELEMENT
@@ -118,7 +126,7 @@ public:
   Q_INVOKABLE rm_file_t rmFile(const QUrl &fileUrl);
 
 private:
-  Q_DISABLE_COPY_MOVE_X(FileMan, "FileMan is a singleton class")
+  Q_DISABLE_COPY_MOVE(FileMan)
   class Private;
 
   //////////////////////////////////////////////////////////////////////////////

@@ -82,6 +82,8 @@ int FileMan::refreshStore() {
       }
 
       if (result.hashEntry.isEmpty()) {
+        logDebug << "Removing" << file << "from" << catInfo.location;
+
         if (!categoryDir.remove(file))
           logWarning << "Couldn't remove" << file;
 
@@ -125,7 +127,9 @@ int FileMan::refreshStore() {
   int e = 0;
 
   for (const QString &hash : contents)
-    if (!d->hashToLinkDict.contains(hash))
+    if (!d->hashToLinkDict.contains(hash)) {
+      logDebug << "Removing" << hash << "from" << d->hashDir;
+
       if (!hashDir.remove(hash)) {
         logWarning << "Couldn't remove" << hash;
 
@@ -134,6 +138,7 @@ int FileMan::refreshStore() {
 
         continue;
       }
+    }
 
   //----------------------------------------------------------------------------
 
