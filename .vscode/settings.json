@@ -35,6 +35,7 @@
         "editor.defaultFormatter": "theqtcompany.qt-qml"
     },
     "cmake.automaticReconfigure": false,
+    "cmake.configureOnOpen": false,
     "cmake.configureArgs": [
         "-DFM_BUILD_EXAMPLES=ON"
     ],
