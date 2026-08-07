@@ -143,9 +143,6 @@ set_target_properties(${PROJECT_NAME}
   VERSION ${PROJECT_VERSION}
   SOVERSION ${PROJECT_VERSION_MAJOR}
 )
-set_target_properties(${PROJECT_NAME} ${PROJECT_NAME}plugin
-  PROPERTIES WINDOWS_EXPORT_ALL_SYMBOLS ON
-)
 
 check_ipo_supported(RESULT result OUTPUT output)
 if(result)
@@ -201,9 +198,11 @@ target_compile_options(${PROJECT_NAME} PRIVATE
   -O1
   >>
   $<$<OR:$<CXX_COMPILER_ID:MSVC>,$<CXX_COMPILER_FRONTEND_VARIANT:MSVC>>:
+  /EHsc
+  /GS
+  /Oy-
   /W3
   /guard:cf
-  /EHsc
   >
 )
 target_compile_options(${PROJECT_NAME}plugin PRIVATE
@@ -224,9 +223,11 @@ target_compile_options(${PROJECT_NAME}plugin PRIVATE
   -O1
   >>
   $<$<OR:$<CXX_COMPILER_ID:MSVC>,$<CXX_COMPILER_FRONTEND_VARIANT:MSVC>>:
+  /EHsc
+  /GS
+  /Oy-
   /W3
   /guard:cf
-  /EHsc
   >
 )
 
@@ -262,7 +263,6 @@ target_link_options(${PROJECT_NAME} PRIVATE
   # MSVC / clang-cl linker hardening
   $<$<OR:$<CXX_COMPILER_ID:MSVC>,$<CXX_COMPILER_FRONTEND_VARIANT:MSVC>>:
   /guard:cf
-  /NXCOMPAT
   >
 )
 target_link_options(${PROJECT_NAME}plugin PRIVATE
@@ -276,7 +276,6 @@ target_link_options(${PROJECT_NAME}plugin PRIVATE
   # MSVC / clang-cl linker hardening
   $<$<OR:$<CXX_COMPILER_ID:MSVC>,$<CXX_COMPILER_FRONTEND_VARIANT:MSVC>>:
   /guard:cf
-  /NXCOMPAT
   >
 )
 

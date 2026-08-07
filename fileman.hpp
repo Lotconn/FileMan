@@ -17,7 +17,7 @@
 class AddFileType;
 class RmFileType;
 
-struct alignas(8) add_file_t {
+struct alignas(8) FM_SYM_ATTR add_file_t {
   Q_GADGET
   Q_PROPERTY(int status READ status CONSTANT)
   Q_PROPERTY(QUrl location READ location CONSTANT)
@@ -42,7 +42,7 @@ private:
   QExplicitlySharedDataPointer<AddFileType> d;
 };
 
-struct alignas(8) rm_file_t {
+struct alignas(8) FM_SYM_ATTR rm_file_t {
   Q_GADGET
   Q_PROPERTY(int status_l READ status_l CONSTANT)
   Q_PROPERTY(int status_h READ status_h CONSTANT)
