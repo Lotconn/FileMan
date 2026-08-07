@@ -20,7 +20,7 @@ int FileMan::refreshStore() {
   if (retval != 0 && retval != EAGAIN)
     return retval;
 
-  const QFileInfo dataDir(d->dataDir);
+  const QFileInfo dataDir(this->d->dataDir);
 
   //----------------------------------------------------------------------------
 
@@ -44,7 +44,8 @@ int FileMan::refreshStore() {
 
   //  Store state caching & pruning ////////////////////////////////////////////
 
-  for (const auto &[category, catInfo] : d->categoryList.asKeyValueRange()) {
+  for (const auto &[category, catInfo] :
+       this->d->categoryList.asKeyValueRange()) {
 
     // Since we can return only an int, we return the value of worst error that
     // occured during `refreshStore()`'s lifetime. Use
@@ -73,9 +74,7 @@ int FileMan::refreshStore() {
       const pre_rm_validate_t result = preRmValidate(filePath, true);
 
       if (result.lnkEntry.isEmpty()) {
-        if (result.status == ENOENT)
-          logWarning << file << "is not available in store";
-        else
+        if (result.status != ENOENT)
           logCritical << "Couldn't operate successfully.";
 
         continue;
@@ -96,13 +95,13 @@ int FileMan::refreshStore() {
 
   this->dumpAllEntries();
 
-  const bool hasValidEntries = !isDictEmpty(d->hashToLinkDict);
+  const bool hasValidEntries = !isDictEmpty(this->d->hashToLinkDict);
 
   // Compact the dictionary after finished building, if anything was found
   if (hasValidEntries)
     this->squeezeDicts();
 
-  QDir hashDir(d->hashDir);
+  QDir hashDir(this->d->hashDir);
 
   const QStringList contents =
       hashDir.entryList(QDir::AllEntries | QDir::System | QDir::NoDotAndDotDot);
@@ -112,14 +111,14 @@ int FileMan::refreshStore() {
       // Genuinely nothing in the "common" store; our job here is done
       logInfo << "Common store doesn't have any valid contents";
 
-      d->storeManaged = true;
+      this->d->storeManaged = true;
 
       return 0;
     }
 
     // hashToLinkDict has entries but hashDir enlists empty: certain failure,
     // not a legitimately empty store
-    logWarning << "Couldn't enlist" << d->hashDir;
+    logWarning << "Couldn't enlist" << this->d->hashDir;
 
     return EACCES;
   }
@@ -127,8 +126,8 @@ int FileMan::refreshStore() {
   int e = 0;
 
   for (const QString &hash : contents)
-    if (!d->hashToLinkDict.contains(hash)) {
-      logDebug << "Removing" << hash << "from" << d->hashDir;
+    if (!this->d->hashToLinkDict.contains(hash)) {
+      logDebug << "Removing" << hash << "from" << this->d->hashDir;
 
       if (!hashDir.remove(hash)) {
         logWarning << "Couldn't remove" << hash;
@@ -144,7 +143,7 @@ int FileMan::refreshStore() {
 
   //  Finalizing ///////////////////////////////////////////////////////////////
 
-  d->storeManaged = true;
+  this->d->storeManaged = true;
 
   logInfo << "Housekeeping done on store";
 

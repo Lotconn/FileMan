@@ -15,7 +15,7 @@
 add_file_t FileMan::addFile(const QUrl &fileUrl,
                             const FileMan::Categories categories) {
 
-  const bool trustStore = d->storeManaged;
+  const bool trustStore = this->d->storeManaged;
 
   // Store validation first; trust if managed already //////////////////////////
 
@@ -103,7 +103,7 @@ add_file_t FileMan::addFile(const QUrl &fileUrl,
   //  Category selection & store operations ////////////////////////////////////
 
   FileMan::Category catSelected = lowestSetFlag(categories & result.categories);
-  const QString categoryName = d->categoryList.value(catSelected).name;
+  const QString categoryName = this->d->categoryList.value(catSelected).name;
 
   logDebug << "Selected category:" << categoryName;
 
@@ -123,7 +123,7 @@ add_file_t FileMan::addFile(const QUrl &fileUrl,
   //
 
   // Raw data files/blobs reside as dataDir/common/<hash>
-  const QDir hashDir(d->hashDir);
+  const QDir hashDir(this->d->hashDir);
 
   const QString tmpFileName =
       ".fileman-"_L1 + QUuid::createUuid().toString(QUuid::Id128) + ".part"_L1;
@@ -159,7 +159,7 @@ add_file_t FileMan::addFile(const QUrl &fileUrl,
 
   const QString &hash = stage_result.hash;
   const QString &hashPath = hashDir.absoluteFilePath(hash);
-  const QDir &lnkDir(d->categoryList.value(catSelected).location);
+  const QDir &lnkDir(this->d->categoryList.value(catSelected).location);
 
   QString lnkFileName = srcFileName;
 #ifdef Q_OS_WIN

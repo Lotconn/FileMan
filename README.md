@@ -11,12 +11,15 @@ for Qt/QML applications.
 
 ## FileMan Class
 
-| Use case | Integration                                                                                                                                                                                                                                                         |
-| -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Header:  | `#include <Lotconn/FileMan/fileman>`                                                                                                                                                                                                                                |
-| CMake:   | `find_package(FileMan REQUIRED)`<br>`target_link_libraries(mytarget PRIVATE Lotconn::FileMan)`<br>`target_link_libraries(mytarget PRIVATE Lotconn::FileManplugin)` \[static building\]<br>`qt_add_qml_module(mytarget DEPENDENCIES Lotconn.FileMan)` \[QML module\] |
-| QML:     | `import Lotconn.FileMan`                                                                                                                                                                                                                                            |
-| CPP:     | `#include <QtQml/QQmlExtensionPlugin>`<br>`Q_IMPORT_QML_PLUGIN(Lotconn_FileManPlugin)` \[static building\]                                                                                                                                                          |
+| Component      | Context      | Code / Configuration                                                                   |
+| :------------- | :----------- | :------------------------------------------------------------------------------------- |
+| **Header**     | C++          | `#include <Lotconn/FileMan/fileman>`                                                   |
+| **CMake**      | Setup        | `find_package(FileMan REQUIRED)`                                                       |
+|                | Linking      | `target_link_libraries(mytarget PRIVATE Lotconn::FileMan)`                             |
+|                | Static Build | `target_link_libraries(mytarget PRIVATE Lotconn::FileManplugin)`                       |
+|                | QML Module   | `qt_add_qml_module(mytarget DEPENDENCIES Lotconn.FileMan)`                             |
+| **QML Module** | QML          | `import Lotconn.FileMan`                                                               |
+|                | C++ Plugin   | `#include <QtQml/QQmlExtensionPlugin>`<br>`Q_IMPORT_QML_PLUGIN(Lotconn_FileManPlugin)` |
 
 ### Public Types
 
@@ -30,39 +33,42 @@ for Qt/QML applications.
 
 ### Public Functions
 
-|                                                     Return type | Function                                                                                                                                      |
-| --------------------------------------------------------------: | :-------------------------------------------------------------------------------------------------------------------------------------------- |
-|                                                                 | [FileMan()](#fileman-constructor)                                                                                                             |
-|                                                                 | [~FileMan()](#fileman-destructor)                                                                                                             |
-|                                    [add_file_t](#add-file-type) | [addFile](#addfile)(_const_ [QUrl](https://doc.qt.io/qt-6/qurl.html) &fileUrl, [FileMan::Categories](#category-enum) category = FileMan::All) |
-| [QString](https://doc.qt.io/qt-6/qstring.html)<br>[[nodiscard]] | [categoryToString](#categorytostring)([FileMan::Category](#category-enum) category) _const_                                                   |
-| [QString](https://doc.qt.io/qt-6/qstring.html)<br>[[nodiscard]] | [getCategoryDir](#getcategorydir)([FileMan::Category](#category-enum) category) _const_                                                       |
-| [QString](https://doc.qt.io/qt-6/qstring.html)<br>[[nodiscard]] | [getDataDir](#getdatadir)() _const_                                                                                                           |
-|                  [QString](https://doc.qt.io/qt-6/qstring.html) | [getFileName](#getfilename)(_const_ [QUrl](https://doc.qt.io/qt-6/qurl.html) &fileUrl)                                                        |
-|                                                             int | [refreshStore()](#refreshStore)                                                                                                               |
-|                                      [rm_file_t](#rm-file-type) | [rmFile](#rmfile)([QUrl](https://doc.qt.io/qt-6/qurl.html) fileUrl)                                                                           |
+|                           Return type | Function                                                                                                          |
+| ------------------------------------: | :---------------------------------------------------------------------------------------------------------------- |
+|                                       | [FileMan()](#fileman-constructor)                                                                                 |
+|                                       | [~FileMan()](#fileman-destructor)                                                                                 |
+|          [add_file_t](#add-file-type) | [addFile](#addfile)(_const_ [QUrl](qurl) &fileUrl, [FileMan::Categories](#category-enum) category = FileMan::All) |
+| [QString](qstring)<br>`[[nodiscard]]` | [categoryToString](#categorytostring)([FileMan::Category](#category-enum) category) _const_                       |
+| [QString](qstring)<br>`[[nodiscard]]` | [getCategoryDir](#getcategorydir)([FileMan::Category](#category-enum) category) _const_                           |
+| [QString](qstring)<br>`[[nodiscard]]` | [getDataDir](#getdatadir)() _const_                                                                               |
+|                    [QString](qstring) | [getFileName](#getfilename)(_const_ [QUrl](qurl) &fileUrl)                                                        |
+|                                   int | [refreshStore()](#refreshstore)                                                                                   |
+|            [rm_file_t](#rm-file-type) | [rmFile](#rmfile)([QUrl](qurl) fileUrl)                                                                           |
 
 ### Static Public Members
 
-|                                    Return type | Function                                                                             |
-| ---------------------------------------------: | :----------------------------------------------------------------------------------- |
-|                                        FileMan | &FileMan::[instance()](#fileman-instance)                                            |
-| [QString](https://doc.qt.io/qt-6/qstring.html) | [getFileName](#getfilename)(const [QUrl](https://doc.qt.io/qt-6/qurl.html) &fileUrl) |
+|        Return type | Function                                                 |
+| -----------------: | :------------------------------------------------------- |
+|            FileMan | &FileMan::[instance()](#fileman-instance)                |
+| [QString](qstring) | [getFileName](#getfilename)(const [QUrl](qurl) &fileUrl) |
 
 ---
 
 ## Detailed Description
 
 FileMan is a file manager backend for managing the application store. It creates
-and manages the store under `<AppLocalDataLocation>` which on Unix expands as
+and manages a _content-addressable_ store under `<AppLocalDataLocation>`
+matching the MIME type of the file against the specified
+[category](#category-enum). `<AppLocalDataLocation>` on Unix expands as
 `$XDG_DATA_HOME/<APPNAME>/` or `~/.local/share/<APPNAME>`, and
 `C:/Users/<USER>/AppData/Local/<APPNAME>`, `<APPDIR>`, `<APPDIR>/data` or
 `<APPDIR>/data/<APPNAME>` on Windows (`<APPDIR>` is the directory containing the
-application executable). FileMan matches the MIME type of the file against the
-specified [category](#category-enum) during adding, cryptographically hashes it
-(currently using SHA256) and stores the raw "blob" with the digest name under
-`<AppLocalDataLocation>/common`. A symlink to this blob is placed under a folder
-matching the category with the file name retained. For example:
+application executable). During adding, the file is cryptographically hashed
+(currently using SHA256) to uniquely identify it. The raw file data (the "blob")
+is stored in a central `<AppLocalDataLocation>/common` folder, named exactly
+after this hash digest. Then, a relative _symbolic link_ (symlink) is created in
+the specific category folder (e.g., `audio/`), retaining the original,
+human-readable filename but pointing to the hashed blob. For example:
 
 ```cpp
 //  MIT License : Lotconn 2026
@@ -90,25 +96,28 @@ int main(int argc, char *argv[]) {
 }
 ```
 
-outputs:
+On a Linux system, assuming the file matches the `audio/ogg` MIME type and
+yields the shown SHA256 digest, the on-disk structure will look like this:
+
+```sh
+~/.local/share/myapp/
+    |-- common/
+    |   `-- 64988b348af3acf583d57260b44528f85da378b4dbcf4e55d36f9fac420a0ccd
+    `-- audio/
+        `-- MyAudio.ogg -> ../common/64988b348af3acf583d57260b44528f85da378b4dbcf4e55d36f9fac420a0ccd
+```
+
+The program output will be:
 
 ```sh
 $ ./myapp
 Saved location: file:///home/user/.local/share/myapp/audio/MyAudio.ogg
 ```
 
-On a linux distribution, the audio file named `MyAudio.ogg` matching `audio/ogg`
-MIME type having the SHA256 digest
-`64988b348af3acf583d57260b44528f85da378b4dbcf4e55d36f9fac420a0ccd` will be
-stored as:
-
-```sh
-~/.local/share/<APPNAME>/
-    ├── common/
-    │   └── 64988b348af3acf583d57260b44528f85da378b4dbcf4e55d36f9fac420a0ccd
-    └── audio/
-        └── MyAudio.ogg -> ../common/64988b348af3acf583d57260b44528f85da378b4dbcf4e55d36f9fac420a0ccd
-```
+This returned URL is what the implementing application uses to process the file.
+Keen observers will notice that the last two components of this URL directly
+identify the file's category and name within the store, resembling the _RESTful
+member-type_ convention.
 
 ### Performance, Security & Reliability
 
@@ -270,10 +279,9 @@ specify multiple categories.
 
 These map the common API errno return enums to _FileMan_ scoped enums. Useful
 for referring to return values from FileMan's APIs within QML or namespaces
-having limited access to
-[_cerrno_](https://en.cppreference.com/cpp/header/cerrno). Note, some non-POSIX
-platforms may not support few errno values (e.g. Windows). Developers are
-discouraged from using raw errno values as they may vary depending on platforms.
+having limited access to [_cerrno_](errno). Note, some non-POSIX platforms may
+not support few errno values (e.g. Windows). Developers are discouraged from
+using raw errno values as they may vary depending on platforms.
 
 | Constant                    | Value              | Description                       |
 | :-------------------------- | :----------------- | :-------------------------------- |
@@ -317,7 +325,7 @@ Destroys the _FileMan_ singleton instance.
 <div><a id="addfile"></a></div>
 <div><a name="addfile"></a></div>
 
-#### [add_file_t](#add-file-type) FileMan::addFile(_const_ [QUrl](https://doc.qt.io/qt-6/qurl.html) _&fileUrl_, [FileMan::Categories](#category-enum) _category_ = FileMan::All)
+#### [add_file_t](#add-file-type) FileMan::addFile(_const_ [QUrl](qurl) _&fileUrl_, [FileMan::Categories](#category-enum) _category_ = FileMan::All)
 
 Adds the file from _fileUrl_ to the store with an optional _category_ specified.
 The URL must follow local file specifiers: `file:///path/to/myfile.img` for
@@ -329,10 +337,9 @@ absolute or `file:myfile.img` for relative path to `myfile.img`. Returns a
 | `status()` (int)    | 0/`errno`                                |
 | `location()` (QUrl) | `<fully_qualified_url_to_symlink>`/empty |
 
-Failed returns follow [`errno`](https://en.cppreference.com/cpp/header/cerrno)
-values. On success (`status() == 0`), a path to the symlink in store is
-returned. For the example above, `location()` holds
-`file:///home/user/.local/share/<APPNAME>/audio/MyAudio.ogg`. Unsuccessful
+Failed returns follow [`errno`](errno) values. On success (`status() == 0`), a
+path to the symlink in store is returned. For the example above, `location()`
+holds `file:///home/user/.local/share/<APPNAME>/audio/MyAudio.ogg`. Unsuccessful
 operations return corresponding non-zero `errno` value for `status()` and an
 empty URL for `location()`.
 
@@ -401,32 +408,32 @@ int main(int argc, char *argv[])
 <div><a id="categorytostring"></a></div>
 <div><a name="categorytostring"></a></div>
 
-#### _[[nodiscard]]_ [QString](https://doc.qt.io/qt-6/qstring.html) FileMan::categoryToString([FileMan::Category](#category-enum) category) _const_
+#### _[[nodiscard]]_ [QString](qstring) FileMan::categoryToString([FileMan::Category](#category-enum) category) _const_
 
-Returns a [QString](https://doc.qt.io/qt-6/qstring.html) containing the name of
-_category_. `FileMan::All` is a composite _flag_ and therefore not supported.
+Returns a [QString](qstring) containing the name of _category_. `FileMan::All`
+is a composite _flag_ and therefore not supported.
 
 <div><a id="getcategorydir"></a></div>
 <div><a name="getcategorydir"></a></div>
 
-#### _[[nodiscard]]_ [QString](https://doc.qt.io/qt-6/qstring.html) FileMan::getCategoryDir([FileMan::Category](#category-enum) category) _const_
+#### _[[nodiscard]]_ [QString](qstring) FileMan::getCategoryDir([FileMan::Category](#category-enum) category) _const_
 
-Returns a [QString](https://doc.qt.io/qt-6/qstring.html) containing the absolute
-directory of _category_ items in store. `FileMan::All` is a composite _flag_ and
-therefore not supported. Empty on invalid category.
+Returns a [QString](qstring) containing the absolute directory of _category_
+items in store. `FileMan::All` is a composite _flag_ and therefore not
+supported. Empty on invalid category.
 
 <div><a id="getdatadir"></a></div>
 <div><a name="getdatadir"></a></div>
 
-#### _[[nodiscard]]_ [QString](https://doc.qt.io/qt-6/qstring.html) FileMan::getDataDir() _const_
+#### _[[nodiscard]]_ [QString](qstring) FileMan::getDataDir() _const_
 
-Returns a [QString](https://doc.qt.io/qt-6/qstring.html) containing the absolute
-directory of `<AppLocalDataLocation>`. String is never empty.
+Returns a [QString](qstring) containing the absolute directory of
+`<AppLocalDataLocation>`. String is never empty.
 
 <div><a id="getfilename"></a></div>
 <div><a name="getfilename"></a></div>
 
-#### [QString](https://doc.qt.io/qt-6/qstring.html) FileMan::getFileName(_const_ [QUrl](https://doc.qt.io/qt-6/qurl.html) &fileURL)
+#### [QString](qstring) FileMan::getFileName(_const_ [QUrl](qurl) &fileURL)
 
 Extracts and returns the filename component from _fileUrl_. Returns an empty
 string if _fileURL_ ends with a trailing `/` or if resolution fails for any
@@ -496,7 +503,7 @@ success, `errno` on failure.
 <div><a id="rmfile"></a></div>
 <div><a name="rmfile"></a></div>
 
-#### [rm_file_t](#rm-file-type) FileMan::rmFile(_const_ [QUrl](https://doc.qt.io/qt-6/qurl.html) &fileUrl)
+#### [rm_file_t](#rm-file-type) FileMan::rmFile(_const_ [QUrl](qurl) &fileUrl)
 
 Removes the file _fileUrl_ from the application store. _fileUrl_ must be a
 fully-qualified local URL referring to a file in store. Removes both the
@@ -509,11 +516,11 @@ struct:
 | `status_h()` (int) | 0/-1/`errno` |
 
 _fileUrl_ validations are always performed before its backing blob. Failed
-returns follow [`errno`](https://en.cppreference.com/cpp/header/cerrno) values.
-`status_l()` is non-zero if _fileUrl_ doesn't exist, is not a symlink, points to
-an invalid location or when failed to remove. `status_h()` is `-1` if `rmFile()`
-fails early before backing blob checks and non-zero positive if the backing
-hashed blob doesn't exist or failed to remove.
+returns follow [`errno`](errno) values. `status_l()` is non-zero if _fileUrl_
+doesn't exist, is not a symlink, points to an invalid location or when failed to
+remove. `status_h()` is `-1` if `rmFile()` fails early before backing blob
+checks and non-zero positive if the backing hashed blob doesn't exist or failed
+to remove.
 
 rmFile() follows RESTful API convention; it will remove valid symlink files that
 _fileUrl_ refers to within the categorized directories provided it exists but
@@ -747,3 +754,8 @@ This project is licensed under MIT, copyright Lotconn, 2026.
 [^1]:
     For full reference on `qt_add_qml_module()`:
     <https://doc.qt.io/qt-6/qt-add-qml-module.html>
+
+[errno]: https://en.cppreference.com/cpp/header/cerrno
+[qurl]: https://doc.qt.io/qt-6/qurl.html
+[qstring]: https://doc.qt.io/qt-6/qstring.html
+[qmimedb]: https://doc.qt.io/qt-6/qstring.html

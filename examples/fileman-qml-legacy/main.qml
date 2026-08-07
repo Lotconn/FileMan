@@ -108,7 +108,7 @@ ApplicationWindow {
                 const result = fileman.addFile(fileUrl, category);
 
                 if (result.status !== 0) {
-                    console.warn("Fileman::addFile() failed with error:", result.error);
+                    console.warn("Fileman::addFile() failed with error:", result.status);
                     continue;
                 }
 

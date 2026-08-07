@@ -34,8 +34,8 @@ int dirHealth(const QString &dirPath) {
   }
 
   // dirPath being a symlink is not allowed
-  if (dir.isSymLink()) {
-    logCritical << dirPath << "is a symlink";
+  if (dir.isSymLink() || !dir.isDir()) {
+    logCritical << dirPath << "is not a directory";
 
     return ECANCELED;
   }

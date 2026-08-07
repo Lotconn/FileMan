@@ -10,7 +10,7 @@
 //
 rm_file_t FileMan::rmFile(const QUrl &fileUrl) {
 
-  const bool trustStore = d->storeManaged;
+  const bool trustStore = this->d->storeManaged;
 
   // Store validation first; trust if managed already //////////////////////////
 
@@ -70,7 +70,7 @@ rm_file_t FileMan::rmFile(const QUrl &fileUrl) {
 
   int status_l = 0;
   int status_h = 0;
-  QDir hashDir(d->hashDir);
+  QDir hashDir(this->d->hashDir);
   QDir lnkDir = lnkFile.dir();
 
   bool removeHash = true;

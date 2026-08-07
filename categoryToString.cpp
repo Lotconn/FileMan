@@ -6,8 +6,8 @@
 //
 QString FileMan::categoryToString(const FileMan::Category category) const {
 
-  if (!d->categoryList.contains(category))
+  if (!this->d->categoryList.contains(category))
     return {};
 
-  return d->categoryList.value(category).name;
+  return this->d->categoryList.value(category).name;
 }

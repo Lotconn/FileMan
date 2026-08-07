@@ -57,12 +57,12 @@ FileMan::FileMan(QObject *parent)
     qFatal("FileMan: QCoreApplication::applicationName() is empty. "
            "FileMan cannot safely isolate its data store. Aborting");
 
-  d->dataDir = resolveDataDir();
-  d->hashDir = createPathComp(d->dataDir, "common"_L1);
-  d->categoryDirs = Private::createCategoryDirList(d->dataDir);
-  d->categoryList = Private::createCategoryList(d->dataDir);
-  d->storeLock = std::make_unique<QLockFile>(
-      QDir(d->dataDir).absoluteFilePath(".fileman.lock"_L1));
+  this->d->dataDir = resolveDataDir();
+  this->d->hashDir = createPathComp(this->d->dataDir, "common"_L1);
+  this->d->categoryDirs = Private::createCategoryDirList(this->d->dataDir);
+  this->d->categoryList = Private::createCategoryList(this->d->dataDir);
+  this->d->storeLock = std::make_unique<QLockFile>(
+      QDir(this->d->dataDir).absoluteFilePath(".fileman.lock"_L1));
 
   FileMan::s_singletonInstance = this;
 }
@@ -85,13 +85,13 @@ rm_file_t::rm_file_t() : d(new RmFileType) {}
 
 // Constructors having references to members
 add_file_t::add_file_t(int status, const QUrl &location) : d(new AddFileType) {
-  d->status = status;
-  d->location = location;
+  this->d->status = status;
+  this->d->location = location;
 }
 
 rm_file_t::rm_file_t(int status_l, int status_h) : d(new RmFileType) {
-  d->status_l = status_l;
-  d->status_h = status_h;
+  this->d->status_l = status_l;
+  this->d->status_h = status_h;
 }
 
 // Copy/Move constructors
@@ -110,11 +110,11 @@ add_file_t::~add_file_t() = default;
 rm_file_t::~rm_file_t() = default;
 
 // Accesors
-int add_file_t::status() const { return d->status; }
-QUrl add_file_t::location() const { return d->location; }
+int add_file_t::status() const { return this->d->status; }
+QUrl add_file_t::location() const { return this->d->location; }
 
-int rm_file_t::status_h() const { return d->status_h; }
-int rm_file_t::status_l() const { return d->status_l; }
+int rm_file_t::status_h() const { return this->d->status_h; }
+int rm_file_t::status_l() const { return this->d->status_l; }
 
 ////////////////////////////////////////////////////////////////////////////////
 //  Private definitions
@@ -130,14 +130,14 @@ int FileMan::acquireStoreLock() {
   constexpr qint32 lockLifetime = 40000; // 40 sec
   constexpr qint32 waitDuration = 5000;  // 5 sec
 
-  d->storeMutex.lock();
+  this->d->storeMutex.lock();
 
-  d->storeLock->setStaleLockTime(lockLifetime);
+  this->d->storeLock->setStaleLockTime(lockLifetime);
 
-  if (!d->storeLock->tryLock(waitDuration)) {
+  if (!this->d->storeLock->tryLock(waitDuration)) {
     int e = EIO;
 
-    switch (d->storeLock->error()) {
+    switch (this->d->storeLock->error()) {
     case QLockFile::LockFailedError:
       logCritical << "Store busy, could not acquire lock";
       e = EBUSY;
@@ -151,7 +151,7 @@ int FileMan::acquireStoreLock() {
       break;
     }
 
-    d->storeMutex.unlock();
+    this->d->storeMutex.unlock();
 
     return e;
   }
@@ -163,10 +163,10 @@ int FileMan::acquireStoreLock() {
 // Clears all entries in the dictionaries.
 //
 void FileMan::clearAllEntries() {
-  const QWriteLocker locker(&d->dictLock);
+  const QWriteLocker locker(&this->d->dictLock);
 
-  d->hashToLinkDict.clear();
-  d->linkToHashDict.clear();
+  this->d->hashToLinkDict.clear();
+  this->d->linkToHashDict.clear();
 }
 
 //
@@ -182,16 +182,16 @@ QString FileMan::createPathComp(const QString &comp1, const QString &comp2) {
 // Dumps all entries in both the dictionaries.
 //
 void FileMan::dumpAllEntries() {
-  const QReadLocker locker(&d->dictLock);
+  const QReadLocker locker(&this->d->dictLock);
 
   logDebug << "hashToLinkDict:";
   for (const auto &[key, value] :
-       std::as_const(d->hashToLinkDict).asKeyValueRange())
+       std::as_const(this->d->hashToLinkDict).asKeyValueRange())
     logDebug << qPrintable(key) << ": " << value;
 
   logDebug << "linkToHashDict:";
   for (const auto &[key, value] :
-       std::as_const(d->linkToHashDict).asKeyValueRange())
+       std::as_const(this->d->linkToHashDict).asKeyValueRange())
     logDebug << qPrintable(key) << ": " << value;
 }
 
@@ -208,6 +208,11 @@ bool FileMan::fixDirHealth(const QString &dir, int error,
 
     return false;
   }
+
+#ifdef Q_OS_WIN
+  // Enables permission operations on NTFS on Windows within this scope
+  QNtfsPermissionCheckGuard permissionGuard;
+#endif
 
   if (error == EPERM) {
     // Attempt to fix permissions
@@ -226,9 +231,9 @@ bool FileMan::fixDirHealth(const QString &dir, int error,
   }
 
   if (error == ECANCELED) {
-    const QString dirName = QDir(dir).dirName();
-
-    if (!QDir(dir).remove(dirName)) {
+    // QDir(dir).remove() would require extracting parent dir and leaf dir
+    // names. QFile::remove() is simpler
+    if (!QFile::remove(dir)) {
       logCritical << "Critical error on store, can't continue";
       logDebug << "Error branch [" << dir << "]:" << error;
 
@@ -266,7 +271,7 @@ bool FileMan::fixDirHealth(const QString &dir, int error,
 // false if not
 //
 bool FileMan::isDictEmpty(const QHash<QString, QString> &dict) {
-  const QReadLocker locker(&d->dictLock);
+  const QReadLocker locker(&this->d->dictLock);
 
   return dict.isEmpty();
 }
@@ -277,9 +282,9 @@ bool FileMan::isDictEmpty(const QHash<QString, QString> &dict) {
 //
 QString FileMan::lookupHashByLink(const QString &lnkEntry) {
 
-  const QReadLocker locker(&d->dictLock);
+  const QReadLocker locker(&this->d->dictLock);
 
-  return d->linkToHashDict.value(lnkEntry, {});
+  return this->d->linkToHashDict.value(lnkEntry, {});
 }
 
 //
@@ -288,9 +293,9 @@ QString FileMan::lookupHashByLink(const QString &lnkEntry) {
 //
 QString FileMan::lookupLinkByHash(const QString &hash) {
 
-  const QReadLocker locker(&d->dictLock);
+  const QReadLocker locker(&this->d->dictLock);
 
-  return d->hashToLinkDict.value(hash, {});
+  return this->d->hashToLinkDict.value(hash, {});
 }
 
 //
@@ -299,8 +304,8 @@ QString FileMan::lookupLinkByHash(const QString &hash) {
 //
 bool FileMan::mkDataDir() {
 
-  if (!QDir().mkpath(d->hashDir)) {
-    logCritical << "Failed to create" << d->hashDir;
+  if (!QDir().mkpath(this->d->hashDir)) {
+    logCritical << "Failed to create" << this->d->hashDir;
 
     return false;
   }
@@ -315,7 +320,8 @@ bool FileMan::mkDataDir() {
 //
 bool FileMan::mkDataDir(FileMan::Category category) {
 
-  const QString &categoryDirPath(d->categoryList.value(category).location);
+  const QString &categoryDirPath(
+      this->d->categoryList.value(category).location);
 
   if (!QDir().mkpath(categoryDirPath)) {
     logCritical << "Failed to create" << categoryDirPath;
@@ -388,7 +394,7 @@ FileMan::pre_add_validate_t FileMan::preAddValidate(const QFileInfo &file) {
 
   FileMan::Categories categories = FileMan::None;
 
-  for (const auto &[cat, catInfo] : d->categoryList.asKeyValueRange())
+  for (const auto &[cat, catInfo] : this->d->categoryList.asKeyValueRange())
     if (mime.startsWith(catInfo.name + '/'_L1) ||
         (catInfo.name == "video"_L1 && mime.contains("/x-matroska"_L1)))
       categories |= cat;
@@ -428,7 +434,7 @@ FileMan::pre_rm_validate_t FileMan::preRmValidate(const QString &lnkPath,
     return {EINVAL, {}, {}};
   }
 
-  const QString categoryDirPath = d->categoryDirs.value(lnkDirName, {});
+  const QString categoryDirPath = this->d->categoryDirs.value(lnkDirName, {});
   const QDir categoryDir(categoryDirPath);
 
   if (categoryDirPath.isEmpty()) {
@@ -454,7 +460,7 @@ FileMan::pre_rm_validate_t FileMan::preRmValidate(const QString &lnkPath,
   // See the target of the symlink first but don't resolve yet
   // QDir::filePath() cleverly returns the target path unchanged if it's
   // absolute, lexically manipulates the string if it's relative
-  const QDir hashDir(d->hashDir);
+  const QDir hashDir(this->d->hashDir);
   const QString lnkTargetPath =
       QDir::cleanPath(categoryDir.filePath(lnkFile.symLinkTarget()));
   const QFileInfo lnkTarget(lnkTargetPath);
@@ -543,10 +549,10 @@ FileMan::pre_rm_validate_t FileMan::preRmValidate(const QString &lnkPath,
 //
 void FileMan::registerEntry(const QString &lnkEntry, const QString &hash) {
 
-  const QWriteLocker locker(&d->dictLock);
+  const QWriteLocker locker(&this->d->dictLock);
 
-  d->hashToLinkDict.insert(hash, lnkEntry);
-  d->linkToHashDict.insert(lnkEntry, hash);
+  this->d->hashToLinkDict.insert(hash, lnkEntry);
+  this->d->linkToHashDict.insert(lnkEntry, hash);
 }
 
 //
@@ -554,10 +560,10 @@ void FileMan::registerEntry(const QString &lnkEntry, const QString &hash) {
 //
 void FileMan::removeEntry(const QString &lnkEntry, const QString &hash) {
 
-  const QWriteLocker locker(&d->dictLock);
+  const QWriteLocker locker(&this->d->dictLock);
 
-  d->hashToLinkDict.remove(hash);
-  d->linkToHashDict.remove(lnkEntry);
+  this->d->hashToLinkDict.remove(hash);
+  this->d->linkToHashDict.remove(lnkEntry);
 }
 
 //
@@ -565,8 +571,8 @@ void FileMan::removeEntry(const QString &lnkEntry, const QString &hash) {
 //
 void FileMan::releaseStoreLock() {
 
-  d->storeLock->unlock();
-  d->storeMutex.unlock();
+  this->d->storeLock->unlock();
+  this->d->storeMutex.unlock();
 }
 
 //
@@ -612,11 +618,11 @@ FileMan::revLookupSymlink(const QDir &searchDir, const QString &targetPath) {
   const QString targetName = QFileInfo(targetPath).fileName();
   const QString lnkEntry = lookupLinkByHash(targetName);
   const bool entryExists = !lnkEntry.isEmpty();
-  const bool isManaged = d->storeManaged;
+  const bool isManaged = this->d->storeManaged;
 
   if (isManaged && entryExists) {
 
-    const QFileInfo lnkFile(QDir(d->dataDir).filePath(lnkEntry));
+    const QFileInfo lnkFile(QDir(this->d->dataDir).filePath(lnkEntry));
     const QString lnkPath = lnkFile.absoluteFilePath();
     logDebug << "targetPath:" << targetPath;
     // Implies existence _and_ symlink type (dangling or not)
@@ -637,6 +643,7 @@ FileMan::revLookupSymlink(const QDir &searchDir, const QString &targetPath) {
     // fs. Either way, remove stale entry from the dictionaries, and proceed
     // to full dir check
 
+    logDebug << "Removing stale" << lnkEntry << "from caches.";
     this->removeEntry(lnkEntry, targetName);
   }
 
@@ -688,10 +695,10 @@ FileMan::revLookupSymlink(const QDir &searchDir, const QString &targetPath) {
 // Shrinks the dictionary sizes to their contents size
 //
 void FileMan::squeezeDicts() {
-  QWriteLocker locker(&d->dictLock);
+  QWriteLocker locker(&this->d->dictLock);
 
-  d->hashToLinkDict.squeeze();
-  d->linkToHashDict.squeeze();
+  this->d->hashToLinkDict.squeeze();
+  this->d->linkToHashDict.squeeze();
 }
 
 //
@@ -703,10 +710,11 @@ FileMan::validate_store_t FileMan::validateStore() {
 
   FileMan::validate_store_t status = {-1, -1, {}};
 
-  for (const QString &dir : {d->dataDir, d->hashDir}) {
+  for (const QString &dir : {this->d->dataDir, this->d->hashDir}) {
 
     const int e = dirHealth(dir);
-    int &dirStatus = (dir == d->dataDir) ? status.d_status : status.h_status;
+    int &dirStatus =
+        (dir == this->d->dataDir) ? status.d_status : status.h_status;
 
     logDebug << dir << "directory health:" << e;
 
@@ -724,7 +732,7 @@ FileMan::validate_store_t FileMan::validateStore() {
     dirStatus = 0;
   }
 
-  for (const auto &[cat, catInfo] : d->categoryList.asKeyValueRange()) {
+  for (const auto &[cat, catInfo] : this->d->categoryList.asKeyValueRange()) {
 
     logDebug << "Store path (categorized):" << catInfo.location;
 
