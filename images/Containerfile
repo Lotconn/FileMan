@@ -6,18 +6,30 @@ RUN sed -i -r '/^\[crb\]/,/^\[/ s/(enabled\s*=\s*)0/\11/g' \
         /etc/yum.repos.d/rocky.repo
 RUN dnf dsync -y --releasever=10.2 --setop=install_weak_deps=False --nodocs
 RUN dnf install -y --releasever=10.2 --setop=install_weak_deps=False --nodocs \
-        ccache clang clang-tools-extra cmake cppcheck git lld llvm nasm \
-        ncurses ninja-build qt6-qt{base,declarative}-devel \
-        bash-color-prompt bash-completion procps-ng vim
+        ccache clang clang-tools-extra cmake freetype-devel git \
+        libxkbcommon-devel lld llvm mesa-libGL-devel nasm ncurses ninja-build \
+        bash-color-prompt bash-completion procps-ng uv vim
 RUN dnf --installroot /mnt/rootfs clean all
-RUN rm -rf /var/cache/* /var/log/dnf* \
-        /var/log/yum.* /var/lib/*dnf*
+RUN rm -rf /var/cache/* /var/log/dnf* /var/log/yum.* /var/lib/*dnf*
+
+ARG QT_SPEC="6.8"
+ARG QT_VER="6.8.3"
+ARG QT_INSTALL_ARCH="gcc_64"
+ARG QT_INSTALL_PREFIX="/opt/qt-linux"
+ARG QT_CMAKE_PREFIX_PATH=${QT_INSTALL_PREFIX}/${QT_VER}/${QT_INSTALL_ARCH}
+
+ENV PATH="/root/.local/bin:${PATH}"
+RUN uv -n tool install aqtinstall
+RUN aqt install-qt -O $QT_INSTALL_PREFIX linux desktop $QT_SPEC linux_$QT_INSTALL_ARCH
 
 RUN cp /usr/share/rootfiles/.* /root && \
-    echo "CC=clang CXX=clang++ cmake -B . --fresh -GNinja -DFM_BUILD_EXAMPLES=ON && cmake --build . --parallel" >> /root/.bash_history && \
-    echo "cmake --install ." >> /root/.bash_history && \
-    echo "CC=clang CXX=clang++ cmake -B . --fresh -GNinja && cmake --build . --parallel" >> /root/.bash_history && \
-    git config --system --add safe.directory /src
+echo "cmake --fresh -GNinja -DFM_BUILD_EXAMPLES=ON && cmake --build . --parallel" >> /root/.bash_history && \
+echo "cmake --install ." >> /root/.bash_history && \
+echo "cmake --fresh -GNinja && cmake --build . --parallel" >> /root/.bash_history && \
+git config --system --add safe.directory /src
+
+RUN echo "set(CMAKE_PREFIX_PATH \"$QT_CMAKE_PREFIX_PATH\" CACHE PATH \"Local custom Qt installation\")" > /root/tc-host-linux-x64-native.cmake
+ENV CMAKE_TOOLCHAIN_FILE=/root/tc-host-linux-x64-native.cmake
 
 WORKDIR /src
 ENTRYPOINT /bin/bash

@@ -37,20 +37,20 @@ for Qt/QML applications.
 | ------------------------------------: | :---------------------------------------------------------------------------------------------------------------- |
 |                                       | [FileMan()](#fileman-constructor)                                                                                 |
 |                                       | [~FileMan()](#fileman-destructor)                                                                                 |
-|          [add_file_t](#add-file-type) | [addFile](#addfile)(_const_ [QUrl](qurl) &fileUrl, [FileMan::Categories](#category-enum) category = FileMan::All) |
-| [QString](qstring)<br>`[[nodiscard]]` | [categoryToString](#categorytostring)([FileMan::Category](#category-enum) category) _const_                       |
-| [QString](qstring)<br>`[[nodiscard]]` | [getCategoryDir](#getcategorydir)([FileMan::Category](#category-enum) category) _const_                           |
-| [QString](qstring)<br>`[[nodiscard]]` | [getDataDir](#getdatadir)() _const_                                                                               |
-|                    [QString](qstring) | [getFileName](#getfilename)(_const_ [QUrl](qurl) &fileUrl)                                                        |
+|          [add_file_t](#add-file-type) | [addFile](#addfile)(_const_ [QUrl][qurl] &fileUrl, [FileMan::Categories](#category-enum) category = FileMan::All) |
+| [QString][qstring]<br>`[[nodiscard]]` | [categoryToString](#categorytostring)([FileMan::Category](#category-enum) category) _const_                       |
+| [QString][qstring]<br>`[[nodiscard]]` | [getCategoryDir](#getcategorydir)([FileMan::Category](#category-enum) category) _const_                           |
+| [QString][qstring]<br>`[[nodiscard]]` | [getDataDir](#getdatadir)() _const_                                                                               |
+|                    [QString][qstring] | [getFileName](#getfilename)(_const_ [QUrl][qurl] &fileUrl)                                                        |
 |                                   int | [refreshStore()](#refreshstore)                                                                                   |
-|            [rm_file_t](#rm-file-type) | [rmFile](#rmfile)([QUrl](qurl) fileUrl)                                                                           |
+|            [rm_file_t](#rm-file-type) | [rmFile](#rmfile)([QUrl][qurl] fileUrl)                                                                           |
 
 ### Static Public Members
 
 |        Return type | Function                                                 |
 | -----------------: | :------------------------------------------------------- |
 |            FileMan | &FileMan::[instance()](#fileman-instance)                |
-| [QString](qstring) | [getFileName](#getfilename)(const [QUrl](qurl) &fileUrl) |
+| [QString][qstring] | [getFileName](#getfilename)(const [QUrl][qurl] &fileUrl) |
 
 ---
 
@@ -279,7 +279,7 @@ specify multiple categories.
 
 These map the common API errno return enums to _FileMan_ scoped enums. Useful
 for referring to return values from FileMan's APIs within QML or namespaces
-having limited access to [_cerrno_](errno). Note, some non-POSIX platforms may
+having limited access to [_cerrno_][errno]. Note, some non-POSIX platforms may
 not support few errno values (e.g. Windows). Developers are discouraged from
 using raw errno values as they may vary depending on platforms.
 
@@ -325,7 +325,7 @@ Destroys the _FileMan_ singleton instance.
 <div><a id="addfile"></a></div>
 <div><a name="addfile"></a></div>
 
-#### [add_file_t](#add-file-type) FileMan::addFile(_const_ [QUrl](qurl) _&fileUrl_, [FileMan::Categories](#category-enum) _category_ = FileMan::All)
+#### [add_file_t](#add-file-type) FileMan::addFile(_const_ [QUrl][qurl] _&fileUrl_, [FileMan::Categories](#category-enum) _category_ = FileMan::All)
 
 Adds the file from _fileUrl_ to the store with an optional _category_ specified.
 The URL must follow local file specifiers: `file:///path/to/myfile.img` for
@@ -337,7 +337,7 @@ absolute or `file:myfile.img` for relative path to `myfile.img`. Returns a
 | `status()` (int)    | 0/`errno`                                |
 | `location()` (QUrl) | `<fully_qualified_url_to_symlink>`/empty |
 
-Failed returns follow [`errno`](errno) values. On success (`status() == 0`), a
+Failed returns follow [`errno`][errno] values. On success (`status() == 0`), a
 path to the symlink in store is returned. For the example above, `location()`
 holds `file:///home/user/.local/share/<APPNAME>/audio/MyAudio.ogg`. Unsuccessful
 operations return corresponding non-zero `errno` value for `status()` and an
@@ -408,32 +408,32 @@ int main(int argc, char *argv[])
 <div><a id="categorytostring"></a></div>
 <div><a name="categorytostring"></a></div>
 
-#### _[[nodiscard]]_ [QString](qstring) FileMan::categoryToString([FileMan::Category](#category-enum) category) _const_
+#### _`[[nodiscard]]`_ [QString][qstring] FileMan::categoryToString([FileMan::Category](#category-enum) category) _const_
 
-Returns a [QString](qstring) containing the name of _category_. `FileMan::All`
+Returns a [QString][qstring] containing the name of _category_. `FileMan::All`
 is a composite _flag_ and therefore not supported.
 
 <div><a id="getcategorydir"></a></div>
 <div><a name="getcategorydir"></a></div>
 
-#### _[[nodiscard]]_ [QString](qstring) FileMan::getCategoryDir([FileMan::Category](#category-enum) category) _const_
+#### _`[[nodiscard]]`_ [QString][qstring] FileMan::getCategoryDir([FileMan::Category](#category-enum) category) _const_
 
-Returns a [QString](qstring) containing the absolute directory of _category_
+Returns a [QString][qstring] containing the absolute directory of _category_
 items in store. `FileMan::All` is a composite _flag_ and therefore not
 supported. Empty on invalid category.
 
 <div><a id="getdatadir"></a></div>
 <div><a name="getdatadir"></a></div>
 
-#### _[[nodiscard]]_ [QString](qstring) FileMan::getDataDir() _const_
+#### _`[[nodiscard]]`_ [QString][qstring] FileMan::getDataDir() _const_
 
-Returns a [QString](qstring) containing the absolute directory of
+Returns a [QString][qstring] containing the absolute directory of
 `<AppLocalDataLocation>`. String is never empty.
 
 <div><a id="getfilename"></a></div>
 <div><a name="getfilename"></a></div>
 
-#### [QString](qstring) FileMan::getFileName(_const_ [QUrl](qurl) &fileURL)
+#### [QString][qstring] FileMan::getFileName(_const_ [QUrl][qurl] &fileURL)
 
 Extracts and returns the filename component from _fileUrl_. Returns an empty
 string if _fileURL_ ends with a trailing `/` or if resolution fails for any
@@ -503,7 +503,7 @@ success, `errno` on failure.
 <div><a id="rmfile"></a></div>
 <div><a name="rmfile"></a></div>
 
-#### [rm_file_t](#rm-file-type) FileMan::rmFile(_const_ [QUrl](qurl) &fileUrl)
+#### [rm_file_t](#rm-file-type) FileMan::rmFile(_const_ [QUrl][qurl] &fileUrl)
 
 Removes the file _fileUrl_ from the application store. _fileUrl_ must be a
 fully-qualified local URL referring to a file in store. Removes both the
@@ -516,7 +516,7 @@ struct:
 | `status_h()` (int) | 0/-1/`errno` |
 
 _fileUrl_ validations are always performed before its backing blob. Failed
-returns follow [`errno`](errno) values. `status_l()` is non-zero if _fileUrl_
+returns follow [`errno`][errno] values. `status_l()` is non-zero if _fileUrl_
 doesn't exist, is not a symlink, points to an invalid location or when failed to
 remove. `status_h()` is `-1` if `rmFile()` fails early before backing blob
 checks and non-zero positive if the backing hashed blob doesn't exist or failed

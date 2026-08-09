@@ -1,3 +1,4 @@
 compile_commands.json
 repotree.txt
 commit-msg.md
+tc-*.cmake
