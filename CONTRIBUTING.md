@@ -4,7 +4,33 @@ This project uses CMake as the build environment. Minimum required is 3.16 with
 highest policy set to 4.4. clang with LLVM is the recommended compiler used for
 the project.
 
----
+## Supported Platforms
+
+FileMan supports every platform and toolchain that
+[Qt supports](https://doc.qt.io/qt-6.8/supported-platforms.html), owing to
+extensive use of Qt-idiomatic codes. However, FileMan hasn't been extensively
+tested against all platforms and architectures yet. The following are the
+minimum working versions for FileMan to be source compatible and compilable:
+
+- **Architectures:** x86_64
+- **Qt:** >= 6.8
+- **C++ Standard:** >= 17
+- **CMake:** >= 3.16
+
+#### Linux
+
+- **glib:** 2.8.3
+- **pthread:** 2.3.5
+- **GCC:** 9
+
+#### Windows
+
+- **MSVC:** 2022 (Windows 10 & 11 only)
+- **Mingw-w64:** 13.1
+
+> !NOTE
+>
+> Cross-compiling for Windows from Linux on the same architecture is supported
 
 ## Available Build Flags
 
@@ -24,12 +50,16 @@ In-source building is the preferred way, although out-of-source building is
 possible but issues a warning about QML module discovery. The latter can be
 approached for development builds.
 
----
-
 ## Building
 
 The [repository registry](https://ghcr.io/lotconn/fileman/builder?tab=tags)
-hosts builder images for development tasks tailored for FileMan.
+hosts an x86_64 builder image for development tasks tailored for FileMan.
+
+> !NOTE
+>
+> Libraries built within the dev-container are linked against `glibc-2.39`,
+> `binutils-2.41` & `glib2-2.80.4` using compilers `gcc-14` or `clang-21`. Make
+> sure your implementation supports newer or same versions of the toolchain.
 
 First, from project root, create a container with the builder image and enter :
 
@@ -74,7 +104,7 @@ docker run --rm -it -v $(pwd):/src:z,shared localhost/fileman-builder
 From there execute:
 
 ```bash
-CC=clang CXX=clang++ cmake -B . --fresh -GNinja && cmake --build . --parallel
+cmake --fresh -GNinja && cmake --build . --parallel
 ```
 
 Alternatively, just press up arrow key and hit enter! The built libraries can
@@ -105,7 +135,7 @@ working directory to the `examples/` folder, configure and build the binary:
 
 ```bash
 cd examples/
-CC=clang CXX=clang++ cmake -S . -B build/ --fresh -GNinja && cmake --build build/ --parallel
+cmake -S . -B build/ --fresh -GNinja && cmake --build build/ --parallel
 ```
 
 The built binary should be available under `build/`. Try executing the binary:
@@ -125,9 +155,15 @@ library and the QML module. If built statically however, this is not necessary.
 ---
 
 If you want to set up the environment on your own or integrate with your own
-project, building FileMan requires `qt6-qtcore-devel`,
-`qt6-qtdeclarative-devel`, `ccache`, `cmake`, `clang`, `lld`, `llvm`, `nasm` &
-`ninja-build`.
+project, building FileMan requires
+
+- `qt6-qtcore-devel`
+- `qt6-qtdeclarative-devel`
+- `ccache`
+- `cmake`
+- `clang`, `lld`, `llvm` _OR_ `gcc`, `gcc-c++`
+- `nasm`
+- `ninja-build`.
 
 > [!Note]
 >
@@ -150,8 +186,6 @@ target_link_libraries(${PROJECT_NAME} PRIVATE Qt::Core Lotconn::FileMan)
 target_link_options(${PROJECT_NAME} PRIVATE $<$<CXX_COMPILER_ID:Clang>:-fuse-ld=lld>)
 ```
 
----
-
 ## Guidelines
 
 Always use the up-to-date _main_ branch as the base. Merge/Pull requests are not
@@ -162,8 +196,6 @@ Try providing a summary highlight of your MR/PR without going into too much
 details. Multiple commits on an opened MR/PR-ed branch is allowed, but need to
 be frozen, validated and pass all tests before final merge/pull.
 
----
-
 ## AI Contribution Policy
 
 We aim to be transparent about contributions from AI agents, LLMs, and bots.
@@ -173,5 +205,3 @@ rejected. This includes any "Signed-off-by: `<agent's operator>`" variants, i.e.
 human-operated agentic submissions. Human contributors are may include an
 "Assisted by: " footer in any contribution that involved AI or LLM assistance
 but are not required to.
-
----

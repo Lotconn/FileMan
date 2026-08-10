@@ -239,6 +239,17 @@ details and elaborate guidance, refer to the
 
 ---
 
+## Platform Support
+
+FileMan supports every platform and toolchain that
+[Qt supports](https://doc.qt.io/qt-6.8/supported-platforms.html), owing to
+extensive use of Qt-idiomatic codes. The library built on any new linux host for
+any target should work without issues. For building-host platform support see
+[the Supported Platforms section](CONTRIBUTING#supported-platforms) on
+CONTRIBUTING.md.
+
+---
+
 ## Member Type Documentation
 
 <div><a id="add-file-type"></a></div>
