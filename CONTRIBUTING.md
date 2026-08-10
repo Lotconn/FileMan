@@ -28,7 +28,7 @@ minimum working versions for FileMan to be source compatible and compilable:
 - **MSVC:** 2022 (Windows 10 & 11 only)
 - **Mingw-w64:** 13.1
 
-> !NOTE
+> [!NOTE]
 >
 > Cross-compiling for Windows from Linux on the same architecture is supported
 
@@ -55,7 +55,7 @@ approached for development builds.
 The [repository registry](https://ghcr.io/lotconn/fileman/builder?tab=tags)
 hosts an x86_64 builder image for development tasks tailored for FileMan.
 
-> !NOTE
+> [!NOTE]
 >
 > Libraries built within the dev-container are linked against `glibc-2.39`,
 > `binutils-2.41` & `glib2-2.80.4` using compilers `gcc-14` or `clang-21`. Make
