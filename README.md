@@ -13,7 +13,7 @@ for Qt/QML applications.
 
 | Component      | Context      | Code / Configuration                                                                   |
 | :------------- | :----------- | :------------------------------------------------------------------------------------- |
-| **Header**     | C++          | `#include <Lotconn/FileMan/fileman>`                                                   |
+| **Header**     | C++          | `#include <fileman>`                                                                   |
 | **CMake**      | Setup        | `find_package(FileMan REQUIRED)`                                                       |
 |                | Linking      | `target_link_libraries(mytarget PRIVATE Lotconn::FileMan)`                             |
 |                | Static Build | `target_link_libraries(mytarget PRIVATE Lotconn::FileManplugin)`                       |
@@ -384,7 +384,7 @@ Example:
 
 #include <QtCore>
 #include <QTextStream>
-#include <Lotconn/FileMan/fileman>
+#include <fileman>
 
 int main(int argc, char *argv[])
 {

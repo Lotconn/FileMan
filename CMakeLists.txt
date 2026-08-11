@@ -12,7 +12,7 @@ include(CMakePrintHelpers)
 include(CMakePackageConfigHelpers)
 
 project(FileMan
-  VERSION 2.0.1
+  VERSION 2.0.2
   DESCRIPTION "A file manager library for Qt6 apps written in C++"
   LANGUAGES CXX
   # SPDX_LICENSE  MIT  # SPDX_LICENSE doesn't work before cmake 4.1
@@ -213,7 +213,7 @@ target_compile_options(${PROJECT_NAME} PRIVATE
   /GS
   /Oy-
   /W3
-  /guard:cf
+  ${CF_PROTECTION_FLAG_MSVC}
   >
 )
 target_compile_options(${PROJECT_NAME}plugin PRIVATE
@@ -238,7 +238,7 @@ target_compile_options(${PROJECT_NAME}plugin PRIVATE
   /GS
   /Oy-
   /W3
-  /guard:cf
+  ${CF_PROTECTION_FLAG_MSVC}
   >
 )
 
@@ -273,7 +273,7 @@ target_link_options(${PROJECT_NAME} PRIVATE
   >
   # MSVC / clang-cl linker hardening
   $<$<OR:$<CXX_COMPILER_ID:MSVC>,$<CXX_COMPILER_FRONTEND_VARIANT:MSVC>>:
-  /guard:cf
+  ${CF_PROTECTION_FLAG_MSVC}
   >
 )
 target_link_options(${PROJECT_NAME}plugin PRIVATE
@@ -286,7 +286,7 @@ target_link_options(${PROJECT_NAME}plugin PRIVATE
   >
   # MSVC / clang-cl linker hardening
   $<$<OR:$<CXX_COMPILER_ID:MSVC>,$<CXX_COMPILER_FRONTEND_VARIANT:MSVC>>:
-  /guard:cf
+  ${CF_PROTECTION_FLAG_MSVC}
   >
 )
 

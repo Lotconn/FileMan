@@ -8,11 +8,18 @@ respective commit messages for detailed descriptions.
 ## v2.0.2
 
 This release resolves a major bug affecting library lookup from the Qml plugin
+and unguarded CF flag on MSVC
 
 ### Fixes
 
 - Set appropriate rpath for Qml modules rather than the default
   `$ORIGIN:$ORIGIN/../${CMAKE_INSTALL_LIBDIR}`
+- Set control flow guard on MSVC for x86_64/amd64 architectures only
+
+#### Others
+
+- README: `<fileman>` should be used over namespace-prefixed
+  `<Lotconn/FileMan/fileman>`
 
 Full changelog:
 [`v2.0.1...v2.0.2`](https://gitlab.com/lotconn/fileman/-/compare/v2.0.1...v2.0.2)
