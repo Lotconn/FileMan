@@ -153,6 +153,17 @@ else()
   message(STATUS "Not enabling IPO: ${output}")
 endif()
 
+# Use appropriate rpath for Qml modules than the
+# "$ORIGIN:$ORIGIN/../${CMAKE_INSTALL_LIBDIR}",
+file(RELATIVE_PATH plugin_rpath
+  "${CMAKE_INSTALL_PREFIX}/${QT6_INSTALL_QML}/${FM_NS}/${PROJECT_NAME}"
+  "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}"
+)
+set_target_properties(${PROJECT_NAME}plugin
+  PROPERTIES
+  INSTALL_RPATH "$ORIGIN:$ORIGIN/${plugin_rpath}"
+)
+
 #-------------------------------------------------------------------------------
 #
 # Target compiling & linking ###################################################
