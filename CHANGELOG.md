@@ -5,6 +5,20 @@ respective commit messages for detailed descriptions.
 
 ---
 
+## v2.0.2
+
+This release resolves a major bug affecting library lookup from the Qml plugin
+
+### Fixes
+
+- Set appropriate rpath for Qml modules rather than the default
+  `$ORIGIN:$ORIGIN/../${CMAKE_INSTALL_LIBDIR}`
+
+Full changelog:
+[`v2.0.1...v2.0.2`](https://gitlab.com/lotconn/fileman/-/compare/v2.0.1...v2.0.2)
+
+---
+
 ## v2.0.1
 
 This is a bug-fix release focusing on Windows (MSVC) build compatibility, logic
