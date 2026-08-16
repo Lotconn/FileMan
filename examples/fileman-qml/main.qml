@@ -27,15 +27,16 @@ import Lotconn.FileMan
 
 ApplicationWindow {
     id: mainWindow
-    visible: true
-    height: 150
-    width: 250
-    minimumWidth: 250
-    minimumHeight: 150
 
     property var audioList: []
     property var imageList: []
     property var videoList: []
+
+    height: 150
+    minimumHeight: 150
+    minimumWidth: 250
+    visible: true
+    width: 250
 
     Component.onCompleted: {
         settings.category = "Audio";
@@ -66,7 +67,6 @@ ApplicationWindow {
         const e = FileMan.refreshStore();
         console.debug("Fileman::refreshStore() return:", e);
     }
-
     Component.onDestruction: {
         settings.category = "Audio";
         settings.setValue("list", JSON.stringify(audioList || []));
@@ -92,10 +92,11 @@ ApplicationWindow {
 
     FileDialog {
         id: fileDialog
-        title: qsTr("Please choose an audio file")
+
         currentFolder: StandardPaths.writableLocation(StandardPaths.MusicLocation)
         fileMode: FileDialog.OpenFiles
         nameFilters: ["Audio files (*.aac *.ac3 *.alac *.amr *.flac *.m4a *.mp3 *.ogg *.opus *.wav *.wma *.weba)", "Image files (*.jpg *.jpeg *.png *.svg *.tiff *.tif *.gif *.avif *.bmp *.dng *.cr2 *.heic *.heif *.ico *.nef *.webp)", "Video files (*.mp4 *.mkv *.webm *.avi *.flv *.mov *.m4v *.ogv *.wmv *.3gp *.3g2)", "All files (*)"]
+        title: qsTr("Please choose an audio file")
 
         onAccepted: {
             //[KEY:FileMan::Category enum usage]
@@ -132,41 +133,43 @@ ApplicationWindow {
 
         Flickable {
             anchors.fill: parent
-            focus: true
-            clip: true
             boundsBehavior: Flickable.StopAtBounds
-
-            Keys.onUpPressed: scrollBar.decrease()
-            Keys.onDownPressed: scrollBar.increase()
+            clip: true
+            contentHeight: col.implicitHeight + 20
+            contentWidth: parent.width
+            focus: true
 
             ScrollBar.vertical: ScrollBar {
                 id: scrollBar
             }
 
-            contentWidth: parent.width
-            contentHeight: col.implicitHeight + 20
+            Keys.onDownPressed: scrollBar.increase()
+            Keys.onUpPressed: scrollBar.decrease()
 
             ColumnLayout {
                 id: col
-                spacing: 10
-                width: parent.width - 40
+
+                anchors.horizontalCenter: parent.horizontalCenter
                 anchors.top: parent.top
                 anchors.topMargin: 10
-                anchors.horizontalCenter: parent.horizontalCenter
+                spacing: 10
+                width: parent.width - 40
 
                 ComboBox {
                     id: audioListCb
-                    model: mainWindow.audioList
+
                     Layout.fillWidth: true
+                    model: mainWindow.audioList
                     textRole: "name"
                 }
 
                 RowLayout {
-                    spacing: 10
                     Layout.alignment: Qt.AlignHCenter
+                    spacing: 10
 
                     Button {
                         text: "Add"
+
                         onClicked: fileDialog.open()
                     }
 
@@ -195,8 +198,8 @@ ApplicationWindow {
                 }
 
                 RowLayout {
-                    spacing: 10
                     Layout.alignment: Qt.AlignHCenter
+                    spacing: 10
 
                     Button {
                         text: "Refresh Store"
@@ -213,8 +216,9 @@ ApplicationWindow {
     }
 
     Shortcut {
-        sequences: [StandardKey.Quit]
         context: Qt.ApplicationShortcut
+        sequences: [StandardKey.Quit]
+
         onActivated: Qt.quit()
     }
 }

@@ -12,16 +12,15 @@
 // `location()` is the fully-qualified local url of the saved file in store, or
 // empty on error.
 //
-add_file_t FileMan::addFile(const QUrl &fileUrl,
-                            const FileMan::Categories categories) {
+add_file_t FileMan::addFile(const QUrl &fileUrl, const FileMan::Categories categories) {
 
   const bool trustStore = this->d->storeManaged;
 
   // Store validation first; trust if managed already //////////////////////////
 
   if (!trustStore) {
-    const validate_store_t s = this->validateStore();
-    int retval = compErrnoSeverity(s.d_status, s.h_status);
+    const validate_store_t s      = this->validateStore();
+    int                    retval = compErrnoSeverity(s.d_status, s.h_status);
 
     for (const int e : s.c_status)
       retval = compErrnoSeverity(retval, e);
@@ -67,16 +66,16 @@ add_file_t FileMan::addFile(const QUrl &fileUrl,
   // /path/to/file                        =>  ""
   //
   const QString &fileUrlStr = fileUrl.toDisplayString();
-  const QString &filePath = fileUrl.toLocalFile();
+  const QString &filePath   = fileUrl.toLocalFile();
 
   if (filePath.isEmpty()) {
     logCritical << "No such file:" << filePath;
     return {ENOENT, {}};
   }
 
-  const QString &srcPath = QFileInfo(filePath).absoluteFilePath();
+  const QString  &srcPath = QFileInfo(filePath).absoluteFilePath();
   const QFileInfo srcFile(srcPath);
-  const QString &srcFileName = srcFile.fileName();
+  const QString  &srcFileName = srcFile.fileName();
 
   logDebug << "Resolved file:" << srcPath;
 
@@ -102,8 +101,8 @@ add_file_t FileMan::addFile(const QUrl &fileUrl,
 
   //  Category selection & store operations ////////////////////////////////////
 
-  FileMan::Category catSelected = lowestSetFlag(categories & result.categories);
-  const QString categoryName = this->d->categoryList.value(catSelected).name;
+  FileMan::Category catSelected  = lowestSetFlag(categories & result.categories);
+  const QString     categoryName = this->d->categoryList.value(catSelected).name;
 
   logDebug << "Selected category:" << categoryName;
 
@@ -129,7 +128,7 @@ add_file_t FileMan::addFile(const QUrl &fileUrl,
       ".fileman-"_L1 + QUuid::createUuid().toString(QUuid::Id128) + ".part"_L1;
   const QString tmpPath = hashDir.absoluteFilePath(tmpFileName);
 
-  QFile srcFileHandle(srcPath);
+  QFile     srcFileHandle(srcPath);
   QSaveFile tmpFile(tmpPath);
 
   // Open both `srcFileHandle` & `tmpFile` for passing to `hashAndStageFile()`
@@ -151,31 +150,30 @@ add_file_t FileMan::addFile(const QUrl &fileUrl,
     return {EIO, {}};
   }
 
-  const hash_and_stage_t &stage_result =
-      hashAndStageFile(srcFileHandle, tmpFile);
+  const hash_and_stage_t &stage_result = hashAndStageFile(srcFileHandle, tmpFile);
 
   if (stage_result.status != 0)
     return {stage_result.status, {}};
 
-  const QString &hash = stage_result.hash;
+  const QString &hash     = stage_result.hash;
   const QString &hashPath = hashDir.absoluteFilePath(hash);
-  const QDir &lnkDir(this->d->categoryList.value(catSelected).location);
+  const QDir    &lnkDir(this->d->categoryList.value(catSelected).location);
 
   QString lnkFileName = srcFileName;
 #ifdef Q_OS_WIN
   constexpr QLatin1StringView winLnkExt(".lnk");
   lnkFileName += winLnkExt;
 #endif
-  QString lnkPath = lnkDir.absoluteFilePath(lnkFileName);
+  QString lnkPath  = lnkDir.absoluteFilePath(lnkFileName);
   QString lnkEntry = FileMan::createPathComp(categoryName, lnkFileName);
 
   //----------------------------------------------------------------------------
 
   //  File deduplication & staging /////////////////////////////////////////////
 
-  const bool hashExists = hashDir.exists(hash);
-  const bool lnkExists = lnkDir.exists(lnkFileName);
-  bool hashOrphaned = false;
+  const bool hashExists   = hashDir.exists(hash);
+  const bool lnkExists    = lnkDir.exists(lnkFileName);
+  bool       hashOrphaned = false;
 
   if (hashExists) {
 
@@ -184,13 +182,11 @@ add_file_t FileMan::addFile(const QUrl &fileUrl,
     //  calls
     logInfo << fileUrlStr << "already available on store";
 
-    const FileMan::rev_lookup_symlink_t &lnk =
-        this->revLookupSymlink(lnkDir, hashPath);
+    const FileMan::rev_lookup_symlink_t &lnk = this->revLookupSymlink(lnkDir, hashPath);
 
     if (lnk.status == EPERM) {
       tmpFile.cancelWriting();
-      logCritical
-          << "Store is not accessible. Execuatble permission is required";
+      logCritical << "Store is not accessible. Execuatble permission is required";
 
       return {lnk.status, {}};
     }
@@ -217,14 +213,13 @@ add_file_t FileMan::addFile(const QUrl &fileUrl,
     //
     const QString &f = renameFile(srcFileName, lnkDir);
 
-    logWarning << "Saving" << srcFileName << "as" << f
-               << "since it already exists";
+    logWarning << "Saving" << srcFileName << "as" << f << "since it already exists";
 
     lnkFileName = f;
 #ifdef Q_OS_WIN
     lnkFileName += winLnkExt;
 #endif
-    lnkPath = lnkDir.absoluteFilePath(lnkFileName);
+    lnkPath  = lnkDir.absoluteFilePath(lnkFileName);
     lnkEntry = FileMan::createPathComp(categoryName, lnkFileName);
   }
 
@@ -235,8 +230,7 @@ add_file_t FileMan::addFile(const QUrl &fileUrl,
 
   if (!hashOrphaned) {
     std::error_code ec;
-    std::filesystem::create_hard_link(srcPath.toStdString(),
-                                      hashPath.toStdString(), ec);
+    std::filesystem::create_hard_link(srcPath.toStdString(), hashPath.toStdString(), ec);
     if (ec.value() == 0) {
       logDebug << "Hardlinked" << srcPath << "to" << hashPath;
       hlStatus = true;
@@ -300,8 +294,7 @@ add_file_t FileMan::addFile(const QUrl &fileUrl,
   logDebug << "Added as" << hashPath << "to store";
 
   // Register the [ hash, symlink ] entry to `hashToLinkDict()`
-  logDebug << "Registering hash as " << hash << " and symlink as" << lnkEntry
-           << " to tables";
+  logDebug << "Registering hash as " << hash << " and symlink as" << lnkEntry << " to tables";
 
   this->registerEntry(lnkEntry, hash);
 

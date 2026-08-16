@@ -24,7 +24,7 @@
         "editor.defaultFormatter": "llvm-vs-code-extensions.vscode-clangd",
     },
     "editor.rulers": [
-        80
+        100
     ],
     "editor.tabSize": 2,
     "editor.formatOnSave": true,

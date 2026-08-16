@@ -35,7 +35,7 @@ or [KEY::extra comments].
 static std::array<int, 2> sigFd = {-1, -1};
 
 static void unixSignalHandler(int /*unused*/) {
-  char a = 'A';
+  char                  a     = 'A';
   [[maybe_unused]] auto trash = ::write(sigFd[1], &a, sizeof(a));
   // just to avoid compiler warnings
 }
@@ -50,9 +50,8 @@ int main(int argc, char *argv[]) {
 
   //[KEY:BEGIN:Registers enums, flags & types inside QML namespaces]
   FileMan fileman;
-  qmlRegisterUncreatableMetaObject(FileMan::staticMetaObject,
-                                   "Lotconn.FileMan.Enums", 0, 0, "FileMan",
-                                   "Enum/flag access only");
+  qmlRegisterUncreatableMetaObject(FileMan::staticMetaObject, "Lotconn.FileMan.Enums", 0, 0,
+                                   "FileMan", "Enum/flag access only");
   //[KEY:END]
 
   QQmlApplicationEngine engine;
@@ -69,13 +68,12 @@ int main(int argc, char *argv[]) {
     qFatal("Failed to create signal socket pair");
 
   QSocketNotifier sigNotifier(sigFd[0], QSocketNotifier::Read);
-  QObject::connect(
-      &sigNotifier, &QSocketNotifier::activated, &app, [](QSocketDescriptor) {
-        char tmp = 0;
-        [[maybe_unused]] auto trash = ::read(sigFd[0], &tmp, sizeof(tmp));
-        // just to avoid compiler warnings
-        QCoreApplication::quit();
-      });
+  QObject::connect(&sigNotifier, &QSocketNotifier::activated, &app, [](QSocketDescriptor) {
+    char                  tmp   = 0;
+    [[maybe_unused]] auto trash = ::read(sigFd[0], &tmp, sizeof(tmp));
+    // just to avoid compiler warnings
+    QCoreApplication::quit();
+  });
 
   struct sigaction sa{};
   sa.sa_handler = unixSignalHandler;

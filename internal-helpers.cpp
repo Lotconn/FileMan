@@ -8,8 +8,8 @@
 // Returns the severest of the two, or the first argument if both are equal.
 //
 int compErrnoSeverity(int error1, int error2) {
-  const int e1 = error1;
-  const int e2 = error2;
+  const int e1            = error1;
+  const int e2            = error2;
   const int worstSeverity = errnoSeverity(e1);
 
   if (const int sev = errnoSeverity(e2); sev > worstSeverity)
@@ -57,7 +57,7 @@ int dirHealth(const QString &dirPath) {
 int diskFreeCheck(const QFileInfo &file, const QDir &dir) {
 
   const qint64 fileSize = file.size();
-  const qint64 fsFree = QStorageInfo(dir).bytesAvailable();
+  const qint64 fsFree   = QStorageInfo(dir).bytesAvailable();
 
   // `bytesAvailable()` needs to be guarded first.
   if (fsFree == -1) {
@@ -203,14 +203,14 @@ QString renameFile(const QString &fileName, const QDir &location) {
 
   // Find the first empty rename suffix; e.g. existing-name_2.ext
   // having even anything near 1000 rename-suffixed same files is atypical
-  const QFileInfo file(fileName);
-  const QString &baseName = file.completeBaseName();
-  const QString &suffix = '.'_L1 + file.suffix();
-  constexpr qint64 lim = 1024;
+  const QFileInfo  file(fileName);
+  const QString   &baseName = file.completeBaseName();
+  const QString   &suffix   = '.'_L1 + file.suffix();
+  constexpr qint64 lim      = 1024;
 
   // Using fast & efficient O(1) QSet for lookup rather than expending IO
   // QDir::exists()
-  const QStringList contents = location.entryList();
+  const QStringList   contents = location.entryList();
   const QSet<QString> contentsSet(contents.begin(), contents.end());
 
   for (int i = 1; i < lim; ++i) {
@@ -236,8 +236,7 @@ bool setDirPerms(const std::filesystem::path &dirPath, std::error_code &ec) {
   using std::filesystem::permissions;
   using std::filesystem::perms;
 
-  const QList<perms> permScope = {perms::owner_all, perms::group_all,
-                                  perms::others_all};
+  const QList<perms> permScope = {perms::owner_all, perms::group_all, perms::others_all};
 
   for (const auto &scope : permScope) {
     permissions(dirPath, scope, perm_options::add, ec);
@@ -281,8 +280,8 @@ int validateFile(const QFileInfo &file, const qint64 fileSize) {
     return e;
 
   if (file.size() > fileSize) {
-    logCritical << "File size exceeding"
-                << QLocale().formattedDataSize(fileSize) << "is not supported";
+    logCritical << "File size exceeding" << QLocale().formattedDataSize(fileSize)
+                << "is not supported";
     return EFBIG;
   }
 

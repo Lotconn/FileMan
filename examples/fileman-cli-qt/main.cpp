@@ -128,8 +128,7 @@ int main(int argc, char *argv[]) {
       QString fileUrl = in.readLine().trimmed();
 
       //[KEY:getFileName() usage]
-      qInfo() << "Converted from getFileName():"
-              << FileMan::getFileName(QUrl(fileUrl));
+      qInfo() << "Converted from getFileName():" << FileMan::getFileName(QUrl(fileUrl));
       break;
     }
     default:

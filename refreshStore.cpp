@@ -11,8 +11,8 @@ int FileMan::refreshStore() {
 
   // Store Validations & Fixups ////////////////////////////////////////////////
 
-  const validate_store_t s = this->validateStore();
-  int retval = compErrnoSeverity(s.d_status, s.h_status);
+  const validate_store_t s      = this->validateStore();
+  int                    retval = compErrnoSeverity(s.d_status, s.h_status);
 
   for (const int e : s.c_status)
     retval = compErrnoSeverity(retval, e);
@@ -44,8 +44,7 @@ int FileMan::refreshStore() {
 
   //  Store state caching & pruning ////////////////////////////////////////////
 
-  for (const auto &[category, catInfo] :
-       this->d->categoryList.asKeyValueRange()) {
+  for (const auto &[category, catInfo] : this->d->categoryList.asKeyValueRange()) {
 
     // Since we can return only an int, we return the value of worst error that
     // occured during `refreshStore()`'s lifetime. Use
@@ -61,8 +60,8 @@ int FileMan::refreshStore() {
 
     // Enlist all top-level files (unsorted) in the directory. QDir::System is
     // necessary to enlist dangling symlinks
-    const QStringList contents = categoryDir.entryList(
-        QDir::AllEntries | QDir::System | QDir::NoDotAndDotDot);
+    const QStringList contents =
+        categoryDir.entryList(QDir::AllEntries | QDir::System | QDir::NoDotAndDotDot);
 
     logDebug << "Contents in" << catInfo.location << ":";
     logDebug << contents;
@@ -70,8 +69,8 @@ int FileMan::refreshStore() {
     // Build the store-state cache dictionary from valid files in the store
     for (const QString &file : contents) {
 
-      const QString filePath = categoryDir.absoluteFilePath(file);
-      const pre_rm_validate_t result = preRmValidate(filePath, true);
+      const QString           filePath = categoryDir.absoluteFilePath(file);
+      const pre_rm_validate_t result   = preRmValidate(filePath, true);
 
       if (result.lnkEntry.isEmpty()) {
         if (result.status != ENOENT)

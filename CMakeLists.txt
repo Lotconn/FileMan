@@ -74,6 +74,10 @@ if(CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64|amd64")
   set(CF_PROTECTION_FLAG_MSVC /guard:cf)
 endif()
 
+configure_file(${PROJECT_SOURCE_DIR}/cmake-configs/ExtraCPackConfig.cmake.in ${PROJECT_BINARY_DIR}/ExtraCPackConfig.cmake @ONLY)
+set(CPACK_PROJECT_CONFIG_FILE ${PROJECT_BINARY_DIR}/ExtraCPackConfig.cmake)
+set(CPACK_GENERATOR "TGZ;RPM")
+
 #-------------------------------------------------------------------------------
 #
 # Package/library setup ########################################################
@@ -397,4 +401,5 @@ if(CMAKE_SOURCE_DIR STREQUAL PROJECT_SOURCE_DIR)
   )
 endif()
 
+include(CPack)
 #-------------------------------------------------------------------------------

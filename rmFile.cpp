@@ -15,8 +15,8 @@ rm_file_t FileMan::rmFile(const QUrl &fileUrl) {
   // Store validation first; trust if managed already //////////////////////////
 
   if (!trustStore) {
-    const validate_store_t s = this->validateStore();
-    int retval = compErrnoSeverity(s.d_status, s.h_status);
+    const validate_store_t s      = this->validateStore();
+    int                    retval = compErrnoSeverity(s.d_status, s.h_status);
 
     for (const int e : s.c_status)
       retval = compErrnoSeverity(retval, e);
@@ -49,12 +49,11 @@ rm_file_t FileMan::rmFile(const QUrl &fileUrl) {
   // ftp://servername.com/path/to/folder/ =>  ""
   // /path/to/file                        =>  ""
   //
-  const QString &fileUrlStr = fileUrl.toDisplayString();
-  const QString &lnkFilePath =
-      QDir::cleanPath(QFileInfo(fileUrl.toLocalFile()).absoluteFilePath());
+  const QString &fileUrlStr  = fileUrl.toDisplayString();
+  const QString &lnkFilePath = QDir::cleanPath(QFileInfo(fileUrl.toLocalFile()).absoluteFilePath());
   const QFileInfo lnkFile(lnkFilePath);
-  const QString &lnkFileName = lnkFile.fileName();
-  const QString &lnkDirName = lnkFile.dir().dirName(); // i.e. parent dir name
+  const QString  &lnkFileName = lnkFile.fileName();
+  const QString  &lnkDirName  = lnkFile.dir().dirName(); // i.e. parent dir name
 
   const FileMan::pre_rm_validate_t v_result = preRmValidate(lnkFilePath);
 
@@ -68,13 +67,13 @@ rm_file_t FileMan::rmFile(const QUrl &fileUrl) {
 
   //  File Operations //////////////////////////////////////////////////////////
 
-  int status_l = 0;
-  int status_h = 0;
+  int  status_l = 0;
+  int  status_h = 0;
   QDir hashDir(this->d->hashDir);
   QDir lnkDir = lnkFile.dir();
 
   bool removeHash = true;
-  bool removeLnk = false;
+  bool removeLnk  = false;
 
   // Remove the raw blob from the store first
   if (v_result.hashEntry.isEmpty())
@@ -98,8 +97,7 @@ rm_file_t FileMan::rmFile(const QUrl &fileUrl) {
   //  Finalizing ///////////////////////////////////////////////////////////////
 
   // Unregister the entries from the hash table
-  removeEntry((removeLnk) ? v_result.lnkEntry : ""_L1,
-              (removeHash) ? v_result.hashEntry : ""_L1);
+  removeEntry((removeLnk) ? v_result.lnkEntry : ""_L1, (removeHash) ? v_result.hashEntry : ""_L1);
 
   if ((status_l == 0) && (status_h == 0))
     logInfo << fileUrlStr << "removed successfully from store";

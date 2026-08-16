@@ -8,9 +8,9 @@
 
 Q_DECLARE_LOGGING_CATEGORY(fileman)
 
-#define logDebug qCDebug(fileman).noquote() << __func__ << ":debug:"_L1
-#define logInfo qCInfo(fileman).noquote() << __func__ << ":info:"_L1
-#define logWarning qCWarning(fileman).noquote() << __func__ << ":warning:"_L1
+#define logDebug    qCDebug(fileman).noquote() << __func__ << ":debug:"_L1
+#define logInfo     qCInfo(fileman).noquote() << __func__ << ":info:"_L1
+#define logWarning  qCWarning(fileman).noquote() << __func__ << ":warning:"_L1
 #define logCritical qCCritical(fileman).noquote() << __func__ << ":error:"_L1
 
 // Allows shorthand QLatin1StringView ""_L1 operators
@@ -22,7 +22,7 @@ using Qt::StringLiterals::operator""_L1;
 ////////////////////////////////////////////////////////////////////////////////
 
 struct alignas(64) hash_and_stage_t {
-  int status;
+  int     status;
   QString hash;
   QString stagedPath;
 };
@@ -40,8 +40,7 @@ auto hashAndStageFile(QFile &srcFile, QSaveFile &stageFile) -> hash_and_stage_t;
 auto isHexDigit(QChar ch) noexcept -> bool;
 auto lowestSetFlag(FileMan::Categories categories) -> FileMan::Category;
 auto renameFile(const QString &fileName, const QDir &location) -> QString;
-auto setDirPerms(const std::filesystem::path &path, std::error_code &ec)
-    -> bool;
+auto setDirPerms(const std::filesystem::path &path, std::error_code &ec) -> bool;
 auto validateFile(const QFileInfo &file) -> int;
 auto validateFile(const QFileInfo &file, qint64 fileSize) -> int;
 

@@ -35,7 +35,7 @@ public:
 
   ~add_file_t();
 
-  [[nodiscard]] int status() const;
+  [[nodiscard]] int  status() const;
   [[nodiscard]] QUrl location() const;
 
 private:
@@ -85,28 +85,28 @@ public:
   //////////////////////////////////////////////////////////////////////////////
 
   enum Category : quint8 {
-    None = 0x00,
+    None  = 0x00,
     Audio = 0x01,
     Image = 0x02,
     Video = 0x04,
-    All = Audio | Image | Video
+    All   = Audio | Image | Video
   };
   Q_DECLARE_FLAGS(Categories, Category)
   Q_FLAG(Categories)
 
   enum class Errno : quint8 {
-    Success = 0,
-    Busy = EBUSY,
-    Canceled = ECANCELED,
-    Exists = EEXIST,
-    FileTooBig = EFBIG,
-    Invalid = EINVAL,
-    IOError = EIO,
-    Loop = ELOOP,
-    NotFound = ENOENT,
-    NotSupported = EOPNOTSUPP,
+    Success          = 0,
+    Busy             = EBUSY,
+    Canceled         = ECANCELED,
+    Exists           = EEXIST,
+    FileTooBig       = EFBIG,
+    Invalid          = EINVAL,
+    IOError          = EIO,
+    Loop             = ELOOP,
+    NotFound         = ENOENT,
+    NotSupported     = EOPNOTSUPP,
     PermissionDenied = EPERM,
-    TryAgain = EAGAIN
+    TryAgain         = EAGAIN
   };
   Q_ENUM(Errno)
 
@@ -120,10 +120,9 @@ public:
   Q_INVOKABLE [[nodiscard]] QString getCategoryDir(Category category) const;
   Q_INVOKABLE [[nodiscard]] QString getDataDir() const;
 
-  Q_INVOKABLE add_file_t addFile(const QUrl &fileUrl,
-                                 Categories categories = All);
-  Q_INVOKABLE int refreshStore();
-  Q_INVOKABLE rm_file_t rmFile(const QUrl &fileUrl);
+  Q_INVOKABLE add_file_t addFile(const QUrl &fileUrl, Categories categories = All);
+  Q_INVOKABLE int        refreshStore();
+  Q_INVOKABLE rm_file_t  rmFile(const QUrl &fileUrl);
 
 private:
   Q_DISABLE_COPY_MOVE(FileMan)
@@ -133,7 +132,7 @@ private:
   //  Variable/Object definitions
   //////////////////////////////////////////////////////////////////////////////
 
-  static FileMan *s_singletonInstance;
+  static FileMan                *s_singletonInstance;
   const std::unique_ptr<Private> d;
 
   //////////////////////////////////////////////////////////////////////////////
@@ -141,24 +140,24 @@ private:
   //////////////////////////////////////////////////////////////////////////////
 
   struct alignas(8) pre_add_validate_t {
-    int status = {};
+    int        status = {};
     Categories categories;
   };
 
   struct alignas(64) pre_rm_validate_t {
-    int status = {};
-    QString lnkEntry = {};
+    int     status    = {};
+    QString lnkEntry  = {};
     QString hashEntry = {};
   };
 
   struct alignas(32) rev_lookup_symlink_t {
-    int status = {};
+    int     status   = {};
     QString location = {};
   };
 
   struct alignas(16) validate_store_t {
-    int d_status = {};
-    int h_status = {};
+    int                  d_status = {};
+    int                  h_status = {};
     QHash<Category, int> c_status;
   };
 
@@ -166,28 +165,25 @@ private:
   //  Function definitions
   //////////////////////////////////////////////////////////////////////////////
 
-  static auto createPathComp(const QString &comp1, const QString &comp2)
-      -> QString;
+  static auto createPathComp(const QString &comp1, const QString &comp2) -> QString;
   static auto resolveDataDir() -> QString;
 
   auto acquireStoreLock() -> int;
   auto clearAllEntries() -> void;
   auto dumpAllEntries() -> void;
-  auto fixDirHealth(const QString &dir, int error,
-                    FileMan::Category category = FileMan::None) -> bool;
+  auto fixDirHealth(const QString &dir, int error, FileMan::Category category = FileMan::None)
+      -> bool;
   auto isDictEmpty(const QHash<QString, QString> &dict) -> bool;
   auto lookupHashByLink(const QString &lnkEntry) -> QString;
   auto lookupLinkByHash(const QString &hash) -> QString;
   auto mkDataDir() -> bool;
   auto mkDataDir(FileMan::Category category) -> bool;
   auto preAddValidate(const QFileInfo &file) -> pre_add_validate_t;
-  auto preRmValidate(const QString &lnkPath, bool enforcedCheck = false)
-      -> pre_rm_validate_t;
+  auto preRmValidate(const QString &lnkPath, bool enforcedCheck = false) -> pre_rm_validate_t;
   auto registerEntry(const QString &lnkEntry, const QString &hash) -> void;
   auto releaseStoreLock() -> void;
   auto removeEntry(const QString &lnkEntry, const QString &hash) -> void;
-  auto revLookupSymlink(const QDir &searchDir, const QString &targetPath)
-      -> rev_lookup_symlink_t;
+  auto revLookupSymlink(const QDir &searchDir, const QString &targetPath) -> rev_lookup_symlink_t;
   auto squeezeDicts() -> void;
   auto validateStore() -> validate_store_t;
 };
