@@ -1,15 +1,9 @@
 #
-# CMake & project setup ########################################################
+# CMake & project setup ############################################################################
 #
 
 # Qt recommends minimum version of 3.16
 cmake_minimum_required(VERSION 3.16...4.4)
-
-# CheckIPOSupported for opportunistically enabling IPO/LTO 
-include(CheckIPOSupported)
-# CMakePrintHelpers for printing variables easily
-include(CMakePrintHelpers)
-include(CMakePackageConfigHelpers)
 
 project(FileMan
   VERSION 2.0.2
@@ -18,9 +12,23 @@ project(FileMan
   # SPDX_LICENSE  MIT  # SPDX_LICENSE doesn't work before cmake 4.1
 )
 
-#-------------------------------------------------------------------------------
+# CheckIPOSupported for opportunistically enabling IPO/LTO 
+include(CheckIPOSupported)
+# CMakePrintHelpers for printing variables easily
+include(CMakePrintHelpers)
+include(CMakePackageConfigHelpers)
+
+if(NOT DEFINED BUILD_TESTING)
+  set(BUILD_TESTING OFF CACHE BOOL "Build tests in the project")
+endif()
+
+if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
+  include(CTest)
+endif()
+
+#---------------------------------------------------------------------------------------------------
 #
-# Global variables #############################################################
+# Global variables #################################################################################
 #
 
 set(CMAKE_AUTOMOC ON)
@@ -31,16 +39,25 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON) # Some IDEs need this for linter servers
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 set(CMAKE_PROJECT_SPDX_LICENSE "MIT")
 set(FM_NS Lotconn)
+set(QT_QML_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/qml/)
 
 string(TOLOWER ${PROJECT_NAME} PROJECT_NAME_LOWER)
 
-## Conditional variables #######################################################
+## Conditional variables ###########################################################################
 
 option(FM_BUILD_EXAMPLES "Build examples in the project" OFF)
+option(FM_BUILD_TESTS "Build tests in the project" OFF)
 set(FM_BUILD_AS "SHARED" CACHE STRING "Build the library as static")
 set_property(CACHE FM_BUILD_AS PROPERTY STRINGS "SHARED" "STATIC")
+
 if(DEFINED BUILD_SHARED_LIBS AND NOT BUILD_SHARED_LIBS)
-  set(FM_BUILD_AS "STATIC")
+  set(FM_BUILD_AS "STATIC" CACHE STRING "Build the library as static" FORCE)
+endif()
+
+if(BUILD_TESTING)
+  set(FM_BUILD_TESTS ON CACHE BOOL "Build tests in the project" FORCE)
+elseif(FM_BUILD_TESTS)
+  set(BUILD_TESTING ON CACHE BOOL "Build tests in the project" FORCE)
 endif()
 
 find_program(CCACHE_PROGRAM ccache)
@@ -50,18 +67,9 @@ endif()
 
 set(default_build_type "Release")
 if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
-  message(STATUS
-    "Setting build type to '${default_build_type}' as none was specified."
-  )
-  set(CMAKE_BUILD_TYPE "${default_build_type}"
-    CACHE
-    STRING "Choose the type of build."
-    FORCE
-  )
-  set_property(CACHE
-    CMAKE_BUILD_TYPE
-    PROPERTY
-    STRINGS
+  message(STATUS "Setting build type to '${default_build_type}' as none was specified.")
+  set(CMAKE_BUILD_TYPE "${default_build_type}" CACHE STRING "Choose the type of build." FORCE)
+  set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS
     "Debug" "MinSizeRel" "Release" "RelWithDebInfo"
   )
 endif()
@@ -74,13 +82,16 @@ if(CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64|amd64")
   set(CF_PROTECTION_FLAG_MSVC /guard:cf)
 endif()
 
-configure_file(${PROJECT_SOURCE_DIR}/cmake-configs/ExtraCPackConfig.cmake.in ${PROJECT_BINARY_DIR}/ExtraCPackConfig.cmake @ONLY)
+configure_file(${PROJECT_SOURCE_DIR}/cmake-configs/ExtraCPackConfig.cmake.in
+  ${PROJECT_BINARY_DIR}/ExtraCPackConfig.cmake
+  @ONLY
+)
 set(CPACK_PROJECT_CONFIG_FILE ${PROJECT_BINARY_DIR}/ExtraCPackConfig.cmake)
 set(CPACK_GENERATOR "TGZ;RPM")
 
-#-------------------------------------------------------------------------------
+#---------------------------------------------------------------------------------------------------
 #
-# Package/library setup ########################################################
+# Package/library setup ############################################################################
 #
 
 find_package(Qt6 REQUIRED COMPONENTS Core Qml)
@@ -168,9 +179,9 @@ set_target_properties(${PROJECT_NAME}plugin
   INSTALL_RPATH "$ORIGIN:$ORIGIN/${plugin_rpath}"
 )
 
-#-------------------------------------------------------------------------------
+#---------------------------------------------------------------------------------------------------
 #
-# Target compiling & linking ###################################################
+# Target compiling & linking #######################################################################
 #
 
 #
@@ -184,9 +195,7 @@ target_compile_definitions(${PROJECT_NAME} PRIVATE
   QT_ENABLE_STRICT_MODE_UP_TO=0x060800
   $<$<STREQUAL:${FM_BUILD_AS},SHARED>:FM_LIB_BUILD>
 )
-target_compile_definitions(${PROJECT_NAME}plugin PRIVATE
-  QT_ENABLE_STRICT_MODE_UP_TO=0x060800
-)
+target_compile_definitions(${PROJECT_NAME}plugin PRIVATE QT_ENABLE_STRICT_MODE_UP_TO=0x060800)
 
 if(FM_BUILD_AS STREQUAL "STATIC")
   target_compile_definitions(${PROJECT_NAME} PUBLIC FM_STATIC_LIB)
@@ -294,17 +303,14 @@ target_link_options(${PROJECT_NAME}plugin PRIVATE
   >
 )
 
-target_sources(${PROJECT_NAME} PUBLIC
-  FILE_SET
-  HEADERS
-  FILES
+target_sources(${PROJECT_NAME} PUBLIC FILE_SET HEADERS FILES
   fileman
   fileman.hpp
 )
 
-#-------------------------------------------------------------------------------
+#---------------------------------------------------------------------------------------------------
 #
-# External project includes ####################################################
+# External project includes ########################################################################
 #
 
 if(FM_BUILD_EXAMPLES)
@@ -313,9 +319,18 @@ if(FM_BUILD_EXAMPLES)
   add_subdirectory(examples/fileman-qml)
 endif()
 
-#-------------------------------------------------------------------------------
+#---------------------------------------------------------------------------------------------------
 #
-# Installing ###################################################################
+# Testing ##########################################################################################
+#
+
+if((CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME) AND FM_BUILD_TESTS)
+  add_subdirectory(tests)
+endif()
+
+#---------------------------------------------------------------------------------------------------
+#
+# Installing #######################################################################################
 #
 
 install(TARGETS
@@ -402,4 +417,3 @@ if(CMAKE_SOURCE_DIR STREQUAL PROJECT_SOURCE_DIR)
 endif()
 
 include(CPack)
-#-------------------------------------------------------------------------------

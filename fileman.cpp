@@ -36,8 +36,9 @@ FileMan *FileMan::create(QQmlEngine * /*unused*/, QJSEngine * /*unused*/) {
 // refer to an externally constructed, but not referenced FileMan object.
 //
 FileMan &FileMan::instance() {
-  Q_ASSERT_X(FileMan::s_singletonInstance, "FileMan::create",
-             "s_singletonInstance must be set before the QML engine loads");
+  if (FileMan::s_singletonInstance == nullptr)
+    qFatal("FileMan: no instance constructed. FileMan must be explicitly instantiated before "
+           "invoking the instance");
 
   return *s_singletonInstance;
 }
