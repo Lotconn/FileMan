@@ -206,9 +206,6 @@ if(FM_BUILD_AS STREQUAL "STATIC")
   target_compile_definitions(${PROJECT_NAME} PUBLIC FM_STATIC_LIB)
 endif()
 
-target_compile_features(${PROJECT_NAME} PUBLIC cxx_std_17)
-target_compile_features(${PROJECT_NAME}plugin PUBLIC cxx_std_17)
-
 target_compile_options(${PROJECT_NAME} PRIVATE
   $<$<AND:$<CXX_COMPILER_ID:GNU,Clang>,$<NOT:$<CXX_COMPILER_FRONTEND_VARIANT:MSVC>>>:
   -Wall
