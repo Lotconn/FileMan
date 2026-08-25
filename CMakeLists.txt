@@ -32,9 +32,6 @@ endif()
 #
 
 set(CMAKE_AUTOMOC ON)
-set(CMAKE_CXX_EXTENSIONS OFF)
-set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON) # Some IDEs need this for linter servers
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 set(CMAKE_PROJECT_SPDX_LICENSE "MIT")
@@ -54,9 +51,9 @@ if(DEFINED BUILD_SHARED_LIBS AND NOT BUILD_SHARED_LIBS)
   set(FM_BUILD_AS "STATIC" CACHE STRING "Build the library as static" FORCE)
 endif()
 
-if(BUILD_TESTING)
+if(BUILD_TESTING AND CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
   set(FM_BUILD_TESTS ON CACHE BOOL "Build tests in the project" FORCE)
-elseif(FM_BUILD_TESTS)
+elseif(FM_BUILD_TESTS AND CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
   set(BUILD_TESTING ON CACHE BOOL "Build tests in the project" FORCE)
 endif()
 
@@ -88,6 +85,7 @@ configure_file(${PROJECT_SOURCE_DIR}/cmake-configs/ExtraCPackConfig.cmake.in
 )
 set(CPACK_PROJECT_CONFIG_FILE ${PROJECT_BINARY_DIR}/ExtraCPackConfig.cmake)
 set(CPACK_GENERATOR "TGZ;RPM")
+set(CPACK_PACKAGE_VENDOR "Lotconn")
 
 #---------------------------------------------------------------------------------------------------
 #
@@ -151,6 +149,13 @@ qt_query_qml_module(${PROJECT_NAME}
 
 # Namespaces are always a good idea
 add_library(${FM_NS}::${PROJECT_NAME} ALIAS ${PROJECT_NAME})
+
+set_target_properties(${PROJECT_NAME} ${PROJECT_NAME}plugin
+  CXX_EXTENSIONS OFF
+  CXX_STANDARD 17
+  CXX_STANDARD_REQUIRED ON
+  POSITION_INDEPENDENT_CODE ON
+)
 
 set_target_properties(${PROJECT_NAME}
   PROPERTIES
@@ -280,7 +285,8 @@ target_link_options(${PROJECT_NAME} PRIVATE
   # necessary because ld fails to link on clang+llvm
   $<$<AND:$<CXX_COMPILER_ID:Clang>,$<NOT:$<CXX_COMPILER_FRONTEND_VARIANT:MSVC>>>:-fuse-ld=lld>
   # ELF-specific linker hardening
-  $<$<AND:$<NOT:$<OR:$<CONFIG:Debug>,$<CONFIG:RelWithDebInfo>>>,$<NOT:$<CXX_COMPILER_FRONTEND_VARIANT:MSVC>>>:
+  $<$<AND:$<NOT:$<OR:
+  $<CONFIG:Debug>,$<CONFIG:RelWithDebInfo>>>,$<NOT:$<CXX_COMPILER_FRONTEND_VARIANT:MSVC>>>:
   -Wl,-z,relro,-z,now
   -Wl,--as-needed
   >
@@ -293,7 +299,8 @@ target_link_options(${PROJECT_NAME}plugin PRIVATE
   # necessary because ld fails to link on clang+llvm
   $<$<AND:$<CXX_COMPILER_ID:Clang>,$<NOT:$<CXX_COMPILER_FRONTEND_VARIANT:MSVC>>>:-fuse-ld=lld>
   # ELF-specific linker hardening
-  $<$<AND:$<NOT:$<OR:$<CONFIG:Debug>,$<CONFIG:RelWithDebInfo>>>,$<NOT:$<CXX_COMPILER_FRONTEND_VARIANT:MSVC>>>:
+  $<$<AND:$<NOT:$<OR:
+  $<CONFIG:Debug>,$<CONFIG:RelWithDebInfo>>>,$<NOT:$<CXX_COMPILER_FRONTEND_VARIANT:MSVC>>>:
   -Wl,-z,relro,-z,now
   -Wl,--as-needed
   >
@@ -356,7 +363,7 @@ install(TARGETS
 
 #
 # The qml module plugin and related files should be installed under
-# INSTALL_LIBDIR/qt6/qml as is conventional. QT_QML_OUTPUT_DIR could be manually
+# INSTALL_LIBDIR/[qt6/]qml as is conventional. QT_QML_OUTPUT_DIR could be manually
 # set but QT6_INSTALL_QML already has the structure right
 #
 install(TARGETS

@@ -6,5 +6,7 @@ int main(int argc, char *argv[]) {
   FileMan man1;
   FileMan man2;
 
+  logInfo << FileMan::instance().getDataDir();
+
   return 0;
 }

@@ -109,11 +109,14 @@ add_file_t::~add_file_t() = default;
 rm_file_t::~rm_file_t()   = default;
 
 // Accesors
-int  add_file_t::status() const { return this->d->status; }
-QUrl add_file_t::location() const { return this->d->location; }
+int  add_file_t::status() const { return this->d ? this->d->status : -1; }
+QUrl add_file_t::location() const { return this->d ? this->d->location : QUrl(); }
+// True only after this object has been moved-from. A default-constructed add_file_t is never null.
+bool add_file_t::isNull() const noexcept { return !this->d; }
 
-int rm_file_t::status_h() const { return this->d->status_h; }
-int rm_file_t::status_l() const { return this->d->status_l; }
+int  rm_file_t::status_h() const { return this->d ? this->d->status_h : -1; }
+int  rm_file_t::status_l() const { return this->d ? this->d->status_l : -1; }
+bool rm_file_t::isNull() const noexcept { return !this->d; }
 
 ////////////////////////////////////////////////////////////////////////////////
 //  Private definitions

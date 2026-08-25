@@ -174,10 +174,29 @@ set_tests_properties(test-qmlRootCtx-rmFile PROPERTIES
 #
 
 package_add_test(emptyAppName blackBox/emptyAppName.cpp)
-set_tests_properties(emptyAppName PROPERTIES PASS_REGULAR_EXPRESSION "applicationName.* is empty")
+set_tests_properties(emptyAppName PROPERTIES
+  PASS_REGULAR_EXPRESSION "applicationName.* is empty"
+  FAIL_REGULAR_EXPRESSION "\n([a-zA-Z]:)*([/\\].*)?\n"
+)
 
 package_add_test(noInstance blackBox/noInstance.cpp)
-set_tests_properties(noInstance PROPERTIES PASS_REGULAR_EXPRESSION "no instance")
+set_tests_properties(noInstance PROPERTIES
+  PASS_REGULAR_EXPRESSION "no instance"
+  FAIL_REGULAR_EXPRESSION "\n([a-zA-Z]:)*([/\\].*)?libTest\n"
+)
 
 package_add_test(doubleInstance blackBox/doubleInstance.cpp)
-set_tests_properties(doubleInstance PROPERTIES PASS_REGULAR_EXPRESSION "only one instance.*exist")
+set_tests_properties(doubleInstance PROPERTIES
+  PASS_REGULAR_EXPRESSION "only one instance.*exist"
+  FAIL_REGULAR_EXPRESSION "\n([a-zA-Z]:)*([/\\].*)?libTest\n"
+)
+
+#
+# White-box tests
+#
+
+package_add_test(add_file_t whiteBox/add_file_t.cpp)
+set_tests_properties(add_file_t PROPERTIES PASS_REGULAR_EXPRESSION "^Copied: true\nReferenced: true\nMoved: true\n")
+
+package_add_test(rm_file_t whiteBox/rm_file_t.cpp)
+set_tests_properties(rm_file_t PROPERTIES PASS_REGULAR_EXPRESSION "^Copied: true\nReferenced: true\nMoved: true\n")

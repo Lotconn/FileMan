@@ -1,6 +1,5 @@
 #include <QtCore>
 #include <fileman>
-#include <qlatin1stringview.h>
 
 #define logDebug    qDebug().noquote().nospace()
 #define logInfo     qInfo().noquote().nospace()

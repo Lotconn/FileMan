@@ -37,6 +37,7 @@ public:
 
   [[nodiscard]] int  status() const;
   [[nodiscard]] QUrl location() const;
+  [[nodiscard]] bool isNull() const noexcept;
 
 private:
   QExplicitlySharedDataPointer<AddFileType> d;
@@ -60,8 +61,9 @@ public:
 
   ~rm_file_t();
 
-  [[nodiscard]] int status_l() const;
-  [[nodiscard]] int status_h() const;
+  [[nodiscard]] int  status_l() const;
+  [[nodiscard]] int  status_h() const;
+  [[nodiscard]] bool isNull() const noexcept;
 
 private:
   QExplicitlySharedDataPointer<RmFileType> d;
