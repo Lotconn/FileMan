@@ -150,7 +150,7 @@ qt_query_qml_module(${PROJECT_NAME}
 # Namespaces are always a good idea
 add_library(${FM_NS}::${PROJECT_NAME} ALIAS ${PROJECT_NAME})
 
-set_target_properties(${PROJECT_NAME} ${PROJECT_NAME}plugin
+set_target_properties(${PROJECT_NAME} ${PROJECT_NAME}plugin PROPERTIES
   CXX_EXTENSIONS OFF
   CXX_STANDARD 17
   CXX_STANDARD_REQUIRED ON
