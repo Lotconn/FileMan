@@ -11,7 +11,7 @@ Qt-idiomatic codes. However, FileMan hasn't been extensively tested against all 
 architectures yet. The following are the minimum working versions for FileMan to be source
 compatible and compilable:
 
-- **Architectures:** x86_64
+- **Architectures:** x86_64, arm64
 - **Qt:** >= 6.8
 - **C++ Standard:** >= 17
 - **CMake:** >= 3.16
@@ -36,19 +36,22 @@ compatible and compilable:
 These flags control various behaviors of the build configuration. Prepend the following
 options/flags with `-D` when configuring cmake.
 
-| Flag                   |   Defaults   |  Available Values  | Description                                                                                                                                                                                 |
-| :--------------------- | :----------: | :----------------: | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `FM_BUILD_AS`          |   `SHARED`   | `STATIC`, `SHARED` | Sets the build type of the library. If not set, the default is to build shared libraries.                                                                                                   |
-| `FM_BUILD_EXAMPLES`    |    `OFF`     |    `ON`, `OFF`     | Enable building example binaries in-tree along with the project. If not set, example binaries are skipped.                                                                                  |
-| `BUILD_SHARED_LIBS`    |  undefined   |    `ON`, `OFF`     | Compatibility alternative to `FM_BUILD_AS`. Controls library build type to be either shared (`ON`) or static (`OFF`). Undefined by default, which implies `FM_BUILD_AS=SHARED`              |
-| `CMAKE_INSTALL_PREFIX` | `/usr/local` | \<any valid path\> | Configures prefix directory to install under. Recommended to be one from `$PATH` variable. Some systems may default to `/usr`. For CMake >= 3.23, `cmake --prefix <path>` can also be used. |
+| Flag                   |   Defaults   |  Available Values  | Description                                                                                                                                                                                  |
+| :--------------------- | :----------: | :----------------: | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `FM_BUILD_AS`          |   `SHARED`   | `STATIC`, `SHARED` | Sets the build type of the library. If not set, the default is to build shared libraries.                                                                                                    |
+| `FM_BUILD_EXAMPLES`    |    `OFF`     |    `ON`, `OFF`     | Enable building example binaries in-tree along with the project. If not set, example binaries are skipped.                                                                                   |
+| `BUILD_SHARED_LIBS`    |  undefined   |    `ON`, `OFF`     | Compatibility alternative to `FM_BUILD_AS`. Controls library build type to be either shared (`ON`) or static (`OFF`). Undefined by default, which implies `FM_BUILD_AS=SHARED`               |
+| `FM_BUILD_TESTS`       |    `OFF`     |    `ON`, `OFF`     | Enable building project tests along with the project. Testing can be done using CTest. If not set, tests building are skipped. Coupled with `BUILD_TESTING` only if this is the root project |
+| `BUILD_TESTING`        |    `OFF`     |    `ON`, `OFF`     | Compatibility alias to `FM_BUILD_TESTS`, only if this is the root project. Ignored otherwise.                                                                                                |
+| `CMAKE_INSTALL_PREFIX` | `/usr/local` | \<any valid path\> | Configures prefix directory to install under. Recommended to be one from `$PATH` variable. Some systems may default to `/usr`. For CMake >= 3.23, `cmake --prefix <path>` can also be used.  |
 
 Repository structure follows flat layout as recommended by
 [`qt_add_qml_module()`](https://doc.qt.io/qt-6/qt-add-qml-module.html#target-structure). In-source
-building is the preferred way, although out-of-source building is possible but issues a warning
-about QML module discovery. The latter can be approached for development builds.
+building is the preferred way, although out-of-source building is possible.
 
 ## Building
+
+### 1. Using Builder Image
 
 The [repository registry](https://ghcr.io/lotconn/fileman/builder?tab=tags) hosts an x86_64 builder
 image for development tasks tailored for FileMan.
@@ -95,22 +98,39 @@ If using docker:
 docker run --rm -it -v $(pwd):/src:z,shared localhost/fileman-builder
 ```
 
----
-
 </details>
 
-From there execute:
+### 2. Setting up host environment
+
+If you want to set up the environment on your own or integrate with your own project, building
+FileMan requires
+
+- `qt6-qtcore-devel`
+- `qt6-qtdeclarative-devel`
+- `ccache`
+- `cmake`
+- `clang`, `lld`, `llvm` _OR_ `gcc`, `gcc-c++`
+- `nasm`
+- `ninja-build`.
+
+> [!Note]
+>
+> Package names here are for Fedora Linux/EL distributions and their derivatives. Refer to your
+> distribution for exact package names
+
+---
+
+Choose one, and after setting up the environment execute:
 
 ```bash
-cmake --fresh -GNinja && cmake --build . --parallel
+cmake -S . -B build/ --fresh -GNinja && cmake --build build/ --parallel
 ```
 
-Alternatively, just press up arrow key and hit enter! The built libraries can then be installed to
-the default prefix
+The built libraries can then be installed to the default prefix
 
 ```bash
 # append --prefix path/to/prefix for custom location
-cmake --install .
+cmake --install build/
 ```
 
 Separate component-wise installation is supported too. Two components are available: `runtime` &
@@ -118,17 +138,15 @@ Separate component-wise installation is supported too. Two components are availa
 with the previous invocation:
 
 ```bash
-cmake --install . --component devel
+cmake --install build/ --component devel
 ```
 
 The repository contains example apps that can be opted in for building during configuration with
 `-DFM_BUILD_EXAMPLES=ON`. The built binaries will be available under their respective folders
 `examples/<program name>` and will not be exported or installed. They can also be built standalone
 without the need for configuring the root project provided the library has already been installed to
-running system and available in searchable paths. This however, may require a manual change of
-include directive in `main.cpp` files from `#include <fileman>` to
-`#include <Lotconn/FileMan/fileman>`. After ensuring the requirements, change working directory to
-the `examples/` folder, configure and build the binary:
+running system and available in searchable paths. After ensuring the requirements, change working
+directory to the `examples/` folder, configure and build the binary:
 
 ```bash
 cd examples/
@@ -149,38 +167,35 @@ executing outside the container where FileMan isn't installed, you may need to m
 variables pointing to the appropriate directory holding the FileMan library and the QML module. If
 built statically however, this is not necessary.
 
----
+## Testing
 
-If you want to set up the environment on your own or integrate with your own project, building
-FileMan requires
+To test FileMan with CTest, add `-DFM_BUILD_TESTS=ON` flag during cmake configure:
 
-- `qt6-qtcore-devel`
-- `qt6-qtdeclarative-devel`
-- `ccache`
-- `cmake`
-- `clang`, `lld`, `llvm` _OR_ `gcc`, `gcc-c++`
-- `nasm`
-- `ninja-build`.
+```bash
+cmake -S . -B build/ --fresh -GNinja -DFM_BUILD_TESTS=ON
+```
 
-> [!Note]
->
-> Package names here are for Fedora Linux/EL distributions and their derivatives. Refer to your
-> distribution for exact package names
+Execute CTest with appropriate build directory:
 
-For Qt6/C++ implementations, adjust your CMakeLists file to contain these command invocations in the
-least:
+```bash
+ctest --test-dir build/ --output-on-failure
+```
 
-```CMakeLists
-cmake_minimum_required(VERSION 3.16)
-find_package(Qt6 REQUIRED COMPONENTS Core)
-find_package(FileMan REQUIRED)
+Testing is still immature in this project. Subsequent test runs need to be manually preceeded by
+these app-directory removals in order for them to be successful:
 
-qt_standard_project_setup()
+- `<AppDataLocation>/ModuleTest`
+- `<AppDataLocation>/apiTest`
+- `<AppDataLocation>/libTest`
+- `<AppDataLocation>/RootCtxTest`
 
-target_link_libraries(${PROJECT_NAME} PRIVATE Qt::Core Lotconn::FileMan)
+On Linux, this can be conveniently done with a simple command:
 
-# lld is required for clang, can be omitted if using gcc instead
-target_link_options(${PROJECT_NAME} PRIVATE $<$<CXX_COMPILER_ID:Clang>:-fuse-ld=lld>)
+```bash
+rm -rfv \
+  ~/.local/share/{Module,api,lib,RootCtx}Test \
+  # if using clang-cl/MSVC on wine
+  ~/.wine/drive_c/users/admin/AppData/Roaming/{Module,api,lib,RootCtx}Test
 ```
 
 ## Guidelines

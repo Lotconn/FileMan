@@ -63,21 +63,15 @@ endif()
 
 if(TARGET FileMan)
   message(STATUS "Building ${TARGET_NAME} example in-tree with root project")
-
-  #[KEY:Provide 'TARGET FileMan' on qt_add_qml_module() for submodule setups;
-  # also add "add_subdirectory(path/to/Lotconn/FileMan)"]
-  set(FM_QML_DEP TARGET FileMan)
 else()
 
-  #[KEY:BEGIN:Provide Lotconn.FileMan there to use the system installed instance]
+  #[KEY:BEGIN:Use the system installed instance]
   find_package(FileMan REQUIRED)
+  #[KEY:END]
 
   if(DEFINED FileMan_FOUND)
     message(STATUS "Found FileMan: TRUE")
   endif()
-
-  set(FM_QML_DEP Lotconn.FileMan)
-  #[KEY:END]
 endif()
 
 set(default_build_type "Release")
@@ -112,11 +106,11 @@ else()
   message(STATUS "Not enabling IPO: ${output}")
 endif()
 
-#[KEY:BEGIN:FM_QML_DEP shows alternate options for two possible implementations]
+#[KEY:BEGIN]
 qt_add_qml_module(${TARGET_NAME}
   URI FilemanQml
   QML_FILES main.qml
-  DEPENDENCIES ${FM_QML_DEP}
+  DEPENDENCIES Lotconn.FileMan
 )
 #[KEY:END]
 

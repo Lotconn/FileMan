@@ -18,14 +18,6 @@ include(CheckIPOSupported)
 include(CMakePrintHelpers)
 include(CMakePackageConfigHelpers)
 
-if(NOT DEFINED BUILD_TESTING)
-  set(BUILD_TESTING OFF CACHE BOOL "Build tests in the project")
-endif()
-
-if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
-  include(CTest)
-endif()
-
 #---------------------------------------------------------------------------------------------------
 #
 # Global variables #################################################################################
@@ -51,10 +43,18 @@ if(DEFINED BUILD_SHARED_LIBS AND NOT BUILD_SHARED_LIBS)
   set(FM_BUILD_AS "STATIC" CACHE STRING "Build the library as static" FORCE)
 endif()
 
-if(BUILD_TESTING AND CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
-  set(FM_BUILD_TESTS ON CACHE BOOL "Build tests in the project" FORCE)
-elseif(FM_BUILD_TESTS AND CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
-  set(BUILD_TESTING ON CACHE BOOL "Build tests in the project" FORCE)
+if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
+  if(NOT DEFINED BUILD_TESTING)
+    set(BUILD_TESTING OFF CACHE BOOL "Build tests in the project")
+  endif()
+
+  include(CTest)
+
+  if(BUILD_TESTING)
+    set(FM_BUILD_TESTS ON CACHE BOOL "Build tests in the project" FORCE)
+  elseif(FM_BUILD_TESTS)
+    set(BUILD_TESTING ON CACHE BOOL "Build tests in the project" FORCE)
+  endif()
 endif()
 
 find_program(CCACHE_PROGRAM ccache)
@@ -282,8 +282,7 @@ target_link_options(${PROJECT_NAME} PRIVATE
   # necessary because ld fails to link on clang+llvm
   $<$<AND:$<CXX_COMPILER_ID:Clang>,$<NOT:$<CXX_COMPILER_FRONTEND_VARIANT:MSVC>>>:-fuse-ld=lld>
   # ELF-specific linker hardening
-  $<$<AND:$<NOT:$<OR:
-  $<CONFIG:Debug>,$<CONFIG:RelWithDebInfo>>>,$<NOT:$<CXX_COMPILER_FRONTEND_VARIANT:MSVC>>>:
+  $<$<AND:$<NOT:$<OR:$<CONFIG:Debug>,$<CONFIG:RelWithDebInfo>>>,$<NOT:$<CXX_COMPILER_FRONTEND_VARIANT:MSVC>>>:
   -Wl,-z,relro,-z,now
   -Wl,--as-needed
   >
@@ -296,8 +295,7 @@ target_link_options(${PROJECT_NAME}plugin PRIVATE
   # necessary because ld fails to link on clang+llvm
   $<$<AND:$<CXX_COMPILER_ID:Clang>,$<NOT:$<CXX_COMPILER_FRONTEND_VARIANT:MSVC>>>:-fuse-ld=lld>
   # ELF-specific linker hardening
-  $<$<AND:$<NOT:$<OR:
-  $<CONFIG:Debug>,$<CONFIG:RelWithDebInfo>>>,$<NOT:$<CXX_COMPILER_FRONTEND_VARIANT:MSVC>>>:
+  $<$<AND:$<NOT:$<OR:$<CONFIG:Debug>,$<CONFIG:RelWithDebInfo>>>,$<NOT:$<CXX_COMPILER_FRONTEND_VARIANT:MSVC>>>:
   -Wl,-z,relro,-z,now
   -Wl,--as-needed
   >
