@@ -12,8 +12,8 @@ RUN dnf install -y --releasever=10.2 --setop=install_weak_deps=False --nodocs \
 RUN dnf --installroot /mnt/rootfs clean all
 RUN rm -rf /var/cache/* /var/log/dnf* /var/log/yum.* /var/lib/*dnf*
 
-ARG QT_SPEC="6.8"
-ARG QT_VER="6.8.3"
+ARG QT_SPEC="6.12"
+ARG QT_VER="6.12.0"
 ARG QT_INSTALL_ARCH="gcc_64"
 ARG QT_INSTALL_PREFIX="/opt/qt-linux"
 ARG QT_CMAKE_PREFIX_PATH=${QT_INSTALL_PREFIX}/${QT_VER}/${QT_INSTALL_ARCH}

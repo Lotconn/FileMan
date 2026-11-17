@@ -170,8 +170,8 @@ QString dir = FileMan::instance().getDataDir();
 
 Ensure your `CMakeLists.txt` meets the new minimum requirements:
 
-- **CMake:** Minimum version 3.16, policies up to 4.4.
-- **Qt:** Strict mode set to 6.8 (`QT_ENABLE_STRICT_MODE_UP_TO=0x060800`).
+- **CMake:** Minimum version 3.24, policies up to 4.4.
+- **Qt:** Strict mode set to 6.12 (`QT_ENABLE_STRICT_MODE_UP_TO=0x061200`).
 - **Compiler:** Clang/LLVM with Ninja is strongly recommended.
 
 If you were manually setting compiler flags, note that v2.0.0 now enforces security hardening flags

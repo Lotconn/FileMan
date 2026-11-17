@@ -1,8 +1,8 @@
 CompileFlags:
   Add:
-    - -std=c++17
     - -I.
-
+Completion:
+  HeaderInsertion: Never
 Diagnostics:
   ClangTidy:
     Add:

@@ -1,28 +1,28 @@
 # Contributing
 
-This project uses CMake as the build environment. Minimum required is 3.16 with highest policy set
+This project uses CMake as the build environment. Minimum required is 3.24 with highest policy set
 to 4.4. clang with LLVM is the recommended compiler used for the project.
 
 ## Supported Platforms
 
 FileMan supports every platform and toolchain that
-[Qt supports](https://doc.qt.io/qt-6.8/supported-platforms.html), owing to extensive use of
+[Qt supports](https://doc.qt.io/qt-6.12/supported-platforms.html), owing to extensive use of
 Qt-idiomatic codes. However, FileMan hasn't been extensively tested against all platforms and
 architectures yet. The following are the minimum working versions for FileMan to be source
 compatible and compilable:
 
 - **Architectures:** x86_64, arm64
-- **Qt:** >= 6.8
-- **C++ Standard:** >= 17
-- **CMake:** >= 3.16
+- **Qt:** >= 6.12
+- **C++ Standard:** >= 20
+- **CMake:** >= 3.24
 
-#### Linux
+### Linux
 
 - **glib:** 2.8.3
 - **pthread:** 2.3.5
 - **GCC:** 9
 
-#### Windows
+### Windows
 
 - **MSVC:** 2022 (Windows 10 & 11 only)
 - **Mingw-w64:** 13.1
@@ -123,7 +123,7 @@ FileMan requires
 Choose one, and after setting up the environment execute:
 
 ```bash
-cmake -S . -B build/ --fresh -GNinja && cmake --build build/ --parallel
+cmake -S . -B build/ --fresh -G'Ninja Multi-Config' && cmake --build build/ --parallel --config Release
 ```
 
 The built libraries can then be installed to the default prefix
@@ -150,13 +150,13 @@ directory to the `examples/` folder, configure and build the binary:
 
 ```bash
 cd examples/
-cmake -S . -B build/ --fresh -GNinja && cmake --build build/ --parallel
+cmake -S . -B build/ --fresh -G'Ninja Multi-Config' && cmake --build build/ --parallel --config Release
 ```
 
 The built binary should be available under `build/`. Try executing the binary:
 
 ```bash
-QT_LOGGING_RULES="*.debug=true;qt.*.debug=false;qt.qml.import=true" build/<app>
+QT_LOGGING_RULES="*.debug=true;qt.*.info=true;qt.qml.import=true" build/<app>
 ```
 
 The `QT_LOGGING_RULES` environment variable helps to see detailed logs and useful debugging
@@ -172,7 +172,7 @@ built statically however, this is not necessary.
 To test FileMan with CTest, add `-DFM_BUILD_TESTS=ON` flag during cmake configure:
 
 ```bash
-cmake -S . -B build/ --fresh -GNinja -DFM_BUILD_TESTS=ON
+cmake -S . -B build/ --fresh -G'Ninja Multi-Config' -DFM_BUILD_TESTS=ON
 ```
 
 Execute CTest with appropriate build directory:

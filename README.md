@@ -52,8 +52,6 @@ applications.
 |            FileMan | &FileMan::[instance()](#fileman-instance)                |
 | [QString][qstring] | [getFileName](#getfilename)(const [QUrl][qurl] &fileUrl) |
 
----
-
 ## Detailed Description
 
 FileMan is a file manager backend for managing the application store. It creates and manages a
@@ -155,7 +153,7 @@ attempts fail, fall-backs are implemented to ensure operations are still reliabl
 further details on the design, see [_addFile()_](#addfile), [_refreshStore()_](#refreshstore) &
 [_rmFile()_](#rmfile).
 
-The code is intended to be C++17 standardized and Qt >=6.8 compatible.
+The code is intended to be C++20 standardized and Qt >=6.12 compatible.
 
 > [!Warning]
 >
@@ -238,17 +236,13 @@ the module, only a minimal C++ backend addition is necessary whose sole purpose 
 static module. For details and elaborate guidance, refer to the
 [QML Integration Guide](#qml-integration) section.
 
----
-
 ## Platform Support
 
 FileMan supports every platform and toolchain that
-[Qt supports](https://doc.qt.io/qt-6.8/supported-platforms.html), owing to extensive use of
+[Qt supports](https://doc.qt.io/qt-6.12/supported-platforms.html), owing to extensive use of
 Qt-idiomatic codes. The library built on any new linux host for any target should work without
 issues. For building-host platform support see
 [the Supported Platforms section](CONTRIBUTING#supported-platforms) on CONTRIBUTING.md.
-
----
 
 ## Member Type Documentation
 
@@ -594,8 +588,6 @@ removal subsequently fails, it leaves behind a dangling symlink. This is an acce
 state: FileMan is designed to detect and safely clean up these dangling symlinks on the next API
 call, provided the caller checks the error returns appropriately and retries if necessary.
 
----
-
 <div><a id="integration"></a></div>
 <div><a name="integration"></a></div>
 
@@ -719,8 +711,6 @@ const auto dataDir = FileMan::getDataDir();
 
 _That's it!_
 
----
-
 <div><a id="qml-integration"></a></div>
 <div><a name="qml-integration"></a></div>
 
@@ -820,26 +810,20 @@ Refer to the [QML example](examples/fileman-qml/) for a basic working implementa
 
 ## Implementations
 
-- ### Munadi
-  - Homepage: <https://munadi.org>
-  - VCS Browser: <https://gitlab.com/munadi/munadi>
-
----
+- ### Rukn
+  - Homepage: <https://lotconn.org>
+  - VCS Browser: <https://gitlab.com/lotconn/rukn>
 
 ## Contributing
 
-This project uses CMake as the build environment. Minimum required is 3.16 with highest policy set
+This project uses CMake as the build environment. Minimum required is 3.24 with highest policy set
 to 4.4. clang with LLVM is the recommended compiler used for the project. See
 [CONTRIBUTING.md](./CONTRIBUTING.md) for further details about building, available build flags and
 contribution guidelines & policies.
 
----
-
 ## License
 
 This project is licensed under MIT, copyright Lotconn, 2026.
-
----
 
 ## Acknowledgements
 
@@ -847,7 +831,7 @@ This project is licensed under MIT, copyright Lotconn, 2026.
 
 - **Qt** by The Qt Company
   - Project Implementation: UI and core code
-  - License: GPL v3 and LGPL v3
+  - License: LGPL v3
   - Homepage: <https://www.qt.io/>
   - Source: <https://code.qt.io/cgit/>
 
@@ -864,4 +848,4 @@ This project is licensed under MIT, copyright Lotconn, 2026.
 [errno]: https://en.cppreference.com/cpp/header/cerrno
 [qurl]: https://doc.qt.io/qt-6/qurl.html
 [qstring]: https://doc.qt.io/qt-6/qstring.html
-[qmimedb]: https://doc.qt.io/qt-6/qstring.html
+[qmimedb]: https://doc.qt.io/qt-6/qmimedatabase.html

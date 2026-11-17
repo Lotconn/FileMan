@@ -1,45 +1,33 @@
 {
-    "workbench.editorAssociations": {
-        "{git}:/**/*.qrc": "default",
-        "{git}:/**/*.ui": "default",
-        "*.qrc": "qt-core.qrcEditor"
+    "[cmake]": {
+        "editor.defaultFormatter": "cmakefmt.vscode-cmakefmt"
     },
-    "qt-core.additionalQtPaths": [
-        {
-            "name": "Qt-6.11.1-linux-g++-x86_64_from_PATH",
-            "path": "/usr/bin/qmake"
-        }
-    ],
-    "clangd.arguments": [
-        "--background-index",
-        "-clang-tidy",
-        "--header-insertion=iwyu",
-        "--completion-style=detailed"
-    ],
+    "[cpp]": {
+        "editor.defaultFormatter": "llvm-vs-code-extensions.vscode-clangd"
+    },
     "[markdown]": {
-        "editor.defaultFormatter": "esbenp.prettier-vscode",
+        "editor.defaultFormatter": "esbenp.prettier-vscode"
+    },
+    "[qml]": {
+        "editor.defaultFormatter": "theqtcompany.qt-qml"
     },
     "C_Cpp.intelliSenseEngine": "disabled",
-    "[cpp]": {
-        "editor.defaultFormatter": "llvm-vs-code-extensions.vscode-clangd",
-    },
+    "cmake.automaticReconfigure": false,
+    "cmake.buildDirectory": "${workspaceFolder}/build",
+    "cmake.configureArgs": [
+        "-DFM_BUILD_EXAMPLES=ON"
+    ],
+    "cmake.configureOnOpen": false,
+    "cmake.generator": "Ninja Multi-Config",
+    "cmake.sourceDirectory": "${workspaceFolder}",
+    "editor.formatOnSave": true,
     "editor.rulers": [
         100
     ],
     "editor.tabSize": 2,
-    "editor.formatOnSave": true,
-    "cmake.sourceDirectory": "${workspaceFolder}",
-    "cmake.buildDirectory": "${workspaceFolder}",
-    "cmake.generator": "Ninja",
-    "[qml]": {
-        "editor.defaultFormatter": "theqtcompany.qt-qml"
-    },
-    "cmake.automaticReconfigure": false,
-    "cmake.configureOnOpen": false,
-    "cmake.configureArgs": [
-        "-DFM_BUILD_EXAMPLES=ON"
-    ],
-    // "qt-qml.qmlls.additionalImportPaths": [
-    //     // "${workspaceFolder}"
-    // ]
+    "workbench.editorAssociations": {
+        "{git}:/**/*.qrc": "default",
+        "{git}:/**/*.ui": "default",
+        "*.qrc": "qt-core.qrcEditor"
+    }
 }

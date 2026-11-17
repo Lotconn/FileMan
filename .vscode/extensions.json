@@ -1,0 +1,13 @@
+{
+  "recommendations": [
+    "charliermarsh.ruff",
+    "cmakefmt.vscode-cmakefmt",
+    "cschlosser.doxdocgen",
+    "davidanson.vscode-markdownlint",
+    "esbenp.prettier-vscode",
+    "llvm-vs-code-extensions.vscode-clangd",
+    "redhat.vscode-xml",
+    "thebill2001.vscode-clazy",
+    "theqtcompany.qt-cpp-pack",
+  ]
+}

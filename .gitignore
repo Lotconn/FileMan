@@ -3,3 +3,4 @@ repotree.txt
 commit-msg.md
 tc-*.cmake
 plans/
+build*/

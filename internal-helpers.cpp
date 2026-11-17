@@ -1,4 +1,5 @@
 #include <QCryptographicHash>
+#include <QSet>
 #include <QStorageInfo>
 
 #include "internal-helpers.hpp"
