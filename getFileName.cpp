@@ -1,7 +1,7 @@
-#include <fileman>
+#include <fileman.hpp>
 
-//
-// [Public, Static] A helper function usually helpful in QML. Returns file name
-// as string, null if file name can't be resolved.
-//
-QString FileMan::getFileName(const QUrl &fileUrl) { return fileUrl.fileName(); }
+// Static
+auto FileMan::getFileName(const QUrl &fileUrl) -> QString
+{
+    return fileUrl.fileName();
+}

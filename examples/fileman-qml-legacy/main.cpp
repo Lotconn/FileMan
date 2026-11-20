@@ -22,73 +22,76 @@ or [KEY::extra comments].
 #include <QStyleFactory>
 
 //[KEY:BEGIN:Change <fileman.cpp> to <Lotconn/FileMan/fileman.cpp> for your app]
+#include <FileMan>
 #include <QQmlContext>
 #include <QtQml/qqml.h>
-#include <fileman>
 //[KEY:END]
 
 #if defined(Q_OS_UNIX) && !defined(Q_OS_ANDROID)
-#include <csignal>
-#include <sys/socket.h>
-#include <unistd.h>
+#  include <csignal>
+#  include <sys/socket.h>
+#  include <unistd.h>
 
-static std::array<int, 2> sigFd = {-1, -1};
+static std::array<int, 2> sigFd = { -1, -1 };
 
-static void unixSignalHandler(int /*unused*/) {
-  char                  a     = 'A';
-  [[maybe_unused]] auto trash = ::write(sigFd[1], &a, sizeof(a));
-  // just to avoid compiler warnings
+static void unixSignalHandler(int /*unused*/)
+{
+    char                  a     = 'A';
+    [[maybe_unused]] auto trash = ::write(sigFd[1], &a, sizeof(a));
+    // just to avoid compiler warnings
 }
 #endif
 
-int main(int argc, char *argv[]) {
-  QApplication app(argc, argv);
-  QApplication::setOrganizationDomain("lotconn");
-  QApplication::setApplicationName("FileMan-QML-legacy");
+int main(int argc, char *argv[])
+{
+    using Qt::StringLiterals::operator""_L1;
 
-  QApplication::setStyle(QStyleFactory::create("fusion"));
+    QApplication app(argc, argv);
+    QApplication::setApplicationName("FileMan-QML-legacy"_L1);
+    QApplication::setOrganizationName("Lotconn"_L1);
+    QApplication::setStyle(QStyleFactory::create("fusion"_L1));
 
-  //[KEY:BEGIN:Registers enums, flags & types inside QML namespaces]
-  FileMan fileman;
-  qmlRegisterUncreatableMetaObject(FileMan::staticMetaObject, "Lotconn.FileMan.Enums", 0, 0,
-                                   "FileMan", "Enum/flag access only");
-  //[KEY:END]
+    //[KEY:BEGIN:Registers enums, flags & types inside QML namespaces]
+    FileMan fileman;
+    qmlRegisterUncreatableMetaObject(FileMan::staticMetaObject, "Lotconn.FileMan.Enums", 0, 0,
+                                     "FileMan", "Enum/flag access only"_L1);
+    //[KEY:END]
 
-  QQmlApplicationEngine engine;
-  //[KEY]
-  engine.rootContext()->setContextProperty("fileman", &fileman);
-  engine.load(QUrl(QLatin1String("qrc:/main.qml")));
-  if (engine.rootObjects().isEmpty()) {
-    qCritical("Failed to load QML root object; aborting");
-    return 1;
-  }
-
-#if defined(Q_OS_UNIX) && !defined(Q_OS_ANDROID)
-  if (::socketpair(AF_UNIX, SOCK_STREAM, 0, sigFd.data()) != 0)
-    qFatal("Failed to create signal socket pair");
-
-  QSocketNotifier sigNotifier(sigFd[0], QSocketNotifier::Read);
-  QObject::connect(&sigNotifier, &QSocketNotifier::activated, &app, [](QSocketDescriptor) {
-    char                  tmp   = 0;
-    [[maybe_unused]] auto trash = ::read(sigFd[0], &tmp, sizeof(tmp));
-    // just to avoid compiler warnings
-    QCoreApplication::quit();
-  });
-
-  struct sigaction sa{};
-  sa.sa_handler = unixSignalHandler;
-  sigemptyset(&sa.sa_mask);
-  sa.sa_flags = SA_RESTART;
-  sigaction(SIGINT, &sa, nullptr);
-  sigaction(SIGTERM, &sa, nullptr);
-#endif
-
-  int ret = QApplication::exec();
+    QQmlApplicationEngine engine;
+    //[KEY]
+    engine.rootContext()->setContextProperty("fileman"_L1, &fileman);
+    engine.load(QUrl{ "qrc:/main.qml"_L1 });
+    if (engine.rootObjects().isEmpty()) {
+        qCritical("Failed to load QML root object; aborting");
+        return 1;
+    }
 
 #if defined(Q_OS_UNIX) && !defined(Q_OS_ANDROID)
-  ::close(sigFd[0]);
-  ::close(sigFd[1]);
+    if (::socketpair(AF_UNIX, SOCK_STREAM, 0, sigFd.data()) != 0)
+        qFatal("Failed to create signal socket pair");
+
+    QSocketNotifier sigNotifier(sigFd[0], QSocketNotifier::Read);
+    QObject::connect(&sigNotifier, &QSocketNotifier::activated, &app, [](QSocketDescriptor) {
+        char                  tmp   = 0;
+        [[maybe_unused]] auto trash = ::read(sigFd[0], &tmp, sizeof(tmp));
+        // just to avoid compiler warnings
+        QApplication::quit();
+    });
+
+    struct sigaction sa{ };
+    sa.sa_handler = unixSignalHandler;
+    sigemptyset(&sa.sa_mask);
+    sa.sa_flags = SA_RESTART;
+    sigaction(SIGINT, &sa, nullptr);
+    sigaction(SIGTERM, &sa, nullptr);
 #endif
 
-  return ret;
+    int ret = QApplication::exec();
+
+#if defined(Q_OS_UNIX) && !defined(Q_OS_ANDROID)
+    ::close(sigFd[0]);
+    ::close(sigFd[1]);
+#endif
+
+    return ret;
 }

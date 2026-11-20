@@ -1,7 +1,74 @@
 # CHANGELOG
 
+<!-- markdownlint-disable no-duplicate-heading -->
+
 This file contains a brief lists of notable changes for each version. Refer to respective commit
 messages for detailed descriptions.
+
+---
+
+## v3.0.0
+
+### Breaking Changes
+
+- Now using Qt 6.12 LTS, CMake 3.24, and C++20 as the standard and baseline project-wide
+- Router header renamed to `FileMan`; includes now need to use as `<FileMan>`
+- Removed `create()` as QmlEngine was never calling it owing to the availability of the default
+  constructor
+- `Category` enum is now an enum class. This also means enums must be used scoped from now.
+- Dropped explicit enablement of position independent code in build. Build system however, may still
+  enable it by default but this isn't enforced anymore now.
+
+### New
+
+- Add some tests for the library, utlizing CTest. Testing is still immature and will develop through
+  the project's lifetime. Testing can be enabled using the flags `FM_BUILD_TESTS` for
+  project-specific testing or the global `BUILD_TESTING`.
+- `addFile()` method now takes an `overwrite` parameter to specify if existing files should be
+  overwritten on new addition or not. The old syntax and behavior is still available as an overload
+  of this new method.
+- `addFile()`'s return type `add_file_t` now carries an additional member providing the ID of the
+  added file. The corresponding data can be accessed using `id()` method in the type.
+- Introduced three new `FileMan` class constructors each controlling application store directory in
+  different ways.
+- Added `instanceExists()` to check singleton instance existence
+
+### Improvements
+
+- Multiline CMake generator expressions are moved to conditional blocks since this isn't a defined
+  behavior and may not work in future.
+- `Private` class got renamed to `FileManPrivate` along with some other refactors to simplify the
+  design. Also follows Qt idiomatic style.
+- Added some branch prediction optimization
+
+### Fixes
+
+- `BUILD_SHARED_LIBS=OFF` is now correctly respected
+- Referencing `add_file_t` and `rm_file_t` after ownership transfer doesn't crash anymore
+- C++ standard is not enforced anymore when FileMan is included in downstream projects
+- Files in the application store can't be externally modified anymore; files are now reflinked
+  opportunistically on filesystems that support it rather than hardlinked. On supported filesystems,
+  the space increase for a reflinked file may range somewhere between 2-10% of the original file
+  size, providing excellent space-efficiency proximity of hardlinking and platform agnostic way to
+  mitigate the remote crafting security bug through a vector.
+
+### Others
+
+- `internal-helpers` have been removed. All methods there have moved to `FileManPrivate` class as
+  static members.
+- All private methods and data structures in `FileMan` class also got moved to `FileManPrivate`
+- Auto-formatting and linting enabled for almost all file-types used in the project. Relevant
+  styling configurations are included in the tree.
+- Added `logFatal` for replacing `qFatal()` loggings. The logging prefix strings were also modified
+  to improve readability and visuals
+- Also, C++ follows Qt's code style. Refer to <https://wiki.qt.io/Qt_Coding_Style> and
+  <https://wiki.qt.io/Qt_Coding_Style>.
+- Workspace configurations and extensions recommendations were added for proper VSCode/VSCodium
+  environment setup
+- Doxygen inline briefs were added in private methods for which documentations are not written
+- Documentation updates and fixes for new version, new and changed methods
+
+Full changelog: [`v2.0.2...v3.0.0`](https://gitlab.com/lotconn/fileman/-/compare/v2.0.2...v3.0.0)
 
 ---
 

@@ -6,7 +6,7 @@
 cmake_minimum_required(VERSION 3.24...4.4)
 
 project(FileMan
-        VERSION 2.1.0
+        VERSION 3.0.0
         DESCRIPTION "A file manager library for Qt6 apps written in C++"
         LANGUAGES CXX)
 
@@ -29,12 +29,12 @@ set(fm_ns Lotconn)
 
 string(TOLOWER ${PROJECT_NAME} project_name_lower)
 
-## Conditional variables ###########################################################################
-
 option(FM_BUILD_EXAMPLES "Build examples in the project" OFF)
 option(FM_BUILD_TESTS "Build tests in the project" OFF)
 set(FM_BUILD_AS "SHARED" CACHE STRING "Build the library as static")
 set_property(CACHE FM_BUILD_AS PROPERTY STRINGS "SHARED" "STATIC")
+
+## Conditional variables ###########################################################################
 
 if(DEFINED BUILD_SHARED_LIBS AND NOT BUILD_SHARED_LIBS)
   set(FM_BUILD_AS "STATIC" CACHE STRING "Build the library as static" FORCE)
@@ -114,7 +114,7 @@ configure_file(${PROJECT_SOURCE_DIR}/cmake-configs/ExtraCPackConfig.cmake.in
                ${PROJECT_BINARY_DIR}/ExtraCPackConfig.cmake
                @ONLY)
 set(CPACK_PROJECT_CONFIG_FILE ${PROJECT_BINARY_DIR}/ExtraCPackConfig.cmake)
-set(CPACK_GENERATOR "TGZ;RPM")
+set(CPACK_GENERATOR "TGZ")
 set(CPACK_PACKAGE_VENDOR "Lotconn")
 
 #---------------------------------------------------------------------------------------------------
@@ -143,15 +143,13 @@ qt_standard_project_setup(REQUIRES 6.12)
 
 qt_add_qml_module(${PROJECT_NAME}
                   URI Lotconn.FileMan
-                  VERSION 2.1 ${FM_BUILD_AS}
+                  VERSION 3.0 ${FM_BUILD_AS}
                   SOURCES
-                    fileman
+                    FileMan
                     fileman.hpp
                     fileman.cpp
                     fileman_p.hpp
                     fileman_p.cpp
-                    internal-helpers.hpp
-                    internal-helpers.cpp
                     addFile.cpp
                     categoryToString.cpp
                     getCategoryDir.cpp
@@ -197,8 +195,7 @@ else()
   message(STATUS "Not enabling IPO: ${output}")
 endif()
 
-# Use appropriate rpath for Qml modules than the
-# "$ORIGIN:$ORIGIN/../${CMAKE_INSTALL_LIBDIR}",
+# Use appropriate rpath for Qml modules than the "$ORIGIN:$ORIGIN/../${CMAKE_INSTALL_LIBDIR}",
 file(RELATIVE_PATH
      plugin_rpath "${CMAKE_INSTALL_PREFIX}/${QT6_INSTALL_QML}/${fm_ns}/${PROJECT_NAME}"
      "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}")
@@ -214,22 +211,18 @@ set_target_properties(${PROJECT_NAME}plugin
 # Disable policies older than Qt 6.12. The format is 0xMMmmrr
 # MM = Major (06); mm = minor (09); rr = revision (00)
 #
-# Refer to https://doc.qt.io/qt-6/qtglobal.html#QT_ENABLE_STRICT_MODE_UP_TO
-# for a complete list of disabled APIs
+# Refer to https://doc.qt.io/qt-6/qtglobal.html#QT_ENABLE_STRICT_MODE_UP_TO for a complete list of
+# disabled APIs
 #
 target_compile_definitions(${PROJECT_NAME}
                            PRIVATE
                              QT_ENABLE_STRICT_MODE_UP_TO=0x061200
-                             $<$<STREQUAL:${FM_BUILD_AS},SHARED>:FM_LIB_BUILD>)
+                             $<$<STREQUAL:${FM_BUILD_AS},SHARED>:FM_LIB_BUILD>
+                           PUBLIC $<$<STREQUAL:${FM_BUILD_AS},STATIC>:FM_STATIC_LIB>)
+
 target_compile_definitions(${PROJECT_NAME}plugin PRIVATE QT_ENABLE_STRICT_MODE_UP_TO=0x061200)
-
-if(FM_BUILD_AS STREQUAL "STATIC")
-  target_compile_definitions(${PROJECT_NAME} PUBLIC FM_STATIC_LIB)
-endif()
-
 target_compile_options(${PROJECT_NAME} PRIVATE "${compile_flags}")
 target_compile_options(${PROJECT_NAME}plugin PRIVATE "${compile_flags}")
-
 target_include_directories(${PROJECT_NAME}
                            PUBLIC
                              #
@@ -239,6 +232,7 @@ target_include_directories(${PROJECT_NAME}
                              #
                              $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
                              $<INSTALL_INTERFACE:include>)
+
 target_include_directories(${PROJECT_NAME}plugin
                            PUBLIC
                              $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
@@ -252,8 +246,7 @@ target_include_directories(${PROJECT_NAME}plugin
 target_link_libraries(${PROJECT_NAME} PUBLIC Qt::Core Qt::Qml)
 target_link_options(${PROJECT_NAME} PRIVATE "${linker_flags}")
 target_link_options(${PROJECT_NAME}plugin PRIVATE "${linker_flags}")
-
-target_sources(${PROJECT_NAME} PUBLIC FILE_SET HEADERS FILES fileman fileman.hpp)
+target_sources(${PROJECT_NAME} PUBLIC FILE_SET HEADERS FILES FileMan fileman.hpp)
 
 #---------------------------------------------------------------------------------------------------
 #
@@ -288,15 +281,14 @@ install(TARGETS
         OBJECTS # QML module objects go under the INSTALL_LIBDIR (/lib, /lib64 etc)
           COMPONENT devel
           DESTINATION "${CMAKE_INSTALL_LIBDIR}/${fm_ns}/${PROJECT_NAME}"
-          # This installs the header (.hpp) file properly
-        FILE_SET HEADERS
+        FILE_SET HEADERS # This installs the header (.hpp) file properly
           COMPONENT devel
           DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/${fm_ns}/${PROJECT_NAME}")
 
 #
-# The qml module plugin and related files should be installed under
-# INSTALL_LIBDIR/[qt6/]qml as is conventional. QT_QML_OUTPUT_DIR could be manually
-# set but QT6_INSTALL_QML already has the structure right
+# The qml module plugin and related files should be installed under INSTALL_LIBDIR/[qt6/]qml as is
+# conventional. QT_QML_OUTPUT_DIR could be manually set but QT6_INSTALL_QML already has the
+# structure right
 #
 install(TARGETS "${PROJECT_NAME}plugin"
         EXPORT ${PROJECT_NAME}Targets
@@ -306,14 +298,13 @@ install(FILES "${fm_qml_mod_qmldir}" "${fm_qml_mod_typeinfo}"
         DESTINATION "${QT6_INSTALL_QML}/${fm_ns}/${PROJECT_NAME}"
         COMPONENT runtime)
 
-# Auto create the *ConfigVersion.cmake file
-# requires including CMakePackageConfigHelpers
+# Auto create the *ConfigVersion.cmake file requires including CMakePackageConfigHelpers
 write_basic_package_version_file(${PROJECT_NAME}ConfigVersion.cmake
                                  VERSION ${PROJECT_VERSION}
                                  COMPATIBILITY SameMajorVersion)
 
-# Install the handwritten *Targets.cmake file. Library can now be invoked during
-# linking as Lotconn::FileMan
+# Install the handwritten *Targets.cmake file. Library can now be invoked during linking as
+# Lotconn::FileMan
 install(EXPORT ${PROJECT_NAME}Targets
         FILE ${PROJECT_NAME}Targets.cmake
         DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME}"

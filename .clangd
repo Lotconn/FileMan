@@ -22,3 +22,4 @@ Diagnostics:
       - misc-use-anonymous-namespace
       - misc-non-private-member-variables-in-classes
       - modernize-use-trailing-return-type
+      - "*owning-memory"

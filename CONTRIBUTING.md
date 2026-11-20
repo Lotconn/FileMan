@@ -184,10 +184,10 @@ ctest --test-dir build/ --output-on-failure
 Testing is still immature in this project. Subsequent test runs need to be manually preceeded by
 these app-directory removals in order for them to be successful:
 
-- `<AppDataLocation>/ModuleTest`
-- `<AppDataLocation>/apiTest`
-- `<AppDataLocation>/libTest`
-- `<AppDataLocation>/RootCtxTest`
+- `<AppLocalDataLocation>/ModuleTest`
+- `<AppLocalDataLocation>/apiTest`
+- `<AppLocalDataLocation>/libTest`
+- `<AppLocalDataLocation>/RootCtxTest`
 
 On Linux, this can be conveniently done with a simple command:
 
@@ -195,7 +195,7 @@ On Linux, this can be conveniently done with a simple command:
 rm -rfv \
   ~/.local/share/{Module,api,lib,RootCtx}Test \
   # if using clang-cl/MSVC on wine
-  ~/.wine/drive_c/users/admin/AppData/Roaming/{Module,api,lib,RootCtx}Test
+  ~/.wine/drive_c/users/admin/AppData/Local/{Module,api,lib,RootCtx}Test
 ```
 
 ## Guidelines

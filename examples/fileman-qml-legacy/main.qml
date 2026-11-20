@@ -100,7 +100,7 @@ ApplicationWindow {
 
         onAccepted: {
             //[KEY:FileMan::Category enum usage]
-            const category = selectedNameFilter.index == 0 ? FileMan.Audio : selectedNameFilter.index == 1 ? FileMan.Image : selectedNameFilter.index == 2 ? FileMan.Video : FileMan.All;
+            const category = selectedNameFilter.index == 0 ? FileMan.Categories.Audio : selectedNameFilter.index == 1 ? FileMan.Categories.Image : selectedNameFilter.index == 2 ? FileMan.Categories.Video : FileMan.Categories.All;
 
             for (const i = 0; i < selectedFiles.length; i++) {
                 const fileUrl = selectedFiles[i];

@@ -1,150 +1,144 @@
-#include "fileman_p.hpp"
-#include "internal-helpers.hpp"
+#include <fileman_p.hpp>
 
-//
-// [Public] A housekeeper for the store that builds store-state cache
-// dictionaries, prunes orphan hashed blobs and dangling symlinks and attempts
-// fix for directory permissions or missing required directories. Should run on
-// application/component startup.
-//
-int FileMan::refreshStore() {
+auto FileMan::refreshStore() -> int
+{
+    using pre_rm_validate_t = FileManPrivate::pre_rm_validate_t;
+    using validate_store_t  = FileManPrivate::validate_store_t;
+    Q_D(FileMan);
 
-  // Store Validations & Fixups ////////////////////////////////////////////////
+    // Store Validations & Fixups //////////////////////////////////////////////////////////////////
 
-  const validate_store_t s      = this->validateStore();
-  int                    retval = compErrnoSeverity(s.d_status, s.h_status);
+    const validate_store_t s      = d->validateStore();
+    int                    retval = FileManPrivate::compErrnoSeverity(s.d_status, s.h_status);
 
-  for (const int e : s.c_status)
-    retval = compErrnoSeverity(retval, e);
+    for (const int e : s.c_status)
+        retval = FileManPrivate::compErrnoSeverity(retval, e);
 
-  if (retval != 0 && retval != EAGAIN)
-    return retval;
+    if (retval != 0 && retval != EAGAIN) [[unlikely]]
+        return retval;
 
-  const QFileInfo dataDir(this->d->dataDir);
+    //----------------------------------------------------------------------------------------------
 
-  //----------------------------------------------------------------------------
+    //  Preparations ///////////////////////////////////////////////////////////////////////////////
 
-  //  Preparations /////////////////////////////////////////////////////////////
+    //
+    //  Exclusively lock the store during accessing, do store operations and auto unlocks once
+    //  refreshStore() goes out-of-scope.
+    //
 
-  //
-  //  Exclusively lock the store during accessing, do store operations and
-  //  auto unlocks once refreshStore() goes out-of-scope.
-  //
+    if (const int e = d->acquireStoreLock(); e != 0)
+        return e;
 
-  if (const int e = this->acquireStoreLock(); e != 0)
-    return e;
+    // Unlocks automatically once out-of-scope
+    const auto unlockGuard = qScopeGuard([&d]() -> void { d->releaseStoreLock(); });
 
-  // Unlocks automatically once out-of-scope
-  const auto unlockGuard = qScopeGuard([this] { releaseStoreLock(); });
+    // Clear the store cache dictionaries
+    d->clearAllEntries();
 
-  // Clear the store cache dictionaries
-  this->clearAllEntries();
+    //----------------------------------------------------------------------------------------------
 
-  //--------------------------------------------------------------------------
+    //  Store state caching & pruning //////////////////////////////////////////////////////////////
 
-  //  Store state caching & pruning ////////////////////////////////////////////
+    for (const auto &[category, catInfo] : d->categoryList.asKeyValueRange()) {
 
-  for (const auto &[category, catInfo] : this->d->categoryList.asKeyValueRange()) {
+        // Since we can return only an int, we return the value of worst error that occured during
+        // `refreshStore()`'s lifetime. Use `compErrnoSeverity()` for the comparison
 
-    // Since we can return only an int, we return the value of worst error that
-    // occured during `refreshStore()`'s lifetime. Use
-    // `compErrnoSeverity()` for the comparison
+        QDir categoryDir = catInfo.location;
 
-    QDir categoryDir(catInfo.location);
+        if (categoryDir.isEmpty()) {
+            logWarning << catInfo.name << "store doesn't have any contents yet";
+            continue;
+        }
 
-    if (categoryDir.isEmpty()) {
-      logWarning << catInfo.name << "store doesn't have any contents yet";
+        // Enlist all top-level files (unsorted) in the directory. QDir::System is necessary to
+        // enlist dangling symlinks
+        const QStringList contents =
+                categoryDir.entryList(QDir::AllEntries | QDir::System | QDir::NoDotAndDotDot);
 
-      continue;
+        logDebug << "Contents in" << catInfo.location << ":";
+        logDebug << contents;
+
+        // Build the store-state cache dictionary from valid files in the store
+        for (const QString &file : contents) {
+            const QString           filePath = categoryDir.absoluteFilePath(file);
+            const pre_rm_validate_t result   = d->preRmValidate(filePath, true);
+
+            if (result.lnkEntry.isEmpty()) [[unlikely]] {
+                if (result.status != ENOENT)
+                    logCritical << "Couldn't operate successfully.";
+
+                continue;
+            }
+
+            if (result.hashEntry.isEmpty()) [[unlikely]] {
+                logDebug << "Removing" << file << "from" << catInfo.location;
+
+                if (!categoryDir.remove(file)) [[unlikely]]
+                    logWarning << "Couldn't remove" << file;
+
+                continue;
+            }
+
+            d->registerEntry(result.lnkEntry, result.hashEntry);
+        }
     }
 
-    // Enlist all top-level files (unsorted) in the directory. QDir::System is
-    // necessary to enlist dangling symlinks
+    d->dumpAllEntries();
+
+    const bool hasValidEntries = !d->isDictEmpty(d->hashToLinkDict);
+
+    // Compact the dictionary after finished building, if anything was found
+    if (hasValidEntries)
+        d->squeezeDicts();
+
+    QDir hashDir = d->hashDir;
+
     const QStringList contents =
-        categoryDir.entryList(QDir::AllEntries | QDir::System | QDir::NoDotAndDotDot);
+            hashDir.entryList(QDir::AllEntries | QDir::System | QDir::NoDotAndDotDot);
 
-    logDebug << "Contents in" << catInfo.location << ":";
-    logDebug << contents;
+    if (contents.isEmpty()) {
+        if (!hasValidEntries) [[likely]] {
+            // Genuinely nothing in the "common" store; our job here is done
+            logInfo << "Common store doesn't have any valid contents";
 
-    // Build the store-state cache dictionary from valid files in the store
-    for (const QString &file : contents) {
+            d->storeManaged = true;
 
-      const QString           filePath = categoryDir.absoluteFilePath(file);
-      const pre_rm_validate_t result   = preRmValidate(filePath, true);
+            return 0;
+        }
 
-      if (result.lnkEntry.isEmpty()) {
-        if (result.status != ENOENT)
-          logCritical << "Couldn't operate successfully.";
+        // hashToLinkDict has entries but hashDir enlists empty: certain failure, not a legitimately
+        // empty store
+        logWarning << "Couldn't enlist" << d->hashDir;
 
-        continue;
-      }
-
-      if (result.hashEntry.isEmpty()) {
-        logDebug << "Removing" << file << "from" << catInfo.location;
-
-        if (!categoryDir.remove(file))
-          logWarning << "Couldn't remove" << file;
-
-        continue;
-      }
-
-      this->registerEntry(result.lnkEntry, result.hashEntry);
-    }
-  }
-
-  this->dumpAllEntries();
-
-  const bool hasValidEntries = !isDictEmpty(this->d->hashToLinkDict);
-
-  // Compact the dictionary after finished building, if anything was found
-  if (hasValidEntries)
-    this->squeezeDicts();
-
-  QDir hashDir(this->d->hashDir);
-
-  const QStringList contents =
-      hashDir.entryList(QDir::AllEntries | QDir::System | QDir::NoDotAndDotDot);
-
-  if (contents.isEmpty()) {
-    if (!hasValidEntries) {
-      // Genuinely nothing in the "common" store; our job here is done
-      logInfo << "Common store doesn't have any valid contents";
-
-      this->d->storeManaged = true;
-
-      return 0;
+        return EACCES;
     }
 
-    // hashToLinkDict has entries but hashDir enlists empty: certain failure,
-    // not a legitimately empty store
-    logWarning << "Couldn't enlist" << this->d->hashDir;
+    int e = 0;
 
-    return EACCES;
-  }
+    for (const QString &hash : contents) {
+        if (d->hashToLinkDict.contains(hash)) [[likely]]
+            continue;
 
-  int e = 0;
+        logDebug << "Removing" << hash << "from" << d->hashDir;
 
-  for (const QString &hash : contents)
-    if (!this->d->hashToLinkDict.contains(hash)) {
-      logDebug << "Removing" << hash << "from" << this->d->hashDir;
+        if (!hashDir.remove(hash)) [[unlikely]] {
+            logWarning << "Couldn't remove" << hash;
 
-      if (!hashDir.remove(hash)) {
-        logWarning << "Couldn't remove" << hash;
+            if (e == 0)
+                e = EACCES;
 
-        if (e == 0)
-          e = EACCES;
-
-        continue;
-      }
+            continue;
+        }
     }
 
-  //----------------------------------------------------------------------------
+    //----------------------------------------------------------------------------------------------
 
-  //  Finalizing ///////////////////////////////////////////////////////////////
+    //  Finalizing /////////////////////////////////////////////////////////////////////////////////
 
-  this->d->storeManaged = true;
+    d->storeManaged = true;
 
-  logInfo << "Housekeeping done on store";
+    logInfo << "Housekeeping done on store";
 
-  return e;
+    return e;
 }

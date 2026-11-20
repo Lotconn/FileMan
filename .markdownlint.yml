@@ -1,0 +1,13 @@
+# Disable annoying warnings for perfectly ok wide tables
+MD013:
+  line_length: 100
+  tables: false
+# Also disable the annoy for required html elements for tags and formatting
+MD033:
+  allowed_elements:
+    - a
+    - details
+    - div
+    - summary
+  table_allowed_elements:
+    - br

@@ -4,190 +4,140 @@
 #include <QObject>
 #include <QQmlEngine>
 #include <QSharedDataPointer>
-#include <memory>
 
 #if defined(FM_STATIC_LIB)
-#define FM_SYM_ATTR
+#  define FM_SYM_ATTR
 #elif defined(FM_LIB_BUILD)
-#define FM_SYM_ATTR Q_DECL_EXPORT
+#  define FM_SYM_ATTR Q_DECL_EXPORT
 #else
-#define FM_SYM_ATTR Q_DECL_IMPORT
+#  define FM_SYM_ATTR Q_DECL_IMPORT
 #endif
 
 class AddFileType;
 class RmFileType;
 
-struct alignas(8) FM_SYM_ATTR add_file_t {
-  Q_GADGET
-  Q_PROPERTY(int status READ status CONSTANT)
-  Q_PROPERTY(QUrl location READ location CONSTANT)
-  QML_ANONYMOUS
+struct alignas(8) FM_SYM_ATTR add_file_t // NOLINT(*magic-numbers)
+{
+    Q_GADGET
+    Q_PROPERTY(int status READ status CONSTANT)
+    Q_PROPERTY(QUrl location READ location CONSTANT)
+    Q_PROPERTY(QString id READ id CONSTANT)
+    QML_ANONYMOUS
 
 public:
-  add_file_t();
-  add_file_t(int status, const QUrl &location);
+    add_file_t();
+    add_file_t(int status, const QUrl &location, const QString &id);
+    ~add_file_t();
 
-  add_file_t(const add_file_t &);
-  add_file_t &operator=(const add_file_t &);
+    [[nodiscard]] auto status() const -> int;
+    [[nodiscard]] auto location() const -> QUrl;
+    [[nodiscard]] auto id() const -> QString;
+    [[nodiscard]] auto isNull() const noexcept -> bool;
 
-  add_file_t(add_file_t &&) noexcept;
-  add_file_t &operator=(add_file_t &&) noexcept;
-
-  ~add_file_t();
-
-  [[nodiscard]] int  status() const;
-  [[nodiscard]] QUrl location() const;
-  [[nodiscard]] bool isNull() const noexcept;
+    add_file_t(const add_file_t &);
+    add_file_t(add_file_t &&) noexcept;
+    add_file_t &operator=(const add_file_t &);
+    add_file_t &operator=(add_file_t &&) noexcept;
 
 private:
-  QExplicitlySharedDataPointer<AddFileType> d;
+    QExplicitlySharedDataPointer<AddFileType> d_ptr;
 };
 
-struct alignas(8) FM_SYM_ATTR rm_file_t {
-  Q_GADGET
-  Q_PROPERTY(int status_l READ status_l CONSTANT)
-  Q_PROPERTY(int status_h READ status_h CONSTANT)
-  QML_ANONYMOUS
+struct alignas(8) FM_SYM_ATTR rm_file_t // NOLINT(*magic-numbers)
+{
+    Q_GADGET
+    Q_PROPERTY(int status_l READ status_l CONSTANT)
+    Q_PROPERTY(int status_h READ status_h CONSTANT)
+    QML_ANONYMOUS
 
 public:
-  rm_file_t();
-  rm_file_t(int status_l, int status_h);
+    rm_file_t();
+    rm_file_t(int status_l, int status_h);
+    ~rm_file_t();
 
-  rm_file_t(const rm_file_t &);
-  rm_file_t &operator=(const rm_file_t &);
+    [[nodiscard]] auto status_l() const -> int;
+    [[nodiscard]] auto status_h() const -> int;
+    [[nodiscard]] auto isNull() const noexcept -> bool;
 
-  rm_file_t(rm_file_t &&) noexcept;
-  rm_file_t &operator=(rm_file_t &&) noexcept;
-
-  ~rm_file_t();
-
-  [[nodiscard]] int  status_l() const;
-  [[nodiscard]] int  status_h() const;
-  [[nodiscard]] bool isNull() const noexcept;
+    rm_file_t(const rm_file_t &);
+    rm_file_t(rm_file_t &&) noexcept;
+    rm_file_t &operator=(const rm_file_t &);
+    rm_file_t &operator=(rm_file_t &&) noexcept;
 
 private:
-  QExplicitlySharedDataPointer<RmFileType> d;
+    QExplicitlySharedDataPointer<RmFileType> d_ptr;
 };
 
-class FM_SYM_ATTR FileMan : public QObject {
-  Q_OBJECT
-  Q_CLASSINFO("RegisterEnumClassesUnscoped", "false")
-  QML_ELEMENT
-  QML_SINGLETON
+class FileManPrivate;
+
+class FM_SYM_ATTR FileMan : public QObject
+{
+    Q_OBJECT
+    Q_CLASSINFO("RegisterEnumClassesUnscoped", "false")
+    Q_DECLARE_PRIVATE(FileMan)
+    Q_DISABLE_COPY_MOVE(FileMan)
+    QML_ELEMENT
+    QML_SINGLETON
+
+    inline static FileMan *s_singletonInstance{ };
+    FileManPrivate *const  d_ptr;
 
 public:
-  explicit FileMan(QObject *parent = nullptr);
-  ~FileMan() override;
+    explicit FileMan(QObject *parent = nullptr);
+    explicit FileMan(const QDir &storeDir, QObject *parent = nullptr);
+    explicit FileMan(const QString &appName, QObject *parent = nullptr);
+    FileMan(const QString &orgName, const QString &appName, QObject *parent = nullptr);
+    ~FileMan() override;
 
-  static FileMan *create(QQmlEngine *, QJSEngine *);
-  static FileMan &instance();
+    static auto instance() -> FileMan &;
+    static auto instanceExists() -> bool;
 
-  //////////////////////////////////////////////////////////////////////////////
-  //  Type/Enum definitions
-  //////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    //  Type/Enum definitions
+    ////////////////////////////////////////////////////////////////////////////////////////////////
 
-  enum Category : quint8 {
-    None  = 0x00,
-    Audio = 0x01,
-    Image = 0x02,
-    Video = 0x04,
-    All   = Audio | Image | Video
-  };
-  Q_DECLARE_FLAGS(Categories, Category)
-  Q_FLAG(Categories)
+    enum class Category : quint8 {
+        None  = 0x00,
+        Audio = 0x01,
+        Image = 0x02,
+        Video = 0x04,
+        All   = Audio | Image | Video
+        // ceiling is 0xFF
+    };
+    Q_DECLARE_FLAGS(Categories, Category)
+    Q_FLAG(Categories)
 
-  enum class Errno : quint8 {
-    Success          = 0,
-    Busy             = EBUSY,
-    Canceled         = ECANCELED,
-    Exists           = EEXIST,
-    FileTooBig       = EFBIG,
-    Invalid          = EINVAL,
-    IOError          = EIO,
-    Loop             = ELOOP,
-    NotFound         = ENOENT,
-    NotSupported     = EOPNOTSUPP,
-    PermissionDenied = EPERM,
-    TryAgain         = EAGAIN
-  };
-  Q_ENUM(Errno)
+    enum class Errno : quint8 {
+        Success          = 0,
+        Busy             = EBUSY,
+        Canceled         = ECANCELED,
+        Exists           = EEXIST,
+        FileTooBig       = EFBIG,
+        Invalid          = EINVAL,
+        IOError          = EIO,
+        Loop             = ELOOP,
+        NotFound         = ENOENT,
+        NotSupported     = EOPNOTSUPP,
+        PermissionDenied = EPERM,
+        TryAgain         = EAGAIN
+        // ceiling is 0xFF
+    };
+    Q_ENUM(Errno)
 
-  //////////////////////////////////////////////////////////////////////////////
-  //  Function definitions
-  //////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    //  Function definitions
+    ////////////////////////////////////////////////////////////////////////////////////////////////
 
-  Q_INVOKABLE static QString getFileName(const QUrl &fileUrl);
-
-  Q_INVOKABLE [[nodiscard]] QString categoryToString(Category category) const;
-  Q_INVOKABLE [[nodiscard]] QString getCategoryDir(Category category) const;
-  Q_INVOKABLE [[nodiscard]] QString getDataDir() const;
-
-  Q_INVOKABLE add_file_t addFile(const QUrl &fileUrl, Categories categories = All);
-  Q_INVOKABLE int        refreshStore();
-  Q_INVOKABLE rm_file_t  rmFile(const QUrl &fileUrl);
-
-private:
-  Q_DISABLE_COPY_MOVE(FileMan)
-  class Private;
-
-  //////////////////////////////////////////////////////////////////////////////
-  //  Variable/Object definitions
-  //////////////////////////////////////////////////////////////////////////////
-
-  static FileMan                *s_singletonInstance;
-  const std::unique_ptr<Private> d;
-
-  //////////////////////////////////////////////////////////////////////////////
-  //  Type definitions
-  //////////////////////////////////////////////////////////////////////////////
-
-  struct alignas(8) pre_add_validate_t {
-    int        status = {};
-    Categories categories;
-  };
-
-  struct alignas(64) pre_rm_validate_t {
-    int     status    = {};
-    QString lnkEntry  = {};
-    QString hashEntry = {};
-  };
-
-  struct alignas(32) rev_lookup_symlink_t {
-    int     status   = {};
-    QString location = {};
-  };
-
-  struct alignas(16) validate_store_t {
-    int                  d_status = {};
-    int                  h_status = {};
-    QHash<Category, int> c_status;
-  };
-
-  //////////////////////////////////////////////////////////////////////////////
-  //  Function definitions
-  //////////////////////////////////////////////////////////////////////////////
-
-  static auto createPathComp(const QString &comp1, const QString &comp2) -> QString;
-  static auto resolveDataDir() -> QString;
-
-  auto acquireStoreLock() -> int;
-  auto clearAllEntries() -> void;
-  auto dumpAllEntries() -> void;
-  auto fixDirHealth(const QString &dir, int error, FileMan::Category category = FileMan::None)
-      -> bool;
-  auto isDictEmpty(const QHash<QString, QString> &dict) -> bool;
-  auto lookupHashByLink(const QString &lnkEntry) -> QString;
-  auto lookupLinkByHash(const QString &hash) -> QString;
-  auto mkDataDir() -> bool;
-  auto mkDataDir(FileMan::Category category) -> bool;
-  auto preAddValidate(const QFileInfo &file) -> pre_add_validate_t;
-  auto preRmValidate(const QString &lnkPath, bool enforcedCheck = false) -> pre_rm_validate_t;
-  auto registerEntry(const QString &lnkEntry, const QString &hash) -> void;
-  auto releaseStoreLock() -> void;
-  auto removeEntry(const QString &lnkEntry, const QString &hash) -> void;
-  auto revLookupSymlink(const QDir &searchDir, const QString &targetPath) -> rev_lookup_symlink_t;
-  auto squeezeDicts() -> void;
-  auto validateStore() -> validate_store_t;
+    Q_INVOKABLE auto addFile(const QUrl &fileUrl, bool overwrite,
+                             Categories categories = Category::All) -> add_file_t;
+    Q_INVOKABLE auto addFile(const QUrl &fileUrl, Categories categories = Category::All)
+            -> add_file_t;
+    Q_INVOKABLE static auto        getFileName(const QUrl &fileUrl) -> QString;
+    Q_INVOKABLE [[nodiscard]] auto categoryToString(Category category) const -> QString;
+    Q_INVOKABLE [[nodiscard]] auto getCategoryDir(Category category) const -> QString;
+    Q_INVOKABLE [[nodiscard]] auto getDataDir() const -> QString;
+    Q_INVOKABLE auto               refreshStore() -> int;
+    Q_INVOKABLE auto               rmFile(const QUrl &fileUrl) -> rm_file_t;
 };
 
 Q_DECLARE_OPERATORS_FOR_FLAGS(FileMan::Categories)
