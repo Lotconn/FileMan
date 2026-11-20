@@ -35,10 +35,10 @@ applications.
 
 |                           Return type | Function                                                                                                                                                     |
 | ------------------------------------: | :----------------------------------------------------------------------------------------------------------------------------------------------------------- |
-|                                       | [FileMan([QObject][qobject] \*parent = nullptr)](#fileman-constructor-1) `[explicit]`                                                                        |
-|                                       | [FileMan(const [QDir][qdir] &storeDir, [QObject][qobject] \*parent = nullptr)](#fileman-constructor-2) `[explicit]` `[since 3.0]`                            |
-|                                       | [FileMan(const [QString][qstring] &appName, [QObject][qobject] \*parent = nullptr)](#fileman-constructor-3) `[explicit]` `[since 3.0]`                       |
-|                                       | [FileMan(const [QString][qstring] &orgName, const [QString][qstring] &appName, [QObject][qobject] \*parent = nullptr)](#fileman-constructor-4) `[since 3.0]` |
+|                                       | [FileMan](#fileman-constructor-1)([QObject][qobject] \*parent = nullptr) `[explicit]`                                                                        |
+|                                       | [FileMan](#fileman-constructor-2)(const [QDir][qdir] &storeDir, [QObject][qobject] \*parent = nullptr) `[explicit]` `[since 3.0]`                            |
+|                                       | [FileMan](#fileman-constructor-3)(const [QString][qstring] &appName, [QObject][qobject] \*parent = nullptr) `[explicit]` `[since 3.0]`                       |
+|                                       | [FileMan](#fileman-constructor-4)(const [QString][qstring] &orgName, const [QString][qstring] &appName, [QObject][qobject] \*parent = nullptr) `[since 3.0]` |
 |                                       | [~FileMan()](#fileman-destructor) `[override]`                                                                                                               |
 |          [add_file_t](#add-file-type) | [addFile](#addfile-1)(_const_ [QUrl][qurl] &fileUrl, bool overwrite, [FileMan::Categories](#category-enum) category = FileMan::All) `[since 3.0]`            |
 |          [add_file_t](#add-file-type) | [addFile](#addfile-2)(_const_ [QUrl][qurl] &fileUrl, [FileMan::Categories](#category-enum) category = FileMan::All)                                          |
