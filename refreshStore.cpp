@@ -41,9 +41,6 @@ auto FileMan::refreshStore() -> int
 
     for (const auto &[category, catInfo] : d->categoryList.asKeyValueRange()) {
 
-        // Since we can return only an int, we return the value of worst error that occured during
-        // `refreshStore()`'s lifetime. Use `compErrnoSeverity()` for the comparison
-
         QDir categoryDir = catInfo.location;
 
         if (categoryDir.isEmpty()) {
@@ -71,7 +68,7 @@ auto FileMan::refreshStore() -> int
                 continue;
             }
 
-            if (result.hashEntry.isEmpty()) [[unlikely]] {
+            if (result.blobEntry.isEmpty()) [[unlikely]] {
                 logDebug << "Removing" << file << "from" << catInfo.location;
 
                 if (!categoryDir.remove(file)) [[unlikely]]
@@ -80,22 +77,22 @@ auto FileMan::refreshStore() -> int
                 continue;
             }
 
-            d->registerEntry(result.lnkEntry, result.hashEntry);
+            d->registerEntry(result.lnkEntry, result.blobEntry);
         }
     }
 
     d->dumpAllEntries();
 
-    const bool hasValidEntries = !d->isDictEmpty(d->hashToLinkDict);
+    const bool hasValidEntries = !d->isDictEmpty(d->blobToLinkDict);
 
     // Compact the dictionary after finished building, if anything was found
     if (hasValidEntries)
         d->squeezeDicts();
 
-    QDir hashDir = d->hashDir;
+    QDir blobDir = d->blobDir;
 
     const QStringList contents =
-            hashDir.entryList(QDir::AllEntries | QDir::System | QDir::NoDotAndDotDot);
+            blobDir.entryList(QDir::AllEntries | QDir::System | QDir::NoDotAndDotDot);
 
     if (contents.isEmpty()) {
         if (!hasValidEntries) [[likely]] {
@@ -107,23 +104,23 @@ auto FileMan::refreshStore() -> int
             return 0;
         }
 
-        // hashToLinkDict has entries but hashDir enlists empty: certain failure, not a legitimately
+        // blobToLinkDict has entries but blobDir enlists empty: certain failure, not a legitimately
         // empty store
-        logWarning << "Couldn't enlist" << d->hashDir;
+        logWarning << "Couldn't enlist" << d->blobDir;
 
         return EACCES;
     }
 
     int e = 0;
 
-    for (const QString &hash : contents) {
-        if (d->hashToLinkDict.contains(hash)) [[likely]]
+    for (const QString &blob : contents) {
+        if (d->blobToLinkDict.contains(blob)) [[likely]]
             continue;
 
-        logDebug << "Removing" << hash << "from" << d->hashDir;
+        logDebug << "Removing" << blob << "from" << d->blobDir;
 
-        if (!hashDir.remove(hash)) [[unlikely]] {
-            logWarning << "Couldn't remove" << hash;
+        if (!blobDir.remove(blob)) [[unlikely]] {
+            logWarning << "Couldn't remove" << blob;
 
             if (e == 0)
                 e = EACCES;

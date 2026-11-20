@@ -47,16 +47,16 @@ struct alignas(8) FM_SYM_ATTR rm_file_t // NOLINT(*magic-numbers)
 {
     Q_GADGET
     Q_PROPERTY(int status_l READ status_l CONSTANT)
-    Q_PROPERTY(int status_h READ status_h CONSTANT)
+    Q_PROPERTY(int status_b READ status_b CONSTANT)
     QML_ANONYMOUS
 
 public:
     rm_file_t();
-    rm_file_t(int status_l, int status_h);
+    rm_file_t(int status_l, int status_b);
     ~rm_file_t();
 
     [[nodiscard]] auto status_l() const -> int;
-    [[nodiscard]] auto status_h() const -> int;
+    [[nodiscard]] auto status_b() const -> int;
     [[nodiscard]] auto isNull() const noexcept -> bool;
 
     rm_file_t(const rm_file_t &);

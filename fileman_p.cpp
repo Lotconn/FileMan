@@ -41,12 +41,23 @@ auto FileManPrivate::acquireStoreLock() noexcept -> int
     return 0;
 }
 
+// Static
+auto FileManPrivate::calcDigest(const QString &path) noexcept -> QString
+{
+    QFile file{ path };
+
+    if (!file.open(QIODeviceBase::ReadOnly))
+        return { };
+
+    return QCryptographicHash::hash(file.readAll(), QCryptographicHash::Sha256).toHex();
+}
+
 auto FileManPrivate::clearAllEntries() noexcept -> void
 {
     const QWriteLocker locker{ &this->dictLock };
 
-    this->hashToLinkDict.clear();
-    this->linkToHashDict.clear();
+    this->blobToLinkDict.clear();
+    this->linkToBlobDict.clear();
 }
 
 // Static
@@ -140,12 +151,12 @@ auto FileManPrivate::dumpAllEntries() noexcept -> void
 {
     const QReadLocker locker{ &this->dictLock };
 
-    logDebug << "hashToLinkDict:";
-    for (const auto &[key, value] : std::as_const(this->hashToLinkDict).asKeyValueRange())
+    logDebug << "blobToLinkDict:";
+    for (const auto &[key, value] : std::as_const(this->blobToLinkDict).asKeyValueRange())
         logDebug << qPrintable(key) << ": " << value;
 
-    logDebug << "linkToHashDict:";
-    for (const auto &[key, value] : std::as_const(this->linkToHashDict).asKeyValueRange())
+    logDebug << "linkToBlobDict:";
+    for (const auto &[key, value] : std::as_const(this->linkToBlobDict).asKeyValueRange())
         logDebug << qPrintable(key) << ": " << value;
 }
 
@@ -236,17 +247,6 @@ auto FileManPrivate::fixDirHealth(const QString &dir, int error, Category catego
     return true;
 }
 
-// Static
-auto FileManPrivate::hashFile(const QString &path) noexcept -> QString
-{
-    QFile file{ path };
-
-    if (!file.open(QIODeviceBase::ReadOnly))
-        return { };
-
-    return QCryptographicHash::hash(file.readAll(), QCryptographicHash::Sha256).toHex();
-}
-
 auto FileManPrivate::isDictEmpty(const QHash<QString, QString> &dict) noexcept -> bool
 {
     const QReadLocker locker{ &this->dictLock };
@@ -259,16 +259,16 @@ auto FileManPrivate::isHexDigit(QChar ch) noexcept -> bool
     return (ch >= u'0' && ch <= u'9') || (ch >= u'a' && ch <= u'f') || (ch >= u'A' && ch <= u'F');
 }
 
-auto FileManPrivate::lookupHashByLink(const QString &lnkEntry) noexcept -> QString
+auto FileManPrivate::lookupBlobByLink(const QString &lnkEntry) noexcept -> QString
 {
     const QReadLocker locker{ &this->dictLock };
-    return this->linkToHashDict.value(lnkEntry, { });
+    return this->linkToBlobDict.value(lnkEntry, { });
 }
 
-auto FileManPrivate::lookupLinkByHash(const QString &hash) noexcept -> QString
+auto FileManPrivate::lookupLinkByBlob(const QString &blob) noexcept -> QString
 {
     const QReadLocker locker{ &this->dictLock };
-    return this->hashToLinkDict.value(hash, { });
+    return this->blobToLinkDict.value(blob, { });
 }
 
 // Static
@@ -280,8 +280,8 @@ auto FileManPrivate::lowestSetFlag(const Categories categories) noexcept -> Cate
 
 auto FileManPrivate::mkDataDir() const noexcept -> bool
 {
-    if (!QDir{ }.mkpath(this->hashDir)) [[unlikely]] {
-        logCritical << "Failed to create" << this->hashDir;
+    if (!QDir{ }.mkpath(this->blobDir)) [[unlikely]] {
+        logCritical << "Failed to create" << this->blobDir;
         return false;
     }
 
@@ -378,7 +378,7 @@ auto FileManPrivate::preRmValidate(const QString &lnkPath, const bool enforcedCh
     // `lnkPath` could be a directory path or TLD /, C: etc
     if (lnkFileName.isEmpty() || lnkDirName.isEmpty()) {
         logCritical << lnkPath << "is an invalid path. Refusing to proceed.";
-        return { .status = EINVAL, .lnkEntry = { }, .hashEntry = { } };
+        return { .status = EINVAL, .lnkEntry = { }, .blobEntry = { } };
     }
 
     const QString categoryDirPath = this->categoryDirs.value(lnkDirName, { });
@@ -386,12 +386,12 @@ auto FileManPrivate::preRmValidate(const QString &lnkPath, const bool enforcedCh
 
     if (categoryDirPath.isEmpty()) {
         logCritical << lnkPath << "is not a valid file in store";
-        return { .status = EINVAL, .lnkEntry = { }, .hashEntry = { } };
+        return { .status = EINVAL, .lnkEntry = { }, .blobEntry = { } };
     }
 
     if (lnkDirPath != categoryDirPath) {
         logCritical << lnkPath << "is not a path to store";
-        return { .status = EINVAL, .lnkEntry = { }, .hashEntry = { } };
+        return { .status = EINVAL, .lnkEntry = { }, .blobEntry = { } };
     }
 
     // Files under dataDir/<category> are usually symlinks
@@ -399,40 +399,34 @@ auto FileManPrivate::preRmValidate(const QString &lnkPath, const bool enforcedCh
         && !lnkFile.exists()) {
         // This file actually doesn't exist
         logWarning << lnkPath << "doesn't exist in store";
-        return { .status = ENOENT, .lnkEntry = { }, .hashEntry = { } };
+        return { .status = ENOENT, .lnkEntry = { }, .blobEntry = { } };
     }
 
     // See the target of the symlink first but don't resolve yet QDir::filePath() cleverly returns
     // the target path unchanged if it's absolute, lexically manipulates the string if it's relative
-    const QDir      hashDir{ this->hashDir };
+    const QDir      blobDir{ this->blobDir };
     const QString   lnkTargetPath = QDir::cleanPath(categoryDir.filePath(lnkFile.symLinkTarget()));
     const QFileInfo lnkTarget{ lnkTargetPath };
     const QString   lnkTargetFileName = lnkTarget.fileName();
 
     logDebug << "Symlink target:" << lnkTargetPath;
 
-    // All healthy symlinks canonically point to `hashDir`
-    if (lnkTarget.absolutePath() != hashDir.absolutePath()) [[unlikely]] {
+    // All healthy symlinks canonically point to `blobDir`
+    if (lnkTarget.absolutePath() != blobDir.absolutePath()) [[unlikely]] {
         // An alien symlink in the store, disallow symlink resolution
         logWarning << lnkPath << "points to outside the store or not a symbolic link";
-        return { .status = 0, .lnkEntry = lnkEntry, .hashEntry = { } };
+        return { .status = 0, .lnkEntry = lnkEntry, .blobEntry = { } };
     }
 
     // Target path may still be a crafted jump-symlink residing in the store
     if (lnkTarget.isSymbolicLink() || lnkTarget.isShortcut() || lnkTarget.isAlias()) [[unlikely]] {
         logWarning << lnkTargetPath << "is unexpectedly a symlink";
-        return { .status = 0, .lnkEntry = lnkEntry, .hashEntry = { } };
-    }
-
-    // Target may not exist
-    if (!lnkTarget.exists()) [[unlikely]] {
-        logWarning << lnkTargetPath << "doesn't exist on store";
-        return { .status = 0, .lnkEntry = lnkEntry, .hashEntry = { } };
+        return { .status = 0, .lnkEntry = lnkEntry, .blobEntry = { } };
     }
 
     //
     // Reaching here means provided symlink & target are both valid & safe and not dangling. Proceed
-    // to check the hashFile next
+    // to check the blobFile next
     //
 
     // Target may not pass our expected validations, `preAddValidate()` handles some of this
@@ -442,10 +436,15 @@ auto FileManPrivate::preRmValidate(const QString &lnkPath, const bool enforcedCh
     const int e =
             (enforcedCheck) ? this->preAddValidate(lnkTarget).status : validateFile(lnkTarget);
 
+    if (e == ENOENT) [[unlikely]] {
+        logWarning << lnkTargetPath << "doesn't exist on store";
+        return { .status = 0, .lnkEntry = lnkEntry, .blobEntry = { } };
+    }
+
     if (e != 0) [[unlikely]] {
         logWarning << lnkTargetPath << "didn't pass validations";
         logDebug << "Error:" << e;
-        return { .status = 0, .lnkEntry = lnkEntry, .hashEntry = { } };
+        return { .status = 0, .lnkEntry = lnkEntry, .blobEntry = { } };
     }
 
     // Valid files ought to have 64 characters exactly (sha256 digest length)
@@ -454,7 +453,7 @@ auto FileManPrivate::preRmValidate(const QString &lnkPath, const bool enforcedCh
     {
         logWarning << lnkTargetPath << "is not a valid file in store (wrong name)";
         logDebug << "Base name size:" << s << "vs" << nameLength;
-        return { .status = 0, .lnkEntry = lnkEntry, .hashEntry = { } };
+        return { .status = 0, .lnkEntry = lnkEntry, .blobEntry = { } };
     }
 
     // They also have exactly hex characters: [a-fA-F] & [0-9]
@@ -462,26 +461,26 @@ auto FileManPrivate::preRmValidate(const QString &lnkPath, const bool enforcedCh
         if (!FileManPrivate::isHexDigit(c)) [[unlikely]] {
             logWarning << lnkTargetPath << "is not a valid file in store (wrong name)";
             logDebug << "Base name" << lnkTargetFileName << "doesn't look like a sha256 hash";
-            return { .status = 0, .lnkEntry = lnkEntry, .hashEntry = { } };
+            return { .status = 0, .lnkEntry = lnkEntry, .blobEntry = { } };
         }
 
     // Validate the digest against file name. This is a costly operation so saving this for last and
     // only when called for enforced check
     if (enforcedCheck)
-        if (FileManPrivate::hashFile(lnkTargetPath) != lnkTargetFileName) [[unlikely]] {
+        if (FileManPrivate::calcDigest(lnkTargetPath) != lnkTargetFileName) [[unlikely]] {
             logWarning << "Digest mismatch for" << lnkTargetPath;
-            return { .status = 0, .lnkEntry = lnkEntry, .hashEntry = { } };
+            return { .status = 0, .lnkEntry = lnkEntry, .blobEntry = { } };
         }
 
-    return { .status = 0, .lnkEntry = lnkEntry, .hashEntry = lnkTargetFileName };
+    return { .status = 0, .lnkEntry = lnkEntry, .blobEntry = lnkTargetFileName };
 }
 
-auto FileManPrivate::registerEntry(const QString &lnkEntry, const QString &hash) noexcept -> void
+auto FileManPrivate::registerEntry(const QString &lnkEntry, const QString &blob) noexcept -> void
 {
     const QWriteLocker locker(&this->dictLock);
 
-    this->hashToLinkDict.insert(hash, lnkEntry);
-    this->linkToHashDict.insert(lnkEntry, hash);
+    this->blobToLinkDict.insert(blob, lnkEntry);
+    this->linkToBlobDict.insert(lnkEntry, blob);
 }
 
 auto FileManPrivate::releaseStoreLock() noexcept -> void
@@ -490,12 +489,12 @@ auto FileManPrivate::releaseStoreLock() noexcept -> void
     this->storeMutex.unlock();
 }
 
-auto FileManPrivate::removeEntry(const QString &lnkEntry, const QString &hash) noexcept -> void
+auto FileManPrivate::removeEntry(const QString &lnkEntry, const QString &blob) noexcept -> void
 {
     const QWriteLocker locker(&this->dictLock);
 
-    this->hashToLinkDict.remove(hash);
-    this->linkToHashDict.remove(lnkEntry);
+    this->blobToLinkDict.remove(blob);
+    this->linkToBlobDict.remove(lnkEntry);
 }
 
 // Static
@@ -597,9 +596,9 @@ auto FileManPrivate::revLookupSymlink(const QDir &searchDir, const QString &targ
     if (!QFileInfo{ searchDir, "."_L1 }.isExecutable())
         return { .status = EPERM, .location = { } };
 
-    // Let's assume `targetPath` is hashDir/hash and try some shortcuts
+    // Let's assume `targetPath` is blobDir/blob and try some shortcuts
     const QString targetName  = QFileInfo{ targetPath }.fileName();
-    const QString lnkEntry    = this->lookupLinkByHash(targetName);
+    const QString lnkEntry    = this->lookupLinkByBlob(targetName);
     const bool    entryExists = !lnkEntry.isEmpty();
     const bool    isManaged   = this->storeManaged;
 
@@ -697,8 +696,8 @@ auto FileManPrivate::squeezeDicts() noexcept -> void
 {
     QWriteLocker locker(&this->dictLock);
 
-    this->hashToLinkDict.squeeze();
-    this->linkToHashDict.squeeze();
+    this->blobToLinkDict.squeeze();
+    this->linkToBlobDict.squeeze();
 }
 
 // Static
@@ -737,7 +736,7 @@ auto FileManPrivate::validateStore() const noexcept -> FileManPrivate::validate_
 {
     FileManPrivate::validate_store_t status = { .d_status = -1, .h_status = -1, .c_status = { } };
 
-    for (const QString &dir : { this->dataDir, this->hashDir }) {
+    for (const QString &dir : { this->dataDir, this->blobDir }) {
 
         const int e         = dirHealth(dir);
         int      &dirStatus = (dir == this->dataDir) ? status.d_status : status.h_status;

@@ -182,8 +182,8 @@ ApplicationWindow {
                             //[KEY:rmFile() usage with default category]
                             const status = FileMan.rmFile(mainWindow.audioList[rmIdx].path);
 
-                            if (status.status_h !== 0)
-                                console.warn("Fileman::rmFile() warning:", status.status_h);
+                            if (status.status_b !== 0)
+                                console.warn("Fileman::rmFile() warning:", status.status_b);
 
                             if (status.status_l !== 0 && status.status_l != FileMan.Errno.Invalid && status.status_l != FileMan.Errno.NotFound) {
                                 console.warn("Fileman::rmFile() failed with error:", status.status_l);

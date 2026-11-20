@@ -255,7 +255,7 @@ issues. For building-host platform support see
 
 ### add_file_t
 
-Struct type holding members _status()_ and _location()_:
+Struct type holding members _status()_, _location()_ and _id()_:
 
 | Member     | Type               | Attributes      |
 | ---------- | ------------------ | --------------- |
@@ -316,12 +316,12 @@ Developers are discouraged from using raw errno values as they may vary dependin
 
 ### rm_file_t
 
-Struct type holding members _status_l()_ and _status_h()_:
+Struct type holding members _status_l()_ and _status_b()_:
 
 | Member     | Type | Attributes      |
 | ---------- | ---- | --------------- |
 | status_l() | int  | `[[nodiscard]]` |
-| status_h() | int  | `[[nodiscard]]` |
+| status_b() | int  | `[[nodiscard]]` |
 
 ## Member Function Documentation
 
@@ -618,7 +618,7 @@ referring to a file in store. Removes both the referred file and the backing has
 | Member (Type)      | Values       |
 | ------------------ | ------------ |
 | `status_l()` (int) | 0/`errno`    |
-| `status_h()` (int) | 0/-1/`errno` |
+| `status_b()` (int) | 0/-1/`errno` |
 
 When processing a removal request, validations are always be performed on the _fileUrl_ before any
 checks are made on the backing blob:
@@ -627,7 +627,7 @@ checks are made on the backing blob:
   validation. This includes scenarios where the URL is not a path within the store, the file does
   not exist, is not a symlink, points to an invalid or external location, or if the symlink removal
   itself fails.
-- **Blob Validation (`status_h`):** This will return `-1` if _rmFile()_ fails early (before blob
+- **Blob Validation (`status_b`):** This will return `-1` if _rmFile()_ fails early (before blob
   checks are even reached, due to the link validation failure). It will return a non-zero positive
   _errno_ only if the backing hashed blob validations fail (for reasons similar to _addFile()_'s
   logic) or if the blob removal fails.
@@ -641,12 +641,12 @@ FileMan will safely remove valid symlink files that the _fileUrl_ refers to with
 directories, but it will strictly refuse if the _fileUrl_ points to any location outside the
 categorized store.
 
-Incomplete removals may be possible, for example, the backing hashed file might be successfully
-removed, but the symlink removal could fail due to a sudden permission change or lock. To minimize
-chances of "blob orphanage", the backing hashed blob is always targeted for removal first. If the
-symlink removal subsequently fails, it leaves behind a dangling symlink. This is an acceptable,
-fail-safe state: FileMan is designed to detect and safely clean up these dangling symlinks on the
-next API call, provided the caller checks the error returns appropriately and retries if necessary.
+Incomplete removals may be possible, for example, the backing blob might be successfully removed,
+but the symlink removal could fail due to a sudden permission change or lock. To minimize chances of
+"blob orphanage", the backing hashed blob is always targeted for removal first. If the symlink
+removal subsequently fails, it leaves behind a dangling symlink. This is an acceptable, fail-safe
+state: FileMan is designed to detect and safely clean up these dangling symlinks on the next API
+call, provided the caller checks the error returns appropriately and retries if necessary.
 
 <div><a id="rmfile-2"></a></div>
 <div><a name="rmfile-2"></a></div>

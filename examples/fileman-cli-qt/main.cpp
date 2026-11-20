@@ -123,7 +123,7 @@ int main(int argc, char *argv[])
             const rm_file_t s = fileman.rmFile(QUrl(fileUrl));
             qInfo() << "rmFile() return:";
             qInfo() << "link status:" << s.status_l();
-            qInfo() << "hash status:" << s.status_h();
+            qInfo() << "blob status:" << s.status_b();
             break;
         }
         case 3: {

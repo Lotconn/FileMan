@@ -12,7 +12,7 @@ QtObject {
 
         if (resAdd.status === 0) {
             const resRm = fileman.rmFile(fileUrl);
-            console.info(resRm.status_l + " " + resRm.status_h);
+            console.info(resRm.status_l + " " + resRm.status_b);
         }
 
         Qt.quit();

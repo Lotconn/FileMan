@@ -62,19 +62,19 @@ auto FileMan::rmFile(const QUrl &fileUrl) -> rm_file_t
 
     //  File Operations ////////////////////////////////////////////////////////////////////////////
 
-    QDir hashDir     = d->hashDir;
+    QDir blobDir     = d->blobDir;
     QDir lnkDir      = lnkFile.dir();
-    int  status_h    = 0;
+    int  status_b    = 0;
     int  status_l    = 0;
-    bool hashRemoved = true;
+    bool blobRemoved = true;
     bool lnkRemoved  = false;
 
     // Remove the raw blob from the store first
-    if (v_result.hashEntry.isEmpty()) [[unlikely]]
-        logWarning << "No valid hashed file found in store for" << fileUrlStr;
-    else if (hashRemoved = hashDir.remove(v_result.hashEntry); !hashRemoved) [[unlikely]] {
-        logCritical << "Couldn't remove" << v_result.hashEntry;
-        status_h = EACCES;
+    if (v_result.blobEntry.isEmpty()) [[unlikely]]
+        logWarning << "No valid blobs found in store for" << fileUrlStr;
+    else if (blobRemoved = blobDir.remove(v_result.blobEntry); !blobRemoved) [[unlikely]] {
+        logCritical << "Couldn't remove" << v_result.blobEntry;
+        status_b = EACCES;
     }
 
     // Remove the symlink next
@@ -89,12 +89,12 @@ auto FileMan::rmFile(const QUrl &fileUrl) -> rm_file_t
 
     // Unregister the entries from the hash table
     d->removeEntry(Q_LIKELY(lnkRemoved) ? v_result.lnkEntry : ""_L1,
-                   Q_LIKELY(hashRemoved) ? v_result.hashEntry : ""_L1);
+                   Q_LIKELY(blobRemoved) ? v_result.blobEntry : ""_L1);
 
-    if ((status_l == 0) && (status_h == 0)) [[likely]]
+    if ((status_l == 0) && (status_b == 0)) [[likely]]
         logInfo << fileUrlStr << "removed successfully from store";
     else [[unlikely]]
         logInfo << fileUrlStr << "removal from store wasn't fully successful";
 
-    return { status_l, status_h };
+    return { status_l, status_b };
 }

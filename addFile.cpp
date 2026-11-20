@@ -112,14 +112,14 @@ auto FileMan::addFile(const QUrl &fileUrl, bool overwrite, const Categories cate
         return { EPERM, { }, { } };
     }
 
-    // Raw data files/blobs reside as dataDir/common/<hash>
-    QDir            hashDir  = d->hashDir;
-    const QString   hash     = FileManPrivate::hashFile(srcPath);
-    const QString   hashPath = hashDir.absoluteFilePath(hash);
-    const QFileInfo hashFile{ hashPath };
+    // Raw data files/blobs reside as dataDir/common/<blob>
+    QDir            blobDir  = d->blobDir;
+    const QString   blob     = FileManPrivate::calcDigest(srcPath);
+    const QString   blobPath = blobDir.absoluteFilePath(blob);
+    const QFileInfo blobFile{ blobPath };
 
     // Check available (quota) free space before copying. Proceed even if unable to check.
-    if (const int e = FileManPrivate::diskFreeCheck(srcFile, hashDir); e != -1 && e != 0)
+    if (const int e = FileManPrivate::diskFreeCheck(srcFile, blobDir); e != -1 && e != 0)
         return { e, { }, { } };
 
     QString lnkFileName = srcFileName;
@@ -139,18 +139,18 @@ auto FileMan::addFile(const QUrl &fileUrl, bool overwrite, const Categories cate
 
     // Existence checks on symlinks resolve targets instead of the symlinks themselves
     // QFileInfo::isSymlink() is deprecated
-    const bool hashExists   = (hashFile.isSymbolicLink() || hashFile.isAlias()
-                               || hashFile.isShortcut() || QFile::exists(hashPath));
+    const bool blobExists   = (blobFile.isSymbolicLink() || blobFile.isAlias()
+                               || blobFile.isShortcut() || QFile::exists(blobPath));
     const bool lnkExists    = (lnkFile.isSymbolicLink() || lnkFile.isAlias() || lnkFile.isShortcut()
                                || QFile::exists(lnkPath));
-    bool       hashIsOrphan = false;
+    bool       blobIsOrphan = false;
 
-    if (hashExists) {
+    if (blobExists) {
         if (overwrite) {
-            if (!hashDir.remove(hash)) [[unlikely]] {
-                // Certainly NOT because hash doesn't exist in the dir, inhibiting the actual
+            if (!blobDir.remove(blob)) [[unlikely]] {
+                // Certainly NOT because blob doesn't exist in the dir, inhibiting the actual
                 // intention for overwrite. Not acceptable.
-                logCritical << "Couldn't remove" << hashPath;
+                logCritical << "Couldn't remove" << blobPath;
                 return { EACCES, { }, { } };
             }
         } else {
@@ -158,7 +158,7 @@ auto FileMan::addFile(const QUrl &fileUrl, bool overwrite, const Categories cate
             //  static on initialization, the list can change between calls
             logInfo << fileUrlStr << "already available on store";
 
-            const rev_lookup_symlink_t lnk = d->revLookupSymlink(lnkDir, hashPath);
+            const rev_lookup_symlink_t lnk = d->revLookupSymlink(lnkDir, blobPath);
 
             if (lnk.status == EPERM) [[unlikely]] {
                 logCritical << "Store is not accessible. Execuatble permission is required";
@@ -166,17 +166,17 @@ auto FileMan::addFile(const QUrl &fileUrl, bool overwrite, const Categories cate
             }
 
             if (!lnk.location.isEmpty()) [[likely]]
-                return { EEXIST, QUrl::fromLocalFile(lnk.location), hash };
+                return { EEXIST, QUrl::fromLocalFile(lnk.location), blob };
 
-            logDebug << hash << "is orphaned in store. Reusing blob...";
+            logDebug << blob << "is orphaned in store. Reusing blob...";
 
-            hashIsOrphan = true;
+            blobIsOrphan = true;
         }
     }
 
     if (lnkExists) {
         // Overwrite (remove) the symlink only if it was bound to an existing blob
-        bool skipRename = (overwrite && hashExists);
+        bool skipRename = (overwrite && blobExists);
 
         if (!skipRename && !lnkDir.remove(lnkFileName)) [[unlikely]] {
             logWarning << "Couldn't remove" << lnkPath << ", falling back to renaming";
@@ -209,14 +209,14 @@ auto FileMan::addFile(const QUrl &fileUrl, bool overwrite, const Categories cate
 
     // Finalizing //////////////////////////////////////////////////////////////////////////////////
 
-    if (!hashIsOrphan) [[unlikely]] {
-        if (!QFile::copy(srcPath, hashPath,
+    if (!blobIsOrphan) [[unlikely]] {
+        if (!QFile::copy(srcPath, blobPath,
                          QFileDevice::ReadOwner | QFileDevice::WriteOwner | QFileDevice::ReadGroup
                                  | QFileDevice::ReadOther)) {
-            logCritical << "Failed to copy" << srcPath << "to" << hashPath;
+            logCritical << "Failed to copy" << srcPath << "to" << blobPath;
 
-            if (QFileInfo::exists(hashPath))
-                hashDir.remove(hash);
+            if (QFileInfo::exists(blobPath))
+                blobDir.remove(blob);
 
             return { EIO, { }, { } };
         }
@@ -225,27 +225,27 @@ auto FileMan::addFile(const QUrl &fileUrl, bool overwrite, const Categories cate
 #ifdef Q_OS_WIN
     // .lnk shortcuts resolve relative targets against the app's CWD, not lnkDir; use an absolute
     // target to avoid CWD-dependent resolution.
-    const QString targetPath = hashPath;
+    const QString targetPath = blobPath;
 #else
-    const QString targetPath = lnkDir.relativeFilePath(hashPath);
+    const QString targetPath = lnkDir.relativeFilePath(blobPath);
 #endif
     logDebug << "Linking" << lnkPath << "to" << targetPath;
 
-    // Symlink the unanimous hashed file as the supplied file name under corresponding category
+    // Symlink the unanimous blob as the supplied file name under corresponding category
     if (!QFile::link(targetPath, lnkPath)) [[unlikely]] {
-        logCritical << "Failed to symlink" << hashPath << "to" << lnkPath;
+        logCritical << "Failed to symlink" << blobPath << "to" << lnkPath;
         return { EACCES, { }, { } };
     }
 
     logInfo << fileUrlStr << "successfully added";
-    logDebug << "Added as" << hashPath << "to store";
+    logDebug << "Added as" << blobPath << "to store";
 
-    // Register the [ hash, symlink ] entry to `hashToLinkDict()`
-    logDebug << "Registering hash as " << hash << " and symlink as" << lnkEntry << " to tables";
+    // Register the [ blob, symlink ] entry to `blobToLinkDict()`
+    logDebug << "Registering blob as " << blob << " and symlink as" << lnkEntry << " to tables";
 
-    d->registerEntry(lnkEntry, hash);
+    d->registerEntry(lnkEntry, blob);
 
-    return { 0, QUrl::fromLocalFile(lnkPath), hash };
+    return { 0, QUrl::fromLocalFile(lnkPath), blob };
 }
 
 auto FileMan::addFile(const QUrl &fileUrl, const Categories categories) -> add_file_t

@@ -18,6 +18,7 @@ messages for detailed descriptions.
 - `Category` enum is now an enum class. This also means enums must be used scoped from now.
 - Dropped explicit enablement of position independent code in build. Build system however, may still
   enable it by default but this isn't enforced anymore now.
+- `rm_file_t::status_h()` renamed to `status_b()`
 
 ### New
 
@@ -61,6 +62,8 @@ messages for detailed descriptions.
   styling configurations are included in the tree.
 - Added `logFatal` for replacing `qFatal()` loggings. The logging prefix strings were also modified
   to improve readability and visuals
+- Instances of "hash" wording replaced with "blob" as appropriate. The former is preserved for
+  specifying checksum hashes only. This consequentially renamed some internal methods.
 - Also, C++ follows Qt's code style. Refer to <https://wiki.qt.io/Qt_Coding_Style> and
   <https://wiki.qt.io/Qt_Coding_Style>.
 - Workspace configurations and extensions recommendations were added for proper VSCode/VSCodium

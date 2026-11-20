@@ -47,13 +47,6 @@ class FileManPrivate
         QString location = { };
     };
 
-    struct alignas(64) hash_and_stage_t
-    {
-        int     status;
-        QString hash;
-        QString stagedPath;
-    };
-
     struct alignas(8) pre_add_validate_t
     {
         int        status = { };
@@ -64,7 +57,7 @@ class FileManPrivate
     {
         int     status    = { };
         QString lnkEntry  = { };
-        QString hashEntry = { };
+        QString blobEntry = { };
     };
 
     struct alignas(32) rev_lookup_symlink_t
@@ -88,16 +81,16 @@ class FileManPrivate
     // would've been more ideal for local disk files
     static constexpr qint32 ioChunkSize = 65536;
 
+    QString                          blobDir;
+    QHash<QString, QString>          blobToLinkDict;
+    QHash<QString, QString>          linkToBlobDict;
     QHash<QString, QString>          categoryDirs;
-    QHash<Category, category_info_t> categoryList;
     QString                          dataDir;
+    QHash<Category, category_info_t> categoryList;
     QReadWriteLock                   dictLock;
-    QString                          hashDir;
-    QHash<QString, QString>          hashToLinkDict;
-    QHash<QString, QString>          linkToHashDict;
     QLockFile                       *storeLock{ };
-    std::atomic<bool>                storeManaged;
     QMutex                           storeMutex;
+    std::atomic<bool>                storeManaged;
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
     //  Functions //////////////////////////////////////////////////////////////////////////////////
@@ -109,6 +102,14 @@ class FileManPrivate
      * @return int: 0 on success, errno on failure.
      */
     auto acquireStoreLock() noexcept -> int;
+
+    /**
+     * @brief File digest (SHA256) computer.
+     *
+     * @param path: Path to the file to be checksummed
+     * @return QString: Unseparated 64-char string for the computed digest, empty otherwise.
+     */
+    static auto calcDigest(const QString &path) noexcept -> QString;
 
     /**
      * @brief Clears all entries in the dictionaries.
@@ -187,14 +188,6 @@ class FileManPrivate
                                     Category category = Category::None) const noexcept -> bool;
 
     /**
-     * @brief File digest (SHA256) computer.
-     *
-     * @param path: Path to the file to be checksummed
-     * @return QString: Unseparated 64-char string for the computed digest, empty otherwise.
-     */
-    static auto hashFile(const QString &path) noexcept -> QString;
-
-    /**
      * @brief Checks whether dictionary is empty or not.
      *
      * @param dict: The hash-dictionary to check
@@ -210,20 +203,20 @@ class FileManPrivate
     static auto isHexDigit(QChar ch) noexcept -> bool;
 
     /**
-     * @brief Looks-up the hash entry for `lnkEntry` in the in-memory hash-table.
+     * @brief Looks-up the blob entry for `lnkEntry` in the in-memory hash-table.
      *
      * @param lnkEntry: Link to lookup with in the hash-table
-     * @return QString: The hash entry referenced by `lnkEntry`. Empty if entry doesn't exists.
+     * @return QString: The blob entry referenced by `lnkEntry`. Empty if entry doesn't exists.
      */
-    auto lookupHashByLink(const QString &lnkEntry) noexcept -> QString;
+    auto lookupBlobByLink(const QString &lnkEntry) noexcept -> QString;
 
     /**
-     * @brief Looks-up the symlink entry for `hash` in the in-memory hash-table.
+     * @brief Looks-up the symlink entry for `blob` in the in-memory hash-table.
      *
-     * @param hash: Hash to lookup with in the hash-table
-     * @return QString: The link entry referenced by `hash`. Empty if entry doesn't exist
+     * @param blob: Blob to lookup in the hash-table
+     * @return QString: The link entry referenced by `blob`. Empty if entry doesn't exist
      */
-    auto lookupLinkByHash(const QString &hash) noexcept -> QString;
+    auto lookupLinkByBlob(const QString &blob) noexcept -> QString;
 
     /**
      * @brief Isolates the first set `FileMan::Category` enum from possible combination of
@@ -259,15 +252,15 @@ class FileManPrivate
 
     /**
      * @brief Validates the provided absolute path of file `lnkPath`. Returns a `pre_rm_validate_t`
-     * struct `{int status, QString lnkEntry, QString hashEntry}`.
+     * struct `{int status, QString lnkEntry, QString blobEntry}`.
      *
      * @param lnkPath: The path to link file for validation
      * @param enforcedCheck: (optional) Toggle stricter validation. Defaults to false.
      * @return pre_rm_validate_t: On validation passed, `status` is 0, `lnkEntry` contains the
-     * constructed entry for `lnkPath` and `hashEntry` may either contain the name of the hash file
-     * in store or empty if `lnkPath` is resolved to be dangling. Orphaned hash files are never
-     * returned. On error, `status` is `errno:{EAGAIN, ECANCELED, EINVAL, ENOENT}`, `lnkEntry` may
-     * be empty but `hash` is always empty.
+     * constructed entry for `lnkPath` and `blobEntry` may either contain the name of the blob in
+     * store or empty if `lnkPath` is resolved to be dangling. Orphaned blobs are never returned. On
+     * error, `status` is `errno:{EAGAIN, ECANCELED, EINVAL, ENOENT}`, `lnkEntry` may be empty but
+     * `blob` is always empty.
      */
     [[nodiscard]] auto preRmValidate(const QString &lnkPath,
                                      bool           enforcedCheck = false) const noexcept
@@ -276,12 +269,12 @@ class FileManPrivate
     /**
      * @brief Registers the entries to the in-memory hash-tables.
      *
-     * @param lnkEntry: The symlink path pointing to `hash`, not target path. Path name should be
+     * @param lnkEntry: The symlink path pointing to `blob`, not target path. Path name should be
      * relative to `dataDir`
-     * @param hash: The hashed file name. Path name should be relative to `dataDir/common`. Usually
-     * only the basename is accepted
+     * @param blob: The blob file name, usually the sha256 hash. Path name should be relative to
+     * `dataDir/common`. Usually only the basename is accepted
      */
-    auto registerEntry(const QString &lnkEntry, const QString &hash) noexcept -> void;
+    auto registerEntry(const QString &lnkEntry, const QString &blob) noexcept -> void;
 
     /**
      * @brief Releases the explicit thread lock & lock on the store.
@@ -291,12 +284,12 @@ class FileManPrivate
     /**
      * @brief Removes the entries from the in-memory hash-tables.
      *
-     * @param lnkEntry: The symlink path pointing to `hash`, not target path. Path name should be
+     * @param lnkEntry: The symlink path pointing to `blob`, not target path. Path name should be
      * relative to `dataDir`
-     * @param hash: The hashed file name. Path name should be relative to `dataDir/common`. Usually
-     * only the basename is accepted
+     * @param blob: The blob file name, usually the sha256 hash. Path name should be relative to
+     * `dataDir/common`. Usually only the basename is accepted
      */
-    auto removeEntry(const QString &lnkEntry, const QString &hash) noexcept -> void;
+    auto removeEntry(const QString &lnkEntry, const QString &blob) noexcept -> void;
 
     /**
      * @brief Returns the lowest available rename suffixed name-string for `fileName` in `location`.
@@ -388,7 +381,7 @@ class FileManPrivate
     static auto validateFile(const QFileInfo &file, qint64 fileSize) noexcept -> int;
 
     /**
-     * @brief Validates and attempts repairs on dataDir, hashDir and categoryDir(s). Returns
+     * @brief Validates and attempts repairs on dataDir, blobDir and categoryDir(s). Returns
      * validate_store_t struct having {int d_status, int h_status, int c_status}.
      *
      * @return validate_store_t: Values are 0 on success, errno on failure.
@@ -408,5 +401,5 @@ class RmFileType : public QSharedData
 {
 public:
     int status_l = 0;
-    int status_h = 0;
+    int status_b = 0;
 };

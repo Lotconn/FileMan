@@ -12,7 +12,7 @@ FileMan::FileMan(const QDir &storeDir, QObject *parent)
     Q_D(FileMan);
 
     d->dataDir      = storeDir.absolutePath();
-    d->hashDir      = FileManPrivate::createPathComp(d->dataDir, "common"_L1);
+    d->blobDir      = FileManPrivate::createPathComp(d->dataDir, "common"_L1);
     d->categoryDirs = FileManPrivate::createCategoryDirsDict(d->dataDir);
     d->categoryList = FileManPrivate::createCategoryInfoDict(d->dataDir);
     d->storeLock    = new QLockFile{ QDir{ d->dataDir }.absoluteFilePath(".fileman.lock"_L1) };
@@ -68,10 +68,10 @@ add_file_t::add_file_t(int status, const QUrl &location, const QString &id)
     this->d_ptr->id       = id;
 }
 
-rm_file_t::rm_file_t(int status_l, int status_h) : d_ptr{ new RmFileType }
+rm_file_t::rm_file_t(int status_l, int status_b) : d_ptr{ new RmFileType }
 {
     this->d_ptr->status_l = status_l;
-    this->d_ptr->status_h = status_h;
+    this->d_ptr->status_b = status_b;
 }
 
 // Copy/Move constructors
@@ -111,9 +111,9 @@ auto add_file_t::isNull() const noexcept -> bool
     return (this->d_ptr != nullptr);
 }
 
-auto rm_file_t::status_h() const -> int
+auto rm_file_t::status_b() const -> int
 {
-    return (this->d_ptr == nullptr) ? -1 : this->d_ptr->status_h;
+    return (this->d_ptr == nullptr) ? -1 : this->d_ptr->status_b;
 }
 
 auto rm_file_t::status_l() const -> int
