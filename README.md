@@ -33,21 +33,21 @@ applications.
 
 ### Public Methods
 
-|                           Return type | Function                                                                                                                                          |
-| ------------------------------------: | :------------------------------------------------------------------------------------------------------------------------------------------------ |
-|                                       | [FileMan(QObject \*parent = nullptr)](#fileman-constructor-1) `[explicit]`                                                                        |
-|                                       | [FileMan(const QDir &storeDir, QObject \*parent = nullptr)](#fileman-constructor-2) `[explicit]` `[since 3.0]`                                    |
-|                                       | [FileMan(const QString &appName, QObject \*parent = nullptr)](#fileman-constructor-3) `[explicit]` `[since 3.0]`                                  |
-|                                       | [FileMan(const QString &orgName, const QString &appName, QObject \*parent = nullptr)](#fileman-constructor-4) `[since 3.0]`                       |
-|                                       | [~FileMan()](#fileman-destructor) `[override]`                                                                                                    |
-|          [add_file_t](#add-file-type) | [addFile](#addfile-1)(_const_ [QUrl][qurl] &fileUrl, bool overwrite, [FileMan::Categories](#category-enum) category = FileMan::All) `[since 3.0]` |
-|          [add_file_t](#add-file-type) | [addFile](#addfile-2)(_const_ [QUrl][qurl] &fileUrl, [FileMan::Categories](#category-enum) category = FileMan::All)                               |
-| [QString][qstring]<br>`[[nodiscard]]` | [categoryToString](#categorytostring)([FileMan::Category](#category-enum) category) _const_                                                       |
-| [QString][qstring]<br>`[[nodiscard]]` | [getCategoryDir](#getcategorydir)([FileMan::Category](#category-enum) category) _const_                                                           |
-| [QString][qstring]<br>`[[nodiscard]]` | [getDataDir](#getdatadir)() _const_                                                                                                               |
-|                                   int | [refreshStore()](#refreshstore)                                                                                                                   |
-|            [rm_file_t](#rm-file-type) | [rmFile](#rmfile-1)([QUrl][qurl] fileUrl)                                                                                                         |
-|            [rm_file_t](#rm-file-type) | [rmFile](#rmfile-2)([QString][qstring] fileId)                                                                                                    |
+|                           Return type | Function                                                                                                                                                     |
+| ------------------------------------: | :----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+|                                       | [FileMan([QObject][qobject] \*parent = nullptr)](#fileman-constructor-1) `[explicit]`                                                                        |
+|                                       | [FileMan(const [QDir][qdir] &storeDir, [QObject][qobject] \*parent = nullptr)](#fileman-constructor-2) `[explicit]` `[since 3.0]`                            |
+|                                       | [FileMan(const [QString][qstring] &appName, [QObject][qobject] \*parent = nullptr)](#fileman-constructor-3) `[explicit]` `[since 3.0]`                       |
+|                                       | [FileMan(const [QString][qstring] &orgName, const [QString][qstring] &appName, [QObject][qobject] \*parent = nullptr)](#fileman-constructor-4) `[since 3.0]` |
+|                                       | [~FileMan()](#fileman-destructor) `[override]`                                                                                                               |
+|          [add_file_t](#add-file-type) | [addFile](#addfile-1)(_const_ [QUrl][qurl] &fileUrl, bool overwrite, [FileMan::Categories](#category-enum) category = FileMan::All) `[since 3.0]`            |
+|          [add_file_t](#add-file-type) | [addFile](#addfile-2)(_const_ [QUrl][qurl] &fileUrl, [FileMan::Categories](#category-enum) category = FileMan::All)                                          |
+| [QString][qstring]<br>`[[nodiscard]]` | [categoryToString](#categorytostring)([FileMan::Category](#category-enum) category) _const_                                                                  |
+| [QString][qstring]<br>`[[nodiscard]]` | [getCategoryDir](#getcategorydir)([FileMan::Category](#category-enum) category) _const_                                                                      |
+| [QString][qstring]<br>`[[nodiscard]]` | [getDataDir](#getdatadir)() _const_                                                                                                                          |
+|                                   int | [refreshStore()](#refreshstore)                                                                                                                              |
+|            [rm_file_t](#rm-file-type) | [rmFile](#rmfile-1)([QUrl][qurl] fileUrl)                                                                                                                    |
+|            [rm_file_t](#rm-file-type) | [rmFile](#rmfile-2)([QString][qstring] fileId)                                                                                                               |
 
 ### Static Public Members
 
@@ -328,14 +328,14 @@ Struct type holding members _status_l()_ and _status_h()_:
 <div><a id="fileman-constructor-1"></a></div>
 <div><a name="fileman-constructor-1"></a></div>
 
-### FileMan(QObject \*parent = nullptr) `[explicit]`
+### FileMan([QObject][qobject] \*parent = nullptr) `[explicit]`
 
 Creates the _FileMan_ singleton instance.
 
 <div><a id="fileman-constructor-2"></a></div>
 <div><a name="fileman-constructor-2"></a></div>
 
-### FileMan(const QDir &storeDir, QObject \*parent = nullptr) `[explicit]`
+### FileMan(const [QDir][qdir] &storeDir, [QObject][qobject] \*parent = nullptr) `[explicit]`
 
 Creates the _FileMan_ singleton instance, with application store at _storeDir_. Note that the
 directory specified by _storeDir_ should be an absolute path, otherwise the store may end up under
@@ -344,7 +344,7 @@ current working directory.
 <div><a id="fileman-constructor-3"></a></div>
 <div><a name="fileman-constructor-3"></a></div>
 
-### FileMan(const QString &appName, QObject \*parent = nullptr) `[explicit]` `[since 3.0]`
+### FileMan(const [QString][qstring] &appName, [QObject][qobject] \*parent = nullptr) `[explicit]` `[since 3.0]`
 
 Overload of [FileMan()](#fileman-constructor-2), with the application name specified in _appName_.
 This only affects the trailing part of the application store location, but does not modify or acts
@@ -353,7 +353,7 @@ as a replacement of the application name as set by `QCoreApplication::setApplica
 <div><a id="fileman-constructor-4"></a></div>
 <div><a name="fileman-constructor-4"></a></div>
 
-### FileMan(const QString &orgName, const QString &appName, QObject \*parent = nullptr) `[since 3.0]`
+### FileMan(const [QString][qstring] &orgName, const [QString][qstring] &appName, [QObject][qobject] \*parent = nullptr) `[since 3.0]`
 
 Overload of [FileMan()](#fileman-constructor-2), with both the application name and organization
 name specified in _appName_ and _orgName_. This only affects the trailing part of the application
@@ -914,6 +914,8 @@ This project is licensed under MIT, copyright Lotconn, 2026.
 [^1]: For full reference on `qt_add_qml_module()`: <https://doc.qt.io/qt-6/qt-add-qml-module.html>
 
 [errno]: https://en.cppreference.com/cpp/header/cerrno
-[qurl]: https://doc.qt.io/qt-6/qurl.html
-[qstring]: https://doc.qt.io/qt-6/qstring.html
+[qdir]: https://doc.qt.io/qt-6/qdir.html
 [qmimedb]: https://doc.qt.io/qt-6/qmimedatabase.html
+[qobject]: https://doc.qt.io/qt-6/qobject.html
+[qstring]: https://doc.qt.io/qt-6/qstring.html
+[qurl]: https://doc.qt.io/qt-6/qurl.html
