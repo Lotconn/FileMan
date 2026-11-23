@@ -112,15 +112,27 @@ int main(int argc, char *argv[])
             break;
         }
         case 2: {
-            qInfo() << "Provide file URL:";
-            QString fileUrl = in.readLine().trimmed();
-            if (fileUrl.isEmpty()) {
+            qInfo() << "Choose type:\n[1] URL\n[2] ID";
+            line = in.readLine().trimmed();
+            if (line.isEmpty())
+                continue;
+
+            if (line == "1"_L1)
+                qInfo() << "Provide file URL:";
+            else if (line == "2"_L1)
+                qInfo() << "Provide file ID:";
+
+            QString fileInput = in.readLine().trimmed();
+            if (fileInput.isEmpty()) {
                 qInfo() << "Nothing provided.";
                 continue;
             }
 
             //[KEY:rmFile() usage]
-            const rm_file_t s = fileman.rmFile(QUrl(fileUrl));
+            const rm_file_t s = [&line, &fileInput, &fileman]() -> rm_file_t {
+                return (line == "1"_L1) ? fileman.rmFile(QUrl(fileInput))
+                                        : fileman.rmFile(fileInput);
+            }();
             qInfo() << "rmFile() return:";
             qInfo() << "link status:" << s.status_l();
             qInfo() << "blob status:" << s.status_b();

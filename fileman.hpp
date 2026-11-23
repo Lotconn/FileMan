@@ -133,6 +133,7 @@ public:
     Q_INVOKABLE [[nodiscard]] auto categoryDir(Category category) const -> QString;
     Q_INVOKABLE auto               refreshStore() -> int;
     Q_INVOKABLE auto               rmFile(const QUrl &fileUrl) -> rm_file_t;
+    Q_INVOKABLE auto               rmFile(const QString &fileId) -> rm_file_t;
     Q_INVOKABLE [[nodiscard]] auto storeDir() const -> QString;
 
     Q_INVOKABLE static auto fileName(const QUrl &fileUrl) -> QString;

@@ -46,6 +46,8 @@ messages for detailed descriptions.
   blob is linked with multiple symlinks in the store.
 - `fromStringToCategory()` and `fromStringToError()` added to translate string name to enum. Invalid
   string names return `Category::None` on the former and `Error::Success` on the latter.
+- `rmFile(const QString &fileId)` overload allowing direct and more complete removal of blobs and
+  all its associated links using the `id()` as provided by `addFile()`
 
 ### Improvements
 

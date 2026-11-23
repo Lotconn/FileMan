@@ -597,8 +597,9 @@ Returns whether the singleton instance exists. True if does, false if it does no
 Executes comprehensive cleanup routines on the store. This includes pruning stale or invalid files
 (such as dangling symlinks, corrupted data, or orphaned blobs) and attempting generic fixes on store
 directories (e.g., resolving permission errors, or correcting non-existent or improperly symlinked
-directories). Finally, it completely rebuilds the in-memory store-state cache that other APIs
-frequently rely upon. Returns 0 on success, `errno` on failure.
+directories). When pruning, symlinks bearing the same target are all removed except for the oldest
+one. Finally, it completely rebuilds the in-memory store-state cache that other APIs frequently rely
+upon. Returns 0 on success, `errno` on failure.
 
 Because it acts as the authoritative consolidator of the store's state, _refreshStore()_ does not
 rely on existing store-state caches for its operations - it start from a position of zero trust,
@@ -636,7 +637,9 @@ checks are made on the backing blob:
 - **Blob Validation (`status_b`):** This will return `-1` if _rmFile()_ fails early (before blob
   checks are even reached, due to the link validation failure). It will return a non-zero positive
   _errno_ only if the backing hashed blob validations fail (for reasons similar to _addFile()_'s
-  logic) or if the blob removal fails.
+  logic) or if the blob removal fails. If multiple symlinks in the store point to the same backing
+  blob, `rmFile()` refuses to remove the blob but still removes the provided link (`status_l = 0`),
+  setting `status_b` to `ENOTUNIQ`.
 
 If all validations pass, FileMan proceeds to remove the requested file. Continuing our previous
 example, passing the URL `file:///home/user/.local/share/myapp/store/audio/MyAudio.ogg` to
@@ -659,9 +662,40 @@ call, provided the caller checks the error returns appropriately and retries if 
 
 ### [rm_file_t](#rm-file-type) FileMan::rmFile(_const_ [QString][qstring] &fileId) `[since 3.0]`
 
-Overload of [rmFile()](#rmfile-1). Removes the file matching _fileId_ from the application store.
-_fileId_ must be a valid checksum hash referring to a file in store, as returned by
-[addFile()](#addfile-1). Behavior otherwise is retained.
+Overload of [rmFile()](#rmfile-1). Removes the blob matching _fileId_ and its associated symlinks
+from the application store. _fileId_ must be a valid checksum hash referring to a blob in store, as
+returned by [addFile()](#addfile-1). Returns a [rm_file_t](#rm-file-type) struct:
+
+| Member (Type)      | Values       |
+| ------------------ | ------------ |
+| `status_l()` (int) | 0/-1/`errno` |
+| `status_b()` (int) | 0/`errno`    |
+
+When processing a removal request, validations are performed first on the blob matching _fileId_
+before any checks are made on the associated symlinks:
+
+- **Blob Validation (`status_b`):** This will return a non-zero positive _errno_ only if the
+  matching hashed blob validations fail (for reasons similar to _addFile()_'s logic) or if the blob
+  removal fails. If multiple symlinks in the store point to the same backing blob, `rmFile()` will
+  remove the blob and its associated links.
+- **Link Validation (`status_l`):** This will return `-1` if _rmFile()_ fails early (before link
+  checks are even reached, due to the blob validation failure). Will return a non-zero _errno_ if
+  the links fail validations. This includes scenarios where the symlink is not a path within the
+  store, the file does not exist, is not a symlink, points to an invalid or external location, or if
+  the symlink removal itself fails.
+
+If all validations pass, FileMan proceeds to remove the requested file. Continuing our previous
+example, passing the ID `64988b348af3acf583d57260b44528f85da378b4dbcf4e55d36f9fac420a0ccd` to
+_rmFile()_ will safely erase the uniquely identified blob and its associated valid link(s) from the
+store, but will strictly refuse if the links point to any location outside the categorized store.
+
+Incomplete removals may be possible, for example, the backing blob might be successfully removed,
+but the symlink removal could fail due to a sudden permission change or lock. To minimize chances of
+"blob orphanage", the backing hashed blob is always targeted for removal first, and aborts further
+procedures on failure. If the symlink removal subsequently fails, it leaves behind a dangling
+symlink. This is an acceptable, fail-safe state: FileMan is designed to detect and safely clean up
+these dangling symlinks on the next API call, provided the caller checks the error returns
+appropriately and retries if necessary.
 
 <div><a id="storedir"></a></div>
 <div><a name="storedir"></a></div>
