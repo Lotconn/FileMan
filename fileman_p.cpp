@@ -802,7 +802,7 @@ auto FileManPrivate::validateStore() const noexcept -> FileManPrivate::validate_
 
     for (const QString &dir : { this->storeDirPath, this->blobDirPath }) {
 
-        const int e         = dirHealth(dir);
+        const int e         = FileManPrivate::dirHealth(dir);
         int      &dirStatus = (dir == this->storeDirPath) ? status.d_status : status.h_status;
 
         logDebug << dir << "directory health:" << e;

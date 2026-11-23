@@ -70,6 +70,11 @@ auto FileMan::addFile(const QUrl &fileUrl, bool overwrite, const FileMan::Catego
 
     logDebug << "Resolved file:" << srcPath;
 
+    if (srcPath.startsWith(d->storeDirPath, Qt::CaseInsensitive)) {
+        logCritical << "Adding files in store is not allowed";
+        return { EOPNOTSUPP, { }, { } };
+    }
+
     //----------------------------------------------------------------------------------------------
 
     //  File validation ////////////////////////////////////////////////////////////////////////////

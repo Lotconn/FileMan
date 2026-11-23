@@ -72,6 +72,7 @@ messages for detailed descriptions.
   mitigate the remote crafting security bug through a vector.
 - Dangling symlinks in the store are now removed on `refreshStore()` call
 - Symlinks residing in the wrong category directory are also correctly cleaned by `refreshStore()`.
+- Files from store are now correctly and explicitly denied from adding
 
 ### Others
 
