@@ -1,11 +1,8 @@
 #include <fileman_p.hpp>
 
-auto FileMan::addFile(const QUrl &fileUrl, bool overwrite, const Categories categories)
+auto FileMan::addFile(const QUrl &fileUrl, bool overwrite, const FileMan::Categories categories)
         -> add_file_t
 {
-    using pre_add_validate_t   = FileManPrivate::pre_add_validate_t;
-    using rev_lookup_symlink_t = FileManPrivate::rev_lookup_symlink_t;
-    using validate_store_t     = FileManPrivate::validate_store_t;
     Q_D(FileMan);
 
     const bool trustStore = d->storeManaged;
@@ -13,8 +10,8 @@ auto FileMan::addFile(const QUrl &fileUrl, bool overwrite, const Categories cate
     // Store validations first; trust if managed already ///////////////////////////////////////////
 
     if (!trustStore) {
-        const validate_store_t s      = d->validateStore();
-        int                    retval = FileManPrivate::compErrnoSeverity(s.d_status, s.h_status);
+        const auto s      = d->validateStore();
+        int        retval = FileManPrivate::compErrnoSeverity(s.d_status, s.h_status);
 
         for (const int e : s.c_status)
             retval = FileManPrivate::compErrnoSeverity(retval, e);
@@ -77,7 +74,7 @@ auto FileMan::addFile(const QUrl &fileUrl, bool overwrite, const Categories cate
 
     //  File validation ////////////////////////////////////////////////////////////////////////////
 
-    const pre_add_validate_t result = d->preAddValidate(srcFile);
+    const auto result = d->preAddValidate(srcFile);
 
     logDebug << "File validation result:\n"
              << "Status: " << result.status << '\n'
@@ -113,9 +110,9 @@ auto FileMan::addFile(const QUrl &fileUrl, bool overwrite, const Categories cate
     }
 
     // Raw data files/blobs reside as dataDir/common/<blob>
-    QDir            blobDir  = d->blobDir;
-    const QString   blob     = FileManPrivate::calcDigest(srcPath);
-    const QString   blobPath = blobDir.absoluteFilePath(blob);
+    QDir            blobDir  = d->blobDirPath;
+    const QString   blobName = FileManPrivate::calcDigest(srcPath);
+    const QString   blobPath = blobDir.absoluteFilePath(blobName);
     const QFileInfo blobFile{ blobPath };
 
     // Check available (quota) free space before copying. Proceed even if unable to check.
@@ -147,28 +144,28 @@ auto FileMan::addFile(const QUrl &fileUrl, bool overwrite, const Categories cate
 
     if (blobExists) {
         if (overwrite) {
-            if (!blobDir.remove(blob)) [[unlikely]] {
+            if (!blobDir.remove(blobName)) [[unlikely]] {
                 // Certainly NOT because blob doesn't exist in the dir, inhibiting the actual
                 // intention for overwrite. Not acceptable.
                 logCritical << "Couldn't remove" << blobPath;
                 return { EACCES, { }, { } };
             }
         } else {
-            //  Expend fs IO to reverse lookup the related symlink file. Note the  output is not
+            //  Expend fs IO to reverse lookup the related symlink file. Note the output is not
             //  static on initialization, the list can change between calls
             logInfo << fileUrlStr << "already available on store";
 
-            const rev_lookup_symlink_t lnk = d->revLookupSymlink(lnkDir, blobPath);
+            // Search in the broader selected categories, not the filtered catSelected
+            const auto lnk = d->revLookupSymlink(blobName, categories);
 
-            if (lnk.status == EPERM) [[unlikely]] {
-                logCritical << "Store is not accessible. Execuatble permission is required";
-                return { lnk.status, { }, { } };
-            }
+            if (!lnk.locations.isEmpty()) [[likely]]
+                // In an unlikely case when we get multiple items, just provide the first
+                return { EEXIST,
+                         QUrl::fromLocalFile(FileManPrivate::createPathComp(d->storeDirPath,
+                                                                            lnk.locations.first())),
+                         blobName };
 
-            if (!lnk.location.isEmpty()) [[likely]]
-                return { EEXIST, QUrl::fromLocalFile(lnk.location), blob };
-
-            logDebug << blob << "is orphaned in store. Reusing blob...";
+            logDebug << blobName << "is orphaned in store. Reusing blob...";
 
             blobIsOrphan = true;
         }
@@ -216,7 +213,7 @@ auto FileMan::addFile(const QUrl &fileUrl, bool overwrite, const Categories cate
             logCritical << "Failed to copy" << srcPath << "to" << blobPath;
 
             if (QFileInfo::exists(blobPath))
-                blobDir.remove(blob);
+                blobDir.remove(blobName);
 
             return { EIO, { }, { } };
         }
@@ -241,11 +238,11 @@ auto FileMan::addFile(const QUrl &fileUrl, bool overwrite, const Categories cate
     logDebug << "Added as" << blobPath << "to store";
 
     // Register the [ blob, symlink ] entry to `blobToLinkDict()`
-    logDebug << "Registering blob as " << blob << " and symlink as" << lnkEntry << " to tables";
+    logDebug << "Registering blob as " << blobName << " and symlink as" << lnkEntry << " to tables";
 
-    d->registerEntry(lnkEntry, blob);
+    d->registerEntry(lnkEntry, blobName);
 
-    return { 0, QUrl::fromLocalFile(lnkPath), blob };
+    return { 0, QUrl::fromLocalFile(lnkPath), blobName };
 }
 
 auto FileMan::addFile(const QUrl &fileUrl, const Categories categories) -> add_file_t

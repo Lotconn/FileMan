@@ -1,10 +1,9 @@
-import QtCore
 import QtQml
 import Lotconn.FileMan
 
 QtObject {
     Component.onCompleted: {
-        console.info(FileMan.getDataDir());
+        console.info(FileMan.storeDir());
         Qt.quit();
     }
 }

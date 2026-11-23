@@ -2,14 +2,12 @@
 
 auto FileMan::refreshStore() -> int
 {
-    using pre_rm_validate_t = FileManPrivate::pre_rm_validate_t;
-    using validate_store_t  = FileManPrivate::validate_store_t;
     Q_D(FileMan);
 
     // Store Validations & Fixups //////////////////////////////////////////////////////////////////
 
-    const validate_store_t s      = d->validateStore();
-    int                    retval = FileManPrivate::compErrnoSeverity(s.d_status, s.h_status);
+    const auto s      = d->validateStore();
+    int        retval = FileManPrivate::compErrnoSeverity(s.d_status, s.h_status);
 
     for (const int e : s.c_status)
         retval = FileManPrivate::compErrnoSeverity(retval, e);
@@ -32,34 +30,35 @@ auto FileMan::refreshStore() -> int
     // Unlocks automatically once out-of-scope
     const auto unlockGuard = qScopeGuard([&d]() -> void { d->releaseStoreLock(); });
 
-    // Clear the store cache dictionaries
+    // Clear the store cache dictionaries and revoke trust
     d->clearAllEntries();
+    d->storeManaged = false;
 
     //----------------------------------------------------------------------------------------------
 
     //  Store state caching & pruning //////////////////////////////////////////////////////////////
 
-    for (const auto &[category, catInfo] : d->categoryList.asKeyValueRange()) {
+    for (const auto &[catName, catLocation] : d->categoryDirs.asKeyValueRange()) {
 
-        QDir categoryDir = catInfo.location;
+        QDir categoryDir = catLocation;
 
-        if (categoryDir.isEmpty()) {
-            logWarning << catInfo.name << "store doesn't have any contents yet";
+        if (categoryDir.isEmpty(QDir::AllEntries | QDir::System | QDir::NoDotAndDotDot)) {
+            logWarning << catName << "store doesn't have any contents yet";
             continue;
         }
 
-        // Enlist all top-level files (unsorted) in the directory. QDir::System is necessary to
-        // enlist dangling symlinks
-        const QStringList contents =
-                categoryDir.entryList(QDir::AllEntries | QDir::System | QDir::NoDotAndDotDot);
+        // Enlist all top-level files (oldest first sorted) in the directory. QDir::System is
+        // necessary to enlist dangling symlinks
+        const QStringList contents = categoryDir.entryList(
+                QDir::AllEntries | QDir::System | QDir::NoDotAndDotDot, QDir::Time);
 
-        logDebug << "Contents in" << catInfo.location << ":";
+        logDebug << "Contents in" << catLocation << ":";
         logDebug << contents;
 
         // Build the store-state cache dictionary from valid files in the store
         for (const QString &file : contents) {
-            const QString           filePath = categoryDir.absoluteFilePath(file);
-            const pre_rm_validate_t result   = d->preRmValidate(filePath, true);
+            const QString filePath = categoryDir.absoluteFilePath(file);
+            const auto    result   = d->preRmValidate(filePath, true);
 
             if (result.lnkEntry.isEmpty()) [[unlikely]] {
                 if (result.status != ENOENT)
@@ -68,8 +67,10 @@ auto FileMan::refreshStore() -> int
                 continue;
             }
 
-            if (result.blobEntry.isEmpty()) [[unlikely]] {
-                logDebug << "Removing" << file << "from" << catInfo.location;
+            // RHS is rarer than LHS
+            if (result.blobEntry.isEmpty() || d->blobToLinkDict.contains(result.blobEntry))
+                    [[unlikely]] {
+                logDebug << "Removing" << file << "from" << catLocation;
 
                 if (!categoryDir.remove(file)) [[unlikely]]
                     logWarning << "Couldn't remove" << file;
@@ -89,7 +90,7 @@ auto FileMan::refreshStore() -> int
     if (hasValidEntries)
         d->squeezeDicts();
 
-    QDir blobDir = d->blobDir;
+    QDir blobDir = d->blobDirPath;
 
     const QStringList contents =
             blobDir.entryList(QDir::AllEntries | QDir::System | QDir::NoDotAndDotDot);
@@ -106,21 +107,21 @@ auto FileMan::refreshStore() -> int
 
         // blobToLinkDict has entries but blobDir enlists empty: certain failure, not a legitimately
         // empty store
-        logWarning << "Couldn't enlist" << d->blobDir;
+        logWarning << "Couldn't enlist" << d->blobDirPath;
 
         return EACCES;
     }
 
     int e = 0;
 
-    for (const QString &blob : contents) {
-        if (d->blobToLinkDict.contains(blob)) [[likely]]
+    for (const QString &blobName : contents) {
+        if (d->blobToLinkDict.contains(blobName)) [[likely]]
             continue;
 
-        logDebug << "Removing" << blob << "from" << d->blobDir;
+        logDebug << "Removing" << blobName << "from" << d->blobDirPath;
 
-        if (!blobDir.remove(blob)) [[unlikely]] {
-            logWarning << "Couldn't remove" << blob;
+        if (!blobDir.remove(blobName)) [[unlikely]] {
+            logWarning << "Couldn't remove" << blobName;
 
             if (e == 0)
                 e = EACCES;

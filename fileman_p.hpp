@@ -36,6 +36,7 @@ class FileManPrivate
 
     using Category   = FileMan::Category;
     using Categories = FileMan::Categories;
+    using Error      = FileMan::Error;
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
     //  Types //////////////////////////////////////////////////////////////////////////////////////
@@ -62,8 +63,8 @@ class FileManPrivate
 
     struct alignas(32) rev_lookup_symlink_t
     {
-        int     status   = { };
-        QString location = { };
+        int         status = { };
+        QStringList locations;
     };
 
     struct alignas(16) validate_store_t
@@ -79,15 +80,23 @@ class FileManPrivate
 
     // 64KiB is a good chunk size for almost all purposes including network files, although 1MiB
     // would've been more ideal for local disk files
-    static constexpr qint32 ioChunkSize = 65536;
+    static constexpr qint32       ioChunkSize      = 65536;
+    inline static const QMetaEnum metaCategoryEnum = QMetaEnum::fromType<Categories>();
+    inline static const QMetaEnum metaErrorEnum    = QMetaEnum::fromType<Error>();
 
-    QString                          blobDir;
+    inline static const QHash<QString, Category> nameToCategory = {
+        { u"audio"_s, Category::Audio },
+        { u"image"_s, Category::Image },
+        { u"video"_s, Category::Video },
+    };
+
+    QString                          blobDirPath;
     QHash<QString, QString>          blobToLinkDict;
     QHash<QString, QString>          linkToBlobDict;
     QHash<QString, QString>          categoryDirs;
-    QString                          dataDir;
     QHash<Category, category_info_t> categoryList;
     QReadWriteLock                   dictLock;
+    QString                          storeDirPath;
     QLockFile                       *storeLock{ };
     QMutex                           storeMutex;
     std::atomic<bool>                storeManaged;
@@ -172,7 +181,7 @@ class FileManPrivate
     /**
      * @brief Maps common errno to a severity rank for comparison purposes. Higher = more severe.
      * Unlisted/unexpected errno (e.g. raw ec.value() from std::error_code) is treated as less
-     * severe than ECANCELED.
+     * severe than ENOTDIR.
      */
     static auto errnoSeverity(int e) noexcept -> int;
 
@@ -211,12 +220,12 @@ class FileManPrivate
     auto lookupBlobByLink(const QString &lnkEntry) noexcept -> QString;
 
     /**
-     * @brief Looks-up the symlink entry for `blob` in the in-memory hash-table.
+     * @brief Looks-up the symlink entry for `blobName` in the in-memory hash-table.
      *
-     * @param blob: Blob to lookup in the hash-table
-     * @return QString: The link entry referenced by `blob`. Empty if entry doesn't exist
+     * @param blobName: Blob to lookup in the hash-table
+     * @return QString: The link entry referenced by `blobName`. Empty if entry doesn't exist
      */
-    auto lookupLinkByBlob(const QString &blob) noexcept -> QString;
+    auto lookupLinkByBlob(const QString &blobName) noexcept -> QString;
 
     /**
      * @brief Isolates the first set `FileMan::Category` enum from possible combination of
@@ -259,8 +268,8 @@ class FileManPrivate
      * @return pre_rm_validate_t: On validation passed, `status` is 0, `lnkEntry` contains the
      * constructed entry for `lnkPath` and `blobEntry` may either contain the name of the blob in
      * store or empty if `lnkPath` is resolved to be dangling. Orphaned blobs are never returned. On
-     * error, `status` is `errno:{EAGAIN, ECANCELED, EINVAL, ENOENT}`, `lnkEntry` may be empty but
-     * `blob` is always empty.
+     * error, `status` is `errno:{EAGAIN, ENOTDIR, EINVAL, ENOENT}`, `lnkEntry` may be empty but
+     * `blobName` is always empty.
      */
     [[nodiscard]] auto preRmValidate(const QString &lnkPath,
                                      bool           enforcedCheck = false) const noexcept
@@ -269,12 +278,12 @@ class FileManPrivate
     /**
      * @brief Registers the entries to the in-memory hash-tables.
      *
-     * @param lnkEntry: The symlink path pointing to `blob`, not target path. Path name should be
-     * relative to `dataDir`
-     * @param blob: The blob file name, usually the sha256 hash. Path name should be relative to
+     * @param lnkEntry: The symlink path pointing to `blobName`, not target path. Path name should
+     * be relative to `dataDir`
+     * @param blobName: The blob file name, usually the sha256 hash. Path name should be relative to
      * `dataDir/common`. Usually only the basename is accepted
      */
-    auto registerEntry(const QString &lnkEntry, const QString &blob) noexcept -> void;
+    auto registerEntry(const QString &lnkEntry, const QString &blobName) noexcept -> void;
 
     /**
      * @brief Releases the explicit thread lock & lock on the store.
@@ -284,12 +293,12 @@ class FileManPrivate
     /**
      * @brief Removes the entries from the in-memory hash-tables.
      *
-     * @param lnkEntry: The symlink path pointing to `blob`, not target path. Path name should be
-     * relative to `dataDir`
-     * @param blob: The blob file name, usually the sha256 hash. Path name should be relative to
+     * @param lnkEntry: The symlink path pointing to `blobName`, not target path. Path name should
+     * be relative to `dataDir`
+     * @param blobName: The blob file name, usually the sha256 hash. Path name should be relative to
      * `dataDir/common`. Usually only the basename is accepted
      */
-    auto removeEntry(const QString &lnkEntry, const QString &blob) noexcept -> void;
+    auto removeEntry(const QString &lnkEntry, const QString &blobName) noexcept -> void;
 
     /**
      * @brief Returns the lowest available rename suffixed name-string for `fileName` in `location`.
@@ -335,15 +344,18 @@ class FileManPrivate
     static auto resolveDataDir(const QString &appName = { }) noexcept -> QDir;
 
     /**
-     * @brief Function to reverse lookup an absolute-path `target` from symlinks in `searchDir`.
-     * Returns a `rev_lookup_symlink_t` struct having members {status, location}.
+     * @brief Function to reverse lookup a blob from symlinks in the category directories. Search
+     * directories can be narrowed down further by specifying `categories`. Default is to search in
+     * all category directories. Returns a `rev_lookup_symlink_t` struct having members {status,
+     * locations}.
      *
-     * @param searchDir: Directory to search the symlink in
-     * @param targetPath: Find the symlink with this target path
-     * @return rev_lookup_symlink_t: `location` is a string to either absolute path of the symlink
-     * or empty if none is found or faced other issues. `status` is `errno:{0, EPERM}`.
+     * @param blobName: Find the symlink matching this target file name
+     * @param categories: Category directories to search the symlink in
+     * @return rev_lookup_symlink_t: `locations` is a string-list of either paths of the symlinks
+     * relative to storeDir or empty if none is found or faced other issues. `status` is `errno:{0,
+     * EPERM}`.
      */
-    auto revLookupSymlink(const QDir &searchDir, const QString &targetPath) noexcept
+    auto revLookupSymlink(const QString &blobName, Categories categories = Category::All) noexcept
             -> rev_lookup_symlink_t;
 
     /**
@@ -363,6 +375,21 @@ class FileManPrivate
     auto squeezeDicts() noexcept -> void;
 
     /**
+     * @brief Validates `blobFile` against expected attributes. `enforcedCheck` toggles pedantic and
+     * rigorous checks. For most cases, this shouldn't be necessary.
+     *
+     * @param blobFile: The blob file to be validated. Recommended to construct with absolute file
+     * path.
+     * @param enforcedCheck: Toggles pedantic and performance costly validations.
+     * @param categories: Strictly match the blob with these categories only. Requires pedantic
+     * check to be on. Default matches with all valid categories.
+     * @return int: 0 on validation pass, `errno:{EFBIG, EINVAL, ELOOP, EOPNOTSUPP, ENOENT}` on
+     * failure.
+     */
+    [[nodiscard]] auto validateBlob(const QFileInfo &blobFile, bool enforcedCheck = false,
+                                    Categories categories = Category::All) const noexcept -> int;
+
+    /**
      * @brief File validation routines.
      *
      * @param file: File to validate
@@ -379,6 +406,17 @@ class FileManPrivate
      * @return int: 0 if successful, errno:{EINVAL, ENOENT, EFBIG} otherwise.
      */
     static auto validateFile(const QFileInfo &file, qint64 fileSize) noexcept -> int;
+
+    /**
+     * @brief Validates the link file against expected attributes. Optionally takes a blob name to
+     * additionally match against. Default is to validate attributes only.
+     *
+     * @param lnkFile: The link file to validate. Recommended to construct with absolute file path.
+     * @param blobName: (optional) Blob name the symlink's target should match with.
+     * @return int: 0 on validation passed, `errno:{ENOENT,EINVAL}` on failure
+     */
+    [[nodiscard]] auto validateLink(const QFileInfo &lnkFile, const QString &blobName = { }) const
+            -> int;
 
     /**
      * @brief Validates and attempts repairs on dataDir, blobDir and categoryDir(s). Returns

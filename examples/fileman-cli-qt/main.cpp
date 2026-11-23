@@ -93,8 +93,8 @@ int main(int argc, char *argv[])
             }
 
             qInfo() << "Overwrite if exists?:";
-            QString    choice    = in.readLine().trimmed();
-            const bool overwrite = (QString::compare(choice, u"y"_s, Qt::CaseInsensitive) == 0);
+            const bool overwrite =
+                    (QString::compare(in.readLine().trimmed(), u"y"_s, Qt::CaseInsensitive) == 0);
 
             add_file_t result;
 
@@ -138,8 +138,8 @@ int main(int argc, char *argv[])
             qInfo() << "Provide file URL:";
             QString fileUrl = in.readLine().trimmed();
 
-            //[KEY:getFileName() usage]
-            qInfo() << "Converted from getFileName():" << FileMan::getFileName(QUrl(fileUrl));
+            //[KEY:fileName() usage]
+            qInfo() << "Converted from fileName():" << FileMan::fileName(QUrl(fileUrl));
             break;
         }
         default:

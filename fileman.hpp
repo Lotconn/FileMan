@@ -89,14 +89,11 @@ public:
     FileMan(const QString &orgName, const QString &appName, QObject *parent = nullptr);
     ~FileMan() override;
 
-    static auto instance() -> FileMan &;
-    static auto instanceExists() -> bool;
-
     ////////////////////////////////////////////////////////////////////////////////////////////////
     //  Type/Enum definitions
     ////////////////////////////////////////////////////////////////////////////////////////////////
 
-    enum class Category : quint8 {
+    enum Category : quint8 {
         None  = 0x00,
         Audio = 0x01,
         Image = 0x02,
@@ -107,22 +104,23 @@ public:
     Q_DECLARE_FLAGS(Categories, Category)
     Q_FLAG(Categories)
 
-    enum class Errno : quint8 {
+    enum Error : quint8 {
         Success          = 0,
         Busy             = EBUSY,
-        Canceled         = ECANCELED,
         Exists           = EEXIST,
         FileTooBig       = EFBIG,
         Invalid          = EINVAL,
         IOError          = EIO,
         Loop             = ELOOP,
         NotFound         = ENOENT,
+        NotADir          = ENOTDIR,
+        NotUnique        = ENOTUNIQ,
         NotSupported     = EOPNOTSUPP,
         PermissionDenied = EPERM,
         TryAgain         = EAGAIN
         // ceiling is 0xFF
     };
-    Q_ENUM(Errno)
+    Q_ENUM(Error)
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
     //  Function definitions
@@ -132,12 +130,18 @@ public:
                              Categories categories = Category::All) -> add_file_t;
     Q_INVOKABLE auto addFile(const QUrl &fileUrl, Categories categories = Category::All)
             -> add_file_t;
-    Q_INVOKABLE static auto        getFileName(const QUrl &fileUrl) -> QString;
-    Q_INVOKABLE [[nodiscard]] auto categoryToString(Category category) const -> QString;
-    Q_INVOKABLE [[nodiscard]] auto getCategoryDir(Category category) const -> QString;
-    Q_INVOKABLE [[nodiscard]] auto getDataDir() const -> QString;
+    Q_INVOKABLE [[nodiscard]] auto categoryDir(Category category) const -> QString;
     Q_INVOKABLE auto               refreshStore() -> int;
     Q_INVOKABLE auto               rmFile(const QUrl &fileUrl) -> rm_file_t;
+    Q_INVOKABLE [[nodiscard]] auto storeDir() const -> QString;
+
+    Q_INVOKABLE static auto fileName(const QUrl &fileUrl) -> QString;
+    Q_INVOKABLE static auto fromStringToCategory(const QString &categoryName) -> Category;
+    Q_INVOKABLE static auto fromStringToError(const QString &errorName) -> Error;
+    static auto             instance() -> FileMan &;
+    static auto             instanceExists() -> bool;
+    Q_INVOKABLE static auto toString(Category category) -> QString;
+    Q_INVOKABLE static auto toString(Error error) -> QString;
 };
 
 Q_DECLARE_OPERATORS_FOR_FLAGS(FileMan::Categories)

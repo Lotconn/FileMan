@@ -11,11 +11,11 @@ FileMan::FileMan(const QDir &storeDir, QObject *parent)
 
     Q_D(FileMan);
 
-    d->dataDir      = storeDir.absolutePath();
-    d->blobDir      = FileManPrivate::createPathComp(d->dataDir, "common"_L1);
-    d->categoryDirs = FileManPrivate::createCategoryDirsDict(d->dataDir);
-    d->categoryList = FileManPrivate::createCategoryInfoDict(d->dataDir);
-    d->storeLock    = new QLockFile{ QDir{ d->dataDir }.absoluteFilePath(".fileman.lock"_L1) };
+    d->storeDirPath = storeDir.absoluteFilePath("store"_L1);
+    d->blobDirPath  = FileManPrivate::createPathComp(d->storeDirPath, "common"_L1);
+    d->categoryDirs = FileManPrivate::createCategoryDirsDict(d->storeDirPath);
+    d->categoryList = FileManPrivate::createCategoryInfoDict(d->storeDirPath);
+    d->storeLock    = new QLockFile{ QDir{ d->storeDirPath }.absoluteFilePath(".fileman.lock"_L1) };
 
     // The singleton's lifetime is owned by this TU (main()/first construction), not by the
     // QQmlEngine. Make that explicit so the engine never attempts to garbage-collect or delete it.

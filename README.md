@@ -28,7 +28,7 @@ applications.
 | struct | [add_file_t](#add-file-type) |
 | enum   | [Category](#category-enum)   |
 | flag   | [Categories](#category-enum) |
-| enum   | [Errno](#errno-enum)         |
+| enum   | [Error](#error-enum)         |
 | struct | [rm_file_t](#rm-file-type)   |
 
 ### Public Methods
@@ -42,39 +42,42 @@ applications.
 |                                       | [~FileMan()](#fileman-destructor) `[override]`                                                                                                               |
 |          [add_file_t](#add-file-type) | [addFile](#addfile-1)(_const_ [QUrl][qurl] &fileUrl, bool overwrite, [FileMan::Categories](#category-enum) category = FileMan::All) `[since 3.0]`            |
 |          [add_file_t](#add-file-type) | [addFile](#addfile-2)(_const_ [QUrl][qurl] &fileUrl, [FileMan::Categories](#category-enum) category = FileMan::All)                                          |
-| [QString][qstring]<br>`[[nodiscard]]` | [categoryToString](#categorytostring)([FileMan::Category](#category-enum) category) _const_                                                                  |
-| [QString][qstring]<br>`[[nodiscard]]` | [getCategoryDir](#getcategorydir)([FileMan::Category](#category-enum) category) _const_                                                                      |
-| [QString][qstring]<br>`[[nodiscard]]` | [getDataDir](#getdatadir)() _const_                                                                                                                          |
+| [QString][qstring]<br>`[[nodiscard]]` | [categoryDir](#categorydir)([FileMan::Category](#category-enum) category) _const_ `[since 3.0]`                                                              |
 |                                   int | [refreshStore()](#refreshstore)                                                                                                                              |
 |            [rm_file_t](#rm-file-type) | [rmFile](#rmfile-1)([QUrl][qurl] fileUrl)                                                                                                                    |
 |            [rm_file_t](#rm-file-type) | [rmFile](#rmfile-2)([QString][qstring] fileId)                                                                                                               |
+| [QString][qstring]<br>`[[nodiscard]]` | [storeDir](#storedir)() _const_ `[since 3.0]`                                                                                                                |
 
 ### Static Public Members
 
-|        Return type | Function                                                     |
-| -----------------: | :----------------------------------------------------------- |
-|            FileMan | &FileMan::[instance()](#instance)                            |
-|               bool | &FileMan::[instanceExists()](#instance-exists) `[since 3.0]` |
-| [QString][qstring] | [getFileName](#getfilename)(const [QUrl][qurl] &fileUrl)     |
+|        Return type | Function                                                                                               |
+| -----------------: | :----------------------------------------------------------------------------------------------------- |
+| [QString][qstring] | [fileName](#filename)(const [QUrl][qurl] &fileUrl) `[since 3.0]`                                       |
+|  FileMan::Category | [fromStringToCategory](#from-string-to-category)(const [QString][qstring] &categoryName) `[since 3.0]` |
+|     FileMan::Error | [fromStringToError](#from-string-to-error)(const [QString][qstring] &errorName) `[since 3.0]`          |
+|            FileMan | &FileMan::[instance()](#instance)                                                                      |
+|               bool | &FileMan::[instanceExists()](#instance-exists) `[since 3.0]`                                           |
+| [QString][qstring] | [toString](#tostring-1)([FileMan::Category](#category-enum) category) `[since 3.0]`                    |
+| [QString][qstring] | [toString](#tostring-2)([FileMan::Error](#error-enum) error) `[since 3.0]`                             |
 
 ## Detailed Description
 
 FileMan is a file manager backend for managing the application store. It creates and manages a
-_content-addressable_ store under `<AppLocalDataLocation>` matching the MIME type of the file
+_content-addressable_ store under `<AppLocalDataLocation>/store` matching the MIME type of the file
 against the specified [category](#category-enum). `<AppLocalDataLocation>` on Unix expands as
 `$XDG_DATA_HOME/<APPNAME>/` or `~/.local/share/<APPNAME>`, and
 `C:/Users/<USER>/AppData/Local/<APPNAME>`, `<APPDIR>`, `<APPDIR>/data` or `<APPDIR>/data/<APPNAME>`
 on Windows (`<APPDIR>` is the directory containing the application executable). During adding, the
 file is cryptographically hashed (currently using SHA256) to uniquely identify it. The raw file data
-(the "blob") is stored in a central `<AppLocalDataLocation>/common` folder, named exactly after this
-hash digest. Then, a relative _symbolic link_ (symlink) is created in the specific category folder
-(e.g., `audio/`), retaining the original, human-readable filename but pointing to the hashed blob.
-For example:
+(the "blob") is stored in a central `<AppLocalDataLocation>/store/common` folder, named exactly
+after this hash digest. Then, a relative _symbolic link_ (symlink) is created in the specific
+category folder (e.g., `audio/`), retaining the original, human-readable filename but pointing to
+the hashed blob. For example:
 
 ```cpp
 //  MIT License : Lotconn 2026
 
-#include <QtCore>
+#include <QtCoreApplication>
 #include <FileMan>
 
 int main(int argc, char *argv[]) {
@@ -95,7 +98,7 @@ the `audio/ogg` MIME type and yields the shown SHA256 digest, the on-disk struct
 this:
 
 ```sh
-~/.local/share/myapp/
+~/.local/share/myapp/store
   |-- common/
   |   `-- 64988b348af3acf583d57260b44528f85da378b4dbcf4e55d36f9fac420a0ccd
   `-- audio/
@@ -106,7 +109,7 @@ The program output will be:
 
 ```sh
 $ ./myapp
-Saved location: file:///home/user/.local/share/myapp/audio/MyAudio.ogg
+Saved location: file:///home/user/.local/share/myapp/store/audio/MyAudio.ogg
 ```
 
 This returned URL is what the implementing application uses to process the file, e.g. removing it at
@@ -158,11 +161,11 @@ attempts fail, fall-backs are implemented to ensure operations are still reliabl
 further details on the design, see [_addFile()_](#addfile-1), [_refreshStore()_](#refreshstore) &
 [_rmFile()_](#rmfile-1).
 
-The code is intended to be C++20 standardized and Qt >=6.12 compatible.
+The code is intended to be C++20 standardized and Qt >= 6.12 compatible.
 
 > [!Warning]
 >
-> FileMan will abort fatally if `<APPNAME>` resolves empty. Please ensure your implementation at
+> FileMan may abort fatally if `<APPNAME>` resolves empty. Please ensure your implementation at
 > least has `QCoreApplication::applicationName()` set and instantiate FileMan only after that.
 
 ### The Singleton Design
@@ -273,43 +276,44 @@ Struct type holding members _status()_, _location()_ and _id()_:
 These enums describe the category options available. They can be *OR*ed to specify multiple
 categories.
 
-| Constant         | Value                         | Description                                                                                                              |
-| :--------------- | :---------------------------- | :----------------------------------------------------------------------------------------------------------------------- |
-| `FileMan::None`  | `0x00`                        | Does nothing, for internal use only. Using it on public calls may crash programs                                         |
-| `FileMan::Audio` | `0x01`                        | Operate on the **audio** store; located under `<AppLocalDataLocation>/audio`. Takes only files with `audio/*` MIME types |
-| `FileMan::Image` | `0x02`                        | Operate on the **image** store; located under `<AppLocalDataLocation>/image`. Takes only files with `image/*` MIME types |
-| `FileMan::Video` | `0x04`                        | Operate on the **video** store; located under `<AppLocalDataLocation>/video`. Takes only files with `video/*` MIME types |
-| `FileMan::All`   | `Audio` \| `Image` \| `Video` | Operate on all categories. Takes files with all preceding MIME types                                                     |
+| Constant         | Value                         | Description                                                                                                                    |
+| :--------------- | :---------------------------- | :----------------------------------------------------------------------------------------------------------------------------- |
+| `FileMan::None`  | `0x00`                        | Does nothing, for internal use only. Using it on public calls may crash programs                                               |
+| `FileMan::Audio` | `0x01`                        | Operate on the **audio** store; located under `<AppLocalDataLocation>/store/audio`. Takes only files with `audio/*` MIME types |
+| `FileMan::Image` | `0x02`                        | Operate on the **image** store; located under `<AppLocalDataLocation>/store/image`. Takes only files with `image/*` MIME types |
+| `FileMan::Video` | `0x04`                        | Operate on the **video** store; located under `<AppLocalDataLocation>/store/video`. Takes only files with `video/*` MIME types |
+| `FileMan::All`   | `Audio` \| `Image` \| `Video` | Operate on all categories. Takes files with all preceding MIME types                                                           |
 
 > [!Note]
 >
 > Qt's MIME database recognizes matroska (.mkv) files as application/x-matroska. These are
 > whitelisted for `FileMan::Video`.
 
-<div><a id="errno-enum"></a></div>
-<div><a name="errno-enum"></a></div>
+<div><a id="error-enum"></a></div>
+<div><a name="error-enum"></a></div>
 
-### _enum_ FileMan::Errno
+### _enum_ FileMan::Error
 
 These map the common API errno return enums to _FileMan_ scoped enums. Useful for referring to
 return values from FileMan's APIs within QML or namespaces having limited access to
 [_cerrno_][errno]. Note, some non-POSIX platforms may not support few errno values (e.g. Windows).
 Developers are discouraged from using raw errno values as they may vary depending on platforms.
 
-| Constant                    | Value              | Description                       |
-| :-------------------------- | :----------------- | :-------------------------------- |
-| `FileMan::Success`          | `0`                | Success value                     |
-| `FileMan::Busy`             | `EBUSY`/`16`       | Device or resource busy           |
-| `FileMan::Cancelled`        | `ECANCELLED`/`125` | Operation canceled                |
-| `FileMan::Exists`           | `EEXIST`/`17`      | File exists                       |
-| `FileMan::FileTooBig`       | `EFBIG`/`27`       | File too large                    |
-| `FileMan::Invalid`          | `EINVAL`/`22`      | Invalid argument                  |
-| `FileMan::IOError`          | `EIO`/`5`          | Input/output error                |
-| `FileMan::Loop`             | `ELOOP`/`40`       | Too many levels of symbolic links |
-| `FileMan::NotFound`         | `ENOENT`/`2`       | No such file or directory         |
-| `FileMan::NotSupported`     | `EOPNOTSUPP`/`95`  | Operation not supported           |
-| `FileMan::PermissionDenied` | `EPERM`/`1`        | Operation not permitted           |
-| `FileMan::TryAgain`         | `EAGAIN`/`11`      | Resource temporary unavailable    |
+| Constant                    | Value             | Description                          |
+| :-------------------------- | :---------------- | :----------------------------------- |
+| `FileMan::Success`          | `0`               | No error occurred                    |
+| `FileMan::Busy`             | `EBUSY`/`16`      | Device or resource busy              |
+| `FileMan::Exists`           | `EEXIST`/`17`     | File exists                          |
+| `FileMan::FileTooBig`       | `EFBIG`/`27`      | File is too large                    |
+| `FileMan::Invalid`          | `EINVAL`/`22`     | Provided argument or file is invalid |
+| `FileMan::IOError`          | `EIO`/`5`         | Input/output error                   |
+| `FileMan::Loop`             | `ELOOP`/`40`      | Too many levels of symbolic links    |
+| `FileMan::NotADir`          | `ENOTDIR`/`20`    | Not a directory                      |
+| `FileMan::NotFound`         | `ENOENT`/`2`      | No such file or directory            |
+| `FileMan::NotSupported`     | `EOPNOTSUPP`/`95` | Operation not allowed or supported   |
+| `FileMan::NotUnique`        | `ENOTUNIQ`/`76`   | File not uniquely linked in store    |
+| `FileMan::PermissionDenied` | `EPERM`/`1`       | Operation not permitted              |
+| `FileMan::TryAgain`         | `EAGAIN`/`11`     | Operation temporarily failed         |
 
 <div><a id="rm-file-type"></a></div>
 <div><a name="rm-file-type"></a></div>
@@ -385,7 +389,7 @@ Returns a [add_file_t](#add-file-type) struct:
 
 Failed returns follow [`errno`][errno] values. On success (`status() == 0`), a path to the symlink
 in store and the checksummed hash as the file's ID is returned. For the example above, `location()`
-holds `file:///home/user/.local/share/<APPNAME>/audio/MyAudio.ogg` and `id()` provides
+holds `file:///home/user/.local/share/<APPNAME>/store/audio/MyAudio.ogg` and `id()` provides
 `64988b348af3acf583d57260b44528f85da378b4dbcf4e55d36f9fac420a0ccd`. Unsuccessful operations return
 corresponding non-zero `errno` value for `status()`, an empty URL for `location()` and empty string
 for `id()`.
@@ -486,46 +490,25 @@ int main(int argc, char *argv[])
 Overload of [addFile()](#addfile-1) retaining the API and behavior before v3.0. Implies _overwrite =
 false_.
 
-<div><a id="categorytostring"></a></div>
-<div><a name="categorytostring"></a></div>
+<div><a id="categorydir"></a></div>
+<div><a name="categorydir"></a></div>
 
-### `[[nodiscard]]` [QString][qstring] FileMan::categoryToString([FileMan::Category](#category-enum) category) _const_
-
-Returns a [QString][qstring] containing the name of _category_. `FileMan::All` is a composite _flag_
-and therefore not supported.
-
-| _category_ [FileMan::Category](#category-enum) | Output ([QString][qstring]) |
-| ---------------------------------------------- | --------------------------- |
-| `FileMan::Audio`                               | `audio`                     |
-| `FileMan::Image`                               | `image`                     |
-| `FileMan::Video`                               | `video`                     |
-
-<div><a id="getcategorydir"></a></div>
-<div><a name="getcategorydir"></a></div>
-
-### `[[nodiscard]]` [QString][qstring] FileMan::getCategoryDir([FileMan::Category](#category-enum) category) _const_
+### `[[nodiscard]]` [QString][qstring] FileMan::categoryDir([FileMan::Category](#category-enum) category) _const_ `[since 3.0]`
 
 Returns a [QString][qstring] containing the absolute directory of _category_ items in store.
-`FileMan::All` is a composite _flag_ and therefore not supported. Empty on invalid category.
+`FileMan::All` is a composite _flag_ and therefore not supported. String is empty on invalid
+category.
 
-| _category_ [FileMan::Category](#category-enum) | Output ([QString][qstring])    |
-| ---------------------------------------------- | ------------------------------ |
-| `FileMan::Audio`                               | `<AppLocalDataLocation>/audio` |
-| `FileMan::Image`                               | `<AppLocalDataLocation>/image` |
-| `FileMan::Video`                               | `<AppLocalDataLocation>/video` |
+| _category_ [FileMan::Category](#category-enum) | Output ([QString][qstring])          |
+| ---------------------------------------------- | ------------------------------------ |
+| `FileMan::Audio`                               | `<AppLocalDataLocation>/store/audio` |
+| `FileMan::Image`                               | `<AppLocalDataLocation>/store/image` |
+| `FileMan::Video`                               | `<AppLocalDataLocation>/store/video` |
 
-<div><a id="getdatadir"></a></div>
-<div><a name="getdatadir"></a></div>
+<div><a id="filename"></a></div>
+<div><a name="filename"></a></div>
 
-### `[[nodiscard]]` [QString][qstring] FileMan::getDataDir() _const_
-
-Returns a [QString][qstring] containing the absolute directory of `<AppLocalDataLocation>`. String
-is never empty.
-
-<div><a id="getfilename"></a></div>
-<div><a name="getfilename"></a></div>
-
-### [QString][qstring] FileMan::getFileName(_const_ [QUrl][qurl] &fileURL) `[static]`
+### [QString][qstring] FileMan::fileName(_const_ [QUrl][qurl] &fileURL) `[static]` `[since 3.0]`
 
 Extracts and returns the filename component from _fileUrl_. Returns an empty string if _fileURL_
 ends with a trailing `/` or if resolution fails for any other reason.
@@ -534,12 +517,35 @@ ends with a trailing `/` or if resolution fails for any other reason.
 QString fileUrl = "file:///absolute/path to/.my/audio.ogg";
 QString folderUrl = "file:///absolute/path to/.my/";
 
-qInfo() << "FileName:" << fileman.getFileName(QUrl(fileUrl));
-qInfo() << "FileName:" << fileman.getFileName(QUrl(folderPath));
+qInfo() << "FileName:" << fileman.fileName(QUrl{ fileUrl });
+qInfo() << "FileName:" << fileman.fileName(QUrl{ folderPath });
 // Output:
 // FileName: "audio.ogg"
 // FileName: ""
 ```
+
+<div><a id="from-string-to-category"></a></div>
+<div><a name="from-string-to-category"></a></div>
+
+### [FileMan::Category](#category-enum) FileMan::fromStringToCategory(const [QString][qstring] &categoryName) `[static]` `[since 3.0]`
+
+Returns the corresponding [FileMan::Category](#category-enum) for the provided _categoryName_ or
+`FileMan::None` if _categoryName_ is not one of the supported or empty.
+
+| _categoryName_ ([QString][qstring]) | Output [FileMan::Category](#category-enum) |
+| ----------------------------------- | ------------------------------------------ |
+| `audio`                             | `FileMan::Audio`                           |
+| `image`                             | `FileMan::Image`                           |
+| `video`                             | `FileMan::Video`                           |
+
+<div><a id="from-string-to-error"></a></div>
+<div><a name="from-string-to-error"></a></div>
+
+### [FileMan::Error](#error-enum) FileMan::fromStringToError(const [QString][qstring] &errorName) `[static]` `[since 3.0]`
+
+Returns the corresponding [FileMan::Error](#error-enum) for the provided _errorName_ or
+`Error::Success` if _errorName_ is not a valid string. _errorName_ should be the key name for the
+enum, e.g. providing `Exists` returns `FileMan::Exists`.
 
 <div><a id="instance"></a></div>
 <div><a name="instance"></a></div>
@@ -633,9 +639,9 @@ checks are made on the backing blob:
   logic) or if the blob removal fails.
 
 If all validations pass, FileMan proceeds to remove the requested file. Continuing our previous
-example, passing the URL `file:///home/user/.local/share/myapp/audio/MyAudio.ogg` to _rmFile()_ will
-erase the uniquely identified file from the store. Keen readers will recognize this as a direct
-parallel to the _REST-member DELETE_ convention, and they would be entirely correct.
+example, passing the URL `file:///home/user/.local/share/myapp/store/audio/MyAudio.ogg` to
+_rmFile()_ will erase the uniquely identified file from the store. Keen readers will recognize this
+as a direct parallel to the _REST-member DELETE_ convention, and they would be entirely correct.
 
 FileMan will safely remove valid symlink files that the _fileUrl_ refers to within the categorized
 directories, but it will strictly refuse if the _fileUrl_ points to any location outside the
@@ -656,6 +662,37 @@ call, provided the caller checks the error returns appropriately and retries if 
 Overload of [rmFile()](#rmfile-1). Removes the file matching _fileId_ from the application store.
 _fileId_ must be a valid checksum hash referring to a file in store, as returned by
 [addFile()](#addfile-1). Behavior otherwise is retained.
+
+<div><a id="storedir"></a></div>
+<div><a name="storedir"></a></div>
+
+### `[[nodiscard]]` [QString][qstring] FileMan::storeDir() _const_ `[since 3.0]`
+
+Returns a [QString][qstring] containing the absolute directory of `<AppLocalDataLocation>/store`.
+String is never empty.
+
+<div><a id="tostring-1"></a></div>
+<div><a name="tostring-1"></a></div>
+
+### [QString][qstring] FileMan::toString([FileMan::Category](#category-enum) category) `[static]` `[since 3.0]`
+
+Returns a [QString][qstring] containing the name of _category_ or empty if _category_ is an invalid
+key in the enum. `FileMan::All` is a composite _flag_ and therefore not supported.
+
+| _category_ [FileMan::Category](#category-enum) | Output ([QString][qstring]) |
+| ---------------------------------------------- | --------------------------- |
+| `FileMan::Audio`                               | `audio`                     |
+| `FileMan::Image`                               | `image`                     |
+| `FileMan::Video`                               | `video`                     |
+
+<div><a id="tostring-2"></a></div>
+<div><a name="tostring-2"></a></div>
+
+### [QString][qstring] FileMan::toString([FileMan::Error](#error-enum) error) `[static]` `[since 3.0]`
+
+Returns a [QString][qstring] containing the string of the _error_ key or empty if _error_ is an
+invalid key in the enum. For example, providing `FileMan::Exists` returns `Exists` as string. The
+string is empty if _error_ is an invalid key in FileMan::Error.
 
 <div><a id="integration"></a></div>
 <div><a name="integration"></a></div>
@@ -773,10 +810,10 @@ Call instance or static methods as needed:
 
 ```cpp
 // Instance member example
-const auto result = myman.addFile(QUrl("file:///home/user/Music/MyAudio.ogg"));
+const auto result = myman.addFile(QUrl{ "file:///home/user/Music/MyAudio.ogg" });
 
 // Static member example
-const auto dataDir = FileMan::getDataDir();
+const auto storeDir = FileMan::storeDir();
 ```
 
 _That's it!_

@@ -1,9 +1,8 @@
-import QtCore
 import QtQml
 
 QtObject {
     Component.onCompleted: {
-        console.info(fileman.getDataDir());
+        console.info(fileman.storeDir());
         Qt.quit();
     }
 }

@@ -1,10 +1,9 @@
-import QtCore
 import QtQml
 import Lotconn.FileMan
 
 QtObject {
     Component.onCompleted: {
-        const dataDir = FileMan.getDataDir();
+        const dataDir = FileMan.storeDir();
         const fileComp = Qt.platform.os === "windows" ? "/image/i00.png.lnk" : "/image/i00.png";
         const urlSpec = Qt.platform.os === "windows" ? "file:///" : "file://";
         const fileUrl = Qt.resolvedUrl(urlSpec + dataDir + fileComp);

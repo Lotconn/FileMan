@@ -15,10 +15,19 @@ messages for detailed descriptions.
 - Router header renamed to `FileMan`; includes now need to use as `<FileMan>`
 - Removed `create()` as QmlEngine was never calling it owing to the availability of the default
   constructor
-- `Category` enum is now an enum class. This also means enums must be used scoped from now.
 - Dropped explicit enablement of position independent code in build. Build system however, may still
   enable it by default but this isn't enforced anymore now.
 - `rm_file_t::status_h()` renamed to `status_b()`
+- `FileMan::Errno` renamed to `FileMan::Error`
+- `FileMan::Error::Cancelled` renamed to `FileMan::Error::NotADir`. Any `ECANCELLED` errno return is
+  also replaced with `ENOTDIR`.
+- The root store dir moved inside one-level deeper `<AppLocalDataDir>/store` versus previously
+  `<AppLocalDataDir>/`. Directory structure within the root is retained.
+- `getDataDir()` renamed to `storeDir()`. Attributes and behavior otherwise are retained.
+- `categoryToString()` renamed to `toString()` and made static with another overload introduced for
+  `FileMan::Error`. Behavior otherwise is retained.
+- `getFileName()` renamed to `fileName()`. Attributes and behavior otherwise are retained.
+- `getCategoryDir()` renamed to `categoryDir()`. Attributes and behavior otherwise are retained.
 
 ### New
 
@@ -33,6 +42,10 @@ messages for detailed descriptions.
 - Introduced three new `FileMan` class constructors each controlling application store directory in
   different ways.
 - Added `instanceExists()` to check singleton instance existence
+- Added `FileMan::Error::NotUnique` representing `ENOTUNIQ` (value 76). Would usually be returned if
+  blob is linked with multiple symlinks in the store.
+- `fromStringToCategory()` and `fromStringToError()` added to translate string name to enum. Invalid
+  string names return `Category::None` on the former and `Error::Success` on the latter.
 
 ### Improvements
 
@@ -41,6 +54,11 @@ messages for detailed descriptions.
 - `Private` class got renamed to `FileManPrivate` along with some other refactors to simplify the
   design. Also follows Qt idiomatic style.
 - Added some branch prediction optimization
+- Blobs having multiple symlinks pointing to it are now not flagged as inappropriate in
+  `rmFile(const QUrl &)` instead of removing them blindly. This reduces chances of invalidating any
+  other symlinks in the store. `refreshStore()` however keeps only the oldest symlink entry among
+  the group. Facing such situation in real world is very much unlikely from first, unless in some
+  filesystem error edge cases.
 
 ### Fixes
 
@@ -52,6 +70,8 @@ messages for detailed descriptions.
   the space increase for a reflinked file may range somewhere between 2-10% of the original file
   size, providing excellent space-efficiency proximity of hardlinking and platform agnostic way to
   mitigate the remote crafting security bug through a vector.
+- Dangling symlinks in the store are now removed on `refreshStore()` call
+- Symlinks residing in the wrong category directory are also correctly cleaned by `refreshStore()`.
 
 ### Others
 

@@ -2,8 +2,6 @@
 
 auto FileMan::rmFile(const QUrl &fileUrl) -> rm_file_t
 {
-    using pre_rm_validate_t = FileManPrivate::pre_rm_validate_t;
-    using validate_store_t  = FileManPrivate::validate_store_t;
     Q_D(FileMan);
 
     const bool trustStore = d->storeManaged;
@@ -11,8 +9,8 @@ auto FileMan::rmFile(const QUrl &fileUrl) -> rm_file_t
     // Store validation first; trust if managed already ////////////////////////////////////////////
 
     if (!trustStore) {
-        const validate_store_t s      = d->validateStore();
-        int                    retval = FileManPrivate::compErrnoSeverity(s.d_status, s.h_status);
+        const auto s      = d->validateStore();
+        int        retval = FileManPrivate::compErrnoSeverity(s.d_status, s.h_status);
 
         for (const int e : s.c_status)
             retval = FileManPrivate::compErrnoSeverity(retval, e);
@@ -51,18 +49,18 @@ auto FileMan::rmFile(const QUrl &fileUrl) -> rm_file_t
     const QFileInfo lnkFile{ lnkFilePath };
     const QString   lnkFileName = lnkFile.fileName();
 
-    const pre_rm_validate_t v_result = d->preRmValidate(lnkFilePath);
+    const auto validateResult = d->preRmValidate(lnkFilePath);
 
-    if (v_result.status != 0) {
+    if (validateResult.status != 0) {
         logCritical << "Refusing to proceed with" << fileUrlStr;
-        return { v_result.status, -1 };
+        return { validateResult.status, -1 };
     }
 
     //----------------------------------------------------------------------------------------------
 
     //  File Operations ////////////////////////////////////////////////////////////////////////////
 
-    QDir blobDir     = d->blobDir;
+    QDir blobDir     = d->blobDirPath;
     QDir lnkDir      = lnkFile.dir();
     int  status_b    = 0;
     int  status_l    = 0;
@@ -70,11 +68,22 @@ auto FileMan::rmFile(const QUrl &fileUrl) -> rm_file_t
     bool lnkRemoved  = false;
 
     // Remove the raw blob from the store first
-    if (v_result.blobEntry.isEmpty()) [[unlikely]]
+    if (validateResult.blobEntry.isEmpty()) [[unlikely]]
         logWarning << "No valid blobs found in store for" << fileUrlStr;
-    else if (blobRemoved = blobDir.remove(v_result.blobEntry); !blobRemoved) [[unlikely]] {
-        logCritical << "Couldn't remove" << v_result.blobEntry;
-        status_b = EACCES;
+    else {
+        // Let's trust that preRmValidate() won't return orphaned blobs
+        if (const auto lookupResult = d->revLookupSymlink(validateResult.blobEntry);
+            lookupResult.locations.size() > 1) {
+
+            logWarning << "Multiple attached symlinks found for" << validateResult.blobEntry;
+            logWarning << "Refusing to remove blob";
+            status_b = ENOTUNIQ;
+        }
+
+        if (blobRemoved = blobDir.remove(validateResult.blobEntry); !blobRemoved) [[unlikely]] {
+            logCritical << "Couldn't remove" << validateResult.blobEntry;
+            status_b = EACCES;
+        }
     }
 
     // Remove the symlink next
@@ -88,8 +97,8 @@ auto FileMan::rmFile(const QUrl &fileUrl) -> rm_file_t
     //  Finalizing /////////////////////////////////////////////////////////////////////////////////
 
     // Unregister the entries from the hash table
-    d->removeEntry(Q_LIKELY(lnkRemoved) ? v_result.lnkEntry : ""_L1,
-                   Q_LIKELY(blobRemoved) ? v_result.blobEntry : ""_L1);
+    d->removeEntry(Q_LIKELY(lnkRemoved) ? validateResult.lnkEntry : ""_L1,
+                   Q_LIKELY(blobRemoved) ? validateResult.blobEntry : ""_L1);
 
     if ((status_l == 0) && (status_b == 0)) [[likely]]
         logInfo << fileUrlStr << "removed successfully from store";

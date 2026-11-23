@@ -113,8 +113,8 @@ ApplicationWindow {
                     continue;
                 }
 
-                //[KEY:getFileName() usage]
-                const fileName = FileMan.getFileName(fileUrl);
+                //[KEY:fileName() usage]
+                const fileName = FileMan.fileName(fileUrl);
                 const savedPath = result.location;
 
                 let newList = mainWindow.audioList.slice();
@@ -185,7 +185,7 @@ ApplicationWindow {
                             if (status.status_b !== 0)
                                 console.warn("Fileman::rmFile() warning:", status.status_b);
 
-                            if (status.status_l !== 0 && status.status_l != FileMan.Errno.Invalid && status.status_l != FileMan.Errno.NotFound) {
+                            if (status.status_l !== 0 && status.status_l != FileMan.Error.Invalid && status.status_l != FileMan.Error.NotFound) {
                                 console.warn("Fileman::rmFile() failed with error:", status.status_l);
                                 return;
                             }

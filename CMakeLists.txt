@@ -151,12 +151,14 @@ qt_add_qml_module(${PROJECT_NAME}
                     fileman_p.hpp
                     fileman_p.cpp
                     addFile.cpp
-                    categoryToString.cpp
-                    getCategoryDir.cpp
-                    getDataDir.cpp
-                    getFileName.cpp
+                    categoryDir.cpp
+                    fileName.cpp
+                    fromStringToCategory.cpp
+                    fromStringToError.cpp
                     refreshStore.cpp
                     rmFile.cpp
+                    storeDir.cpp
+                    toString.cpp
                     #
                     # qt_add_qml_module() creates some object targets that need to be included with 
                     # the qml module in order for it to work. This is especially necessary on static

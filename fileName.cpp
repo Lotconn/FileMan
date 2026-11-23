@@ -1,7 +1,7 @@
 #include <fileman.hpp>
 
 // Static
-auto FileMan::getFileName(const QUrl &fileUrl) -> QString
+auto FileMan::fileName(const QUrl &fileUrl) -> QString
 {
     return fileUrl.fileName();
 }
