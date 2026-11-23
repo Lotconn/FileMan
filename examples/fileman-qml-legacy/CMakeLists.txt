@@ -39,12 +39,12 @@ if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
   endif()
 endif()
 
-set(CF_PROTECTION_FLAG -fcf-protection=none)
-set(CF_PROTECTION_FLAG_MSVC "")
+set(cf_protection_flag -fcf-protection=none)
+set(cf_protection_flag_msvc "")
 if(CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64|amd64")
   message(STATUS "Enabling Intel CET for x86_64/amd64")
-  set(CF_PROTECTION_FLAG -fcf-protection)
-  set(CF_PROTECTION_FLAG_MSVC /guard:cf)
+  set(cf_protection_flag -fcf-protection)
+  set(cf_protection_flag_msvc /guard:cf)
 endif()
 
 set(compile_flags "")
@@ -82,7 +82,7 @@ elseif(CMAKE_CXX_COMPILER_ID MATCHES "^(GNU|Clang)$")
 endif()
 
 #[KEY:Qml is Required]
-find_package(Qt6 REQUIRED COMPONENTS Core Qml Quick Widgets)
+find_package(Qt6 REQUIRED COMPONENTS Core Qml Quick)
 
 if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
 
@@ -123,10 +123,7 @@ target_compile_definitions(${target_name} PRIVATE QT_ENABLE_STRICT_MODE_UP_TO=0x
 target_compile_options(${target_name} PRIVATE "${compile_flags}")
 target_link_libraries(${target_name}
                       PRIVATE
-                        Qt::Core
-                        Qt::Qml
-                        Qt::Quick
-                        Qt::Widgets
+                        Qt::Core Qt::Qml Qt::Quick
                         #[KEY:BEGIN]
                         Lotconn::FileMan
                         #[KEY:END]

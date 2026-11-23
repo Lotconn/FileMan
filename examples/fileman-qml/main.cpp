@@ -16,10 +16,9 @@ or [KEY::extra comments].
 
 */
 
-#include <QApplication>
+#include <QGuiApplication>
 #include <QQmlApplicationEngine>
 #include <QSocketNotifier>
-#include <QStyleFactory>
 
 #ifdef FM_STATIC_PLUGIN
 
@@ -30,62 +29,54 @@ Q_IMPORT_QML_PLUGIN(Lotconn_FileManPlugin)
 
 #endif
 
-#if defined(Q_OS_UNIX) && !defined(Q_OS_ANDROID)
+#ifdef Q_OS_UNIX
 #  include <csignal>
 #  include <sys/socket.h>
 #  include <unistd.h>
 
 static std::array<int, 2> sigFd = { -1, -1 };
-
-static void unixSignalHandler(int /*unused*/)
-{
-    char                  a     = 'A';
-    [[maybe_unused]] auto trash = ::write(sigFd[1], &a, sizeof(a));
-    // just to avoid compiler warnings
-}
 #endif
 
 int main(int argc, char *argv[])
 {
     using Qt::StringLiterals::operator""_L1;
 
-    QApplication app(argc, argv);
-    QApplication::setApplicationName("FileMan-QML"_L1);
-    QApplication::setOrganizationName("Lotconn"_L1);
-    QApplication::setStyle(QStyleFactory::create("fusion"_L1));
+    QGuiApplication app(argc, argv);
+    QGuiApplication::setApplicationName("FileMan-QML"_L1);
+    QGuiApplication::setOrganizationName("Lotconn"_L1);
 
     QQmlApplicationEngine engine;
 
-    //[KEY:Mind the URL]
-    engine.load(QUrl{ "qrc:/qt/qml/FilemanQml/main.qml"_L1 });
-    if (engine.rootObjects().isEmpty()) {
-        qCritical("Failed to load QML root object; aborting");
-        return 1;
-    }
+    engine.load(QUrl{ "qrc:/qt/qml/FilemanQml/Main.qml"_L1 });
 
-#if defined(Q_OS_UNIX) && !defined(Q_OS_ANDROID)
+#ifdef Q_OS_UNIX
     if (::socketpair(AF_UNIX, SOCK_STREAM, 0, sigFd.data()) != 0)
-        qFatal("Failed to create signal socket pair");
+        qCritical() << "Failed to create signal socket pair";
 
     QSocketNotifier sigNotifier(sigFd[0], QSocketNotifier::Read);
-    QObject::connect(&sigNotifier, &QSocketNotifier::activated, &app, [](QSocketDescriptor) {
-        char                  tmp   = 0;
-        [[maybe_unused]] auto trash = ::read(sigFd[0], &tmp, sizeof(tmp));
-        // just to avoid compiler warnings
-        QApplication::quit();
-    });
+
+    QObject::connect(&sigNotifier, &QSocketNotifier::activated, &app,
+                     [](QSocketDescriptor) -> void {
+                         char                  tmp   = 0;
+                         [[maybe_unused]] auto trash = ::read(sigFd[0], &tmp, sizeof(tmp));
+                         QGuiApplication::quit();
+                     });
 
     struct sigaction sa{ };
-    sa.sa_handler = unixSignalHandler;
+    sa.sa_handler = [](int) -> void {
+        char                  a     = 'A';
+        [[maybe_unused]] auto trash = ::write(sigFd[1], &a, sizeof(a));
+        // just to avoid compiler warnings
+    };
     sigemptyset(&sa.sa_mask);
     sa.sa_flags = SA_RESTART;
     sigaction(SIGINT, &sa, nullptr);
     sigaction(SIGTERM, &sa, nullptr);
 #endif
 
-    int ret = QApplication::exec();
+    int ret = QGuiApplication::exec();
 
-#if defined(Q_OS_UNIX) && !defined(Q_OS_ANDROID)
+#ifdef Q_OS_UNIX
     ::close(sigFd[0]);
     ::close(sigFd[1]);
 #endif

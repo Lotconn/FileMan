@@ -20,6 +20,7 @@ cmake_minimum_required(VERSION 3.24...4.4)
 
 include(CheckIPOSupported)
 
+set(QT_QML_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/qml/)
 set(target_name fileman-qml)
 
 if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
@@ -40,12 +41,12 @@ if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
   endif()
 endif()
 
-set(CF_PROTECTION_FLAG -fcf-protection=none)
-set(CF_PROTECTION_FLAG_MSVC "")
+set(cf_protection_flag -fcf-protection=none)
+set(cf_protection_flag_msvc "")
 if(CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64|amd64")
   message(STATUS "Enabling Intel CET for x86_64/amd64")
-  set(CF_PROTECTION_FLAG -fcf-protection)
-  set(CF_PROTECTION_FLAG_MSVC /guard:cf)
+  set(cf_protection_flag -fcf-protection)
+  set(cf_protection_flag_msvc /guard:cf)
 endif()
 
 set(compile_flags "")
@@ -83,7 +84,7 @@ elseif(CMAKE_CXX_COMPILER_ID MATCHES "^(GNU|Clang)$")
 endif()
 
 #[KEY:Qml is Required]
-find_package(Qt6 REQUIRED COMPONENTS Core Qml Quick Widgets)
+find_package(Qt6 REQUIRED COMPONENTS Core Qml Quick)
 
 if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
 
@@ -124,7 +125,7 @@ else()
 endif()
 
 #[KEY:BEGIN]
-qt_add_qml_module(${target_name} URI FilemanQml QML_FILES main.qml DEPENDENCIES Lotconn.FileMan)
+qt_add_qml_module(${target_name} URI FilemanQml QML_FILES Main.qml DEPENDENCIES Lotconn.FileMan)
 #[KEY:END]
 
 set(fm_plugin_target FileManplugin)
@@ -148,5 +149,5 @@ unset(fm_plugin_type)
 
 target_compile_definitions(${target_name} PRIVATE QT_ENABLE_STRICT_MODE_UP_TO=0x061200)
 target_compile_options(${target_name} PRIVATE "${compile_flags}")
-target_link_libraries(${target_name} PRIVATE Qt::Core Qt::Qml Qt::Quick Qt::Widgets)
+target_link_libraries(${target_name} PRIVATE Qt::Core Qt::Qml Qt::Quick)
 target_link_options(${target_name} PRIVATE "${linker_flags}")

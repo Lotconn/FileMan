@@ -40,8 +40,8 @@ applications.
 |                                       | [FileMan](#fileman-constructor-3)(const [QString][qstring] &appName, [QObject][qobject] \*parent = nullptr) `[explicit]` `[since 3.0]`                       |
 |                                       | [FileMan](#fileman-constructor-4)(const [QString][qstring] &orgName, const [QString][qstring] &appName, [QObject][qobject] \*parent = nullptr) `[since 3.0]` |
 |                                       | [~FileMan()](#fileman-destructor) `[override]`                                                                                                               |
-|          [add_file_t](#add-file-type) | [addFile](#addfile-1)(_const_ [QUrl][qurl] &fileUrl, bool overwrite, [FileMan::Categories](#category-enum) category = FileMan::All) `[since 3.0]`            |
-|          [add_file_t](#add-file-type) | [addFile](#addfile-2)(_const_ [QUrl][qurl] &fileUrl, [FileMan::Categories](#category-enum) category = FileMan::All)                                          |
+|          [add_file_t](#add-file-type) | [addFile](#addfile-1)(_const_ [QUrl][qurl] &fileUrl, bool overwrite, [FileMan::Categories](#category-enum) categories = FileMan::All) `[since 3.0]`          |
+|          [add_file_t](#add-file-type) | [addFile](#addfile-2)(_const_ [QUrl][qurl] &fileUrl, [FileMan::Categories](#category-enum) categories = FileMan::All)                                        |
 | [QString][qstring]<br>`[[nodiscard]]` | [categoryDir](#categorydir)([FileMan::Category](#category-enum) category) _const_ `[since 3.0]`                                                              |
 |                                   int | [refreshStore()](#refreshstore)                                                                                                                              |
 |            [rm_file_t](#rm-file-type) | [rmFile](#rmfile-1)([QUrl][qurl] fileUrl)                                                                                                                    |
@@ -64,7 +64,7 @@ applications.
 
 FileMan is a file manager backend for managing the application store. It creates and manages a
 _content-addressable_ store under `<AppLocalDataLocation>/store` matching the MIME type of the file
-against the specified [category](#category-enum). `<AppLocalDataLocation>` on Unix expands as
+against the specified [categories](#category-enum). `<AppLocalDataLocation>` on Unix expands as
 `$XDG_DATA_HOME/<APPNAME>/` or `~/.local/share/<APPNAME>`, and
 `C:/Users/<USER>/AppData/Local/<APPNAME>`, `<APPDIR>`, `<APPDIR>/data` or `<APPDIR>/data/<APPNAME>`
 on Windows (`<APPDIR>` is the directory containing the application executable). During adding, the
@@ -374,10 +374,10 @@ Destroys the _FileMan_ singleton instance.
 <div><a id="addfile-1"></a></div>
 <div><a name="addfile-1"></a></div>
 
-### [add_file_t](#add-file-type) FileMan::addFile(_const_ [QUrl][qurl] _&fileUrl_, bool overwrite, [FileMan::Categories](#category-enum) _category_ = FileMan::All) `[since 3.0]`
+### [add_file_t](#add-file-type) FileMan::addFile(_const_ [QUrl][qurl] _&fileUrl_, bool overwrite, [FileMan::Categories](#category-enum) _categories_ = FileMan::All) `[since 3.0]`
 
-Adds the file from _fileUrl_ to the store with an optional _category_ specified. Overwrites existing
-entry if _overwrite_ is specified. The URL must follow local file specifiers:
+Adds the file from _fileUrl_ to the store with an optional _categories_ specified. Overwrites
+existing entry if _overwrite_ is specified. The URL must follow local file specifiers:
 `file:///path/to/myfile.img` for absolute or `file:myfile.img` for relative path to `myfile.img`.
 Returns a [add_file_t](#add-file-type) struct:
 
@@ -394,10 +394,10 @@ holds `file:///home/user/.local/share/<APPNAME>/store/audio/MyAudio.ogg` and `id
 corresponding non-zero `errno` value for `status()`, an empty URL for `location()` and empty string
 for `id()`.
 
-ORing _category_ adds _fileUrl_ to the first matching category flag, even if it matches multiple
-categories. _category_ can also be omitted, in which case, _fileUrl_ is matched against all valid
-categories. Due to this ambiguity, it is recommended to explicitly specify _category_ as narrowly as
-possible.
+OR-ing [FileMan::Categories](#category-enum) to _categories_ adds _fileUrl_ to the first matching
+category flag, even if it matches multiple categories. _categories_ can also be omitted, in which
+case, _fileUrl_ is matched against all valid categories. Due to this ambiguity, it is recommended to
+explicitly specify _categories_ as narrowly as possible.
 
 For maximum efficiency, FileMan inherently attempts to _reflink_ the added file on filesystems that
 support it. A storage free-space check is always performed _before_ writes initiate to predict and
@@ -468,7 +468,7 @@ int main(int argc, char *argv[])
         if (fileUrl.isEmpty())
           continue;
 
-        // omitting `category` means `fileUrl` is matched against all known categories
+        // omitting `categories` means `fileUrl` is matched against all known categories
         const add_file_t result = fileman.addFile(QUrl{ fileUrl }, true);
 
         qInfo() << "Program returned saved path:" << result.location();
@@ -485,7 +485,7 @@ int main(int argc, char *argv[])
 <div><a id="addfile-2"></a></div>
 <div><a name="addfile-2"></a></div>
 
-### [add_file_t](#add-file-type) FileMan::addFile(_const_ [QUrl][qurl] _&fileUrl_, [FileMan::Categories](#category-enum) _category_ = FileMan::All)
+### [add_file_t](#add-file-type) FileMan::addFile(_const_ [QUrl][qurl] _&fileUrl_, [FileMan::Categories](#category-enum) _categories_ = FileMan::All)
 
 Overload of [addFile()](#addfile-1) retaining the API and behavior before v3.0. Implies _overwrite =
 false_.

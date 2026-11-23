@@ -12,6 +12,9 @@
         "editor.defaultFormatter": "theqtcompany.qt-qml"
     },
     "C_Cpp.intelliSenseEngine": "disabled",
+    "clangd.arguments": [
+        "--header-insertion=never"
+    ],
     "cmake.automaticReconfigure": false,
     "cmake.buildDirectory": "${workspaceFolder}/build",
     "cmake.configureArgs": [

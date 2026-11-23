@@ -100,9 +100,9 @@ ApplicationWindow {
 
         onAccepted: {
             //[KEY:FileMan::Category enum usage]
-            const category = selectedNameFilter.index == 0 ? FileMan.Categories.Audio : selectedNameFilter.index == 1 ? FileMan.Categories.Image : selectedNameFilter.index == 2 ? FileMan.Categories.Video : FileMan.Categories.All;
+            const category = selectedNameFilter.index == 0 ? FileMan.Audio : selectedNameFilter.index == 1 ? FileMan.Image : selectedNameFilter.index == 2 ? FileMan.Video : FileMan.All;
 
-            for (const i = 0; i < selectedFiles.length; i++) {
+            for (let i = 0; i < selectedFiles.length; i++) {
                 const fileUrl = selectedFiles[i];
 
                 //[KEY:addFile() usage]
@@ -185,7 +185,7 @@ ApplicationWindow {
                             if (status.status_b !== 0)
                                 console.warn("Fileman::rmFile() warning:", status.status_b);
 
-                            if (status.status_l !== 0 && status.status_l != FileMan.Error.Invalid && status.status_l != FileMan.Error.NotFound) {
+                            if (status.status_l !== 0 && status.status_l != FileMan.Invalid && status.status_l != FileMan.NotFound) {
                                 console.warn("Fileman::rmFile() failed with error:", status.status_l);
                                 return;
                             }
