@@ -17,6 +17,8 @@ auto FileMan::rmFile(const QUrl &fileUrl) -> rm_file_t
 
         if (retval != 0 && retval != EAGAIN) [[unlikely]]
             return { retval, -1 };
+
+        logInfo << "Store validation succeeded";
     }
 
     //
@@ -57,13 +59,11 @@ auto FileMan::rmFile(const QUrl &fileUrl) -> rm_file_t
 
     //  File Operations ////////////////////////////////////////////////////////////////////////////
 
-    const QFileInfo lnkFile{ lnkPath };
-    const QString   lnkFileName = lnkFile.fileName();
-    QDir            blobDir     = d->blobDirPath;
-    int             status_b    = 0;
-    int             status_l    = 0;
-    bool            blobRemoved = true;
-    bool            lnkRemoved  = false;
+    QDir blobDir     = d->blobDirPath;
+    int  status_b    = 0;
+    int  status_l    = 0;
+    bool blobRemoved = true;
+    bool lnkRemoved  = false;
 
     // Remove the raw blob from the store first
     if (validateResult.blobEntry.isEmpty()) [[unlikely]]
@@ -122,6 +122,8 @@ auto FileMan::rmFile(const QString &fileId) -> rm_file_t
 
         if (retval != 0 && retval != EAGAIN) [[unlikely]]
             return { retval, -1 };
+
+        logInfo << "Store validation succeeded";
     }
 
     //
@@ -148,17 +150,16 @@ auto FileMan::rmFile(const QString &fileId) -> rm_file_t
 
     blobFile.setFile(blobPath);
 
-    if (const int e = d->validateBlob(blobFile); e != 0)
+    if (const int e = FileManPrivate::validateBlob(blobFile); e != 0)
         return { -1, e };
 
     const auto lookupResult = d->revLookupSymlink(blobFileName);
-    bool       blobRemoved  = false;
     int        status_l     = 0;
 
     logInfo << "Removing" << blobPath;
 
     // Remove the blob first
-    if (blobRemoved = QFile::remove(blobPath); !blobRemoved) [[unlikely]] {
+    if (!QFile::remove(blobPath)) [[unlikely]] {
         logCritical << "Couldn't remove" << fileId;
         return { -1, EACCES };
     }
@@ -170,7 +171,7 @@ auto FileMan::rmFile(const QString &fileId) -> rm_file_t
 
     // Remove all the symlinks pointing to it next
     for (const QString &lnkEntry : lookupResult.locations) {
-        const QString lnkPath = FileManPrivate::createPathComp(d->storeDirPath, lnkEntry);
+        const QString lnkPath = FileManPrivate::createPathComp(this->storeDir(), lnkEntry);
 
         // Do not remove invalid reverse-resolved symlinks. Pedantic, not really necessary;
         // revLookupSymlink() already did the job, hopefully in a good manner

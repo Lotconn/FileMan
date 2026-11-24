@@ -15,6 +15,8 @@ auto FileMan::refreshStore() -> int
     if (retval != 0 && retval != EAGAIN) [[unlikely]]
         return retval;
 
+    logInfo << "Store validation succeeded";
+
     //----------------------------------------------------------------------------------------------
 
     //  Preparations ///////////////////////////////////////////////////////////////////////////////
@@ -38,12 +40,12 @@ auto FileMan::refreshStore() -> int
 
     //  Store state caching & pruning //////////////////////////////////////////////////////////////
 
-    for (const auto &[catName, catLocation] : d->categoryDirs.asKeyValueRange()) {
+    for (const auto &[cat, catDirPath] : d->categoryToDirs.asKeyValueRange()) {
 
-        QDir categoryDir = catLocation;
+        const QDir categoryDir = catDirPath;
 
         if (categoryDir.isEmpty(QDir::AllEntries | QDir::System | QDir::NoDotAndDotDot)) {
-            logWarning << catName << "store doesn't have any contents yet";
+            logWarning << FileMan::toString(cat) << "store doesn't have any contents yet";
             continue;
         }
 
@@ -52,7 +54,7 @@ auto FileMan::refreshStore() -> int
         const QStringList contents = categoryDir.entryList(
                 QDir::AllEntries | QDir::System | QDir::NoDotAndDotDot, QDir::Time);
 
-        logDebug << "Contents in" << catLocation << ":";
+        logDebug << "Contents in" << catDirPath << ":";
         logDebug << contents;
 
         // Build the store-state cache dictionary from valid files in the store
@@ -70,10 +72,10 @@ auto FileMan::refreshStore() -> int
             // RHS is rarer than LHS
             if (result.blobEntry.isEmpty() || d->blobToLinkDict.contains(result.blobEntry))
                     [[unlikely]] {
-                logDebug << "Removing" << file << "from" << catLocation;
+                logDebug << "Removing" << file << "from" << catDirPath;
 
-                if (!categoryDir.remove(file)) [[unlikely]]
-                    logWarning << "Couldn't remove" << file;
+                if (!QFile::remove(filePath)) [[unlikely]]
+                    logWarning << "Couldn't remove" << filePath;
 
                 continue;
             }
@@ -90,8 +92,7 @@ auto FileMan::refreshStore() -> int
     if (hasValidEntries)
         d->squeezeDicts();
 
-    QDir blobDir = d->blobDirPath;
-
+    QDir              blobDir = d->blobDirPath;
     const QStringList contents =
             blobDir.entryList(QDir::AllEntries | QDir::System | QDir::NoDotAndDotDot);
 

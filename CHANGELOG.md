@@ -19,10 +19,12 @@ messages for detailed descriptions.
   enable it by default but this isn't enforced anymore now.
 - `rm_file_t::status_h()` renamed to `status_b()`
 - `FileMan::Errno` renamed to `FileMan::Error`
-- `FileMan::Error::Cancelled` renamed to `FileMan::Error::NotADir`. Any `ECANCELLED` errno return is
-  also replaced with `ENOTDIR`.
 - The root store dir moved inside one-level deeper `<AppLocalDataDir>/store` versus previously
   `<AppLocalDataDir>/`. Directory structure within the root is retained.
+- Category directories in filesystem are now plural-type, e.g. "audios" for audio category and
+  "images" for image category.
+- Name strings for Category enum now follow key name casing unlike all lower-case previously, e.g.
+  `FileMan::Video` -> `Video`
 - `getDataDir()` renamed to `storeDir()`. Attributes and behavior otherwise are retained.
 - `categoryToString()` renamed to `toString()` and made static with another overload introduced for
   `FileMan::Error`. Behavior otherwise is retained.
@@ -42,6 +44,8 @@ messages for detailed descriptions.
 - Introduced three new `FileMan` class constructors each controlling application store directory in
   different ways.
 - Added `instanceExists()` to check singleton instance existence
+- Added `FileMan::Error::NotADir` enum as an alias for `ENOTDIR` (value 20). Would usually be
+  returned if directory validation resolves to be not of directory type.
 - Added `FileMan::Error::NotUnique` representing `ENOTUNIQ` (value 76). Would usually be returned if
   blob is linked with multiple symlinks in the store.
 - `fromStringToCategory()` and `fromStringToError()` added to translate string name to enum. Invalid

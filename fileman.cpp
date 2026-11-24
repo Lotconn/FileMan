@@ -10,12 +10,8 @@ FileMan::FileMan(const QDir &storeDir, QObject *parent)
                     "process";
 
     Q_D(FileMan);
-
-    d->storeDirPath = storeDir.absoluteFilePath("store"_L1);
-    d->blobDirPath  = FileManPrivate::createPathComp(d->storeDirPath, "common"_L1);
-    d->categoryDirs = FileManPrivate::createCategoryDirsDict(d->storeDirPath);
-    d->categoryList = FileManPrivate::createCategoryInfoDict(d->storeDirPath);
-    d->storeLock    = new QLockFile{ QDir{ d->storeDirPath }.absoluteFilePath(".fileman.lock"_L1) };
+    d->initPathsAndDicts(storeDir);
+    d->storeLock = new QLockFile{ QDir{ d->storeDirPath }.absoluteFilePath(".fileman.lock"_L1) };
 
     // The singleton's lifetime is owned by this TU (main()/first construction), not by the
     // QQmlEngine. Make that explicit so the engine never attempts to garbage-collect or delete it.

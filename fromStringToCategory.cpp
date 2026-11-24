@@ -2,5 +2,5 @@
 
 auto FileMan::fromStringToCategory(const QString &categoryName) -> FileMan::Category
 {
-    return FileManPrivate::nameToCategory.value(categoryName, Category::None);
+    return FileManPrivate::stringToCategory.value(categoryName, Category::None);
 }

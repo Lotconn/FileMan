@@ -54,7 +54,7 @@ auto FileManPrivate::calcDigest(const QString &path) noexcept -> QString
 
 auto FileManPrivate::clearAllEntries() noexcept -> void
 {
-    const QWriteLocker locker{ &this->dictLock };
+    const QWriteLocker lock = &this->varLock;
 
     this->blobToLinkDict.clear();
     this->linkToBlobDict.clear();
@@ -68,34 +68,38 @@ auto FileManPrivate::compErrnoSeverity(int error1, int error2) noexcept -> int
 }
 
 // Static
-auto FileManPrivate::createCategoryDirsDict(const QString &dataDir) noexcept
-        -> QHash<QString, QString>
+auto FileManPrivate::initPathsAndDicts(const QDir &storeDir) noexcept -> void
 {
-    return {
-        { "audio"_L1, FileManPrivate::createPathComp(dataDir, "audio"_L1) },
-        { "image"_L1, FileManPrivate::createPathComp(dataDir, "image"_L1) },
-        { "video"_L1, FileManPrivate::createPathComp(dataDir, "video"_L1) }
-    };
-}
+    this->storeDirPath = storeDir.absoluteFilePath(FileManPrivate::sc_storeDirName);
 
-// Static
-auto FileManPrivate::createCategoryInfoDict(const QString &dataDir) noexcept
-        -> QHash<FileMan::Category, FileManPrivate::category_info_t>
-{
-    return {
-        { Category::Audio,
-         { .name = "audio"_L1, .location = FileManPrivate::createPathComp(dataDir, "audio"_L1) } },
-        { Category::Image,
-         { .name = "image"_L1, .location = FileManPrivate::createPathComp(dataDir, "image"_L1) } },
-        { Category::Video,
-         { .name = "video"_L1, .location = FileManPrivate::createPathComp(dataDir, "video"_L1) } }
+    const QDir baseDir = this->storeDirPath;
+
+    this->blobDirPath = baseDir.absoluteFilePath(FileManPrivate::sc_blobDirName);
+
+    const QString audiosPath =
+            baseDir.absoluteFilePath(FileManPrivate::sc_categoryToDirNames.value(Category::Audio));
+    const QString imagesPath =
+            baseDir.absoluteFilePath(FileManPrivate::sc_categoryToDirNames.value(Category::Image));
+    const QString videosPath =
+            baseDir.absoluteFilePath(FileManPrivate::sc_categoryToDirNames.value(Category::Video));
+
+    this->categoryToDirs = {
+        { Category::Audio, audiosPath },
+        { Category::Image, imagesPath },
+        { Category::Video, videosPath },
+    };
+
+    this->dirsToCategory = {
+        { audiosPath, Category::Audio },
+        { imagesPath, Category::Image },
+        { videosPath, Category::Video },
     };
 }
 
 // Static
 auto FileManPrivate::createPathComp(const QString &comp1, const QString &comp2) noexcept -> QString
 {
-    return QDir::toNativeSeparators(QDir::cleanPath(comp1 + '/'_L1 + comp2));
+    return QDir::toNativeSeparators(QDir::cleanPath(comp1 + u'/' + comp2));
 }
 
 // Static
@@ -149,7 +153,7 @@ auto FileManPrivate::diskFreeCheck(const QFileInfo &file, const QDir &dir) noexc
 
 auto FileManPrivate::dumpAllEntries() noexcept -> void
 {
-    const QReadLocker locker{ &this->dictLock };
+    const QReadLocker lock = &this->varLock;
 
     logDebug << "blobToLinkDict:";
     for (const auto &[key, value] : std::as_const(this->blobToLinkDict).asKeyValueRange())
@@ -249,7 +253,7 @@ auto FileManPrivate::fixDirHealth(const QString &dir, int error,
 
 auto FileManPrivate::isDictEmpty(const QHash<QString, QString> &dict) noexcept -> bool
 {
-    const QReadLocker locker{ &this->dictLock };
+    const QReadLocker lock = &this->varLock;
     return dict.isEmpty();
 }
 
@@ -261,14 +265,14 @@ auto FileManPrivate::isHexDigit(QChar ch) noexcept -> bool
 
 auto FileManPrivate::lookupBlobByLink(const QString &lnkEntry) noexcept -> QString
 {
-    const QReadLocker locker{ &this->dictLock };
-    return this->linkToBlobDict.value(lnkEntry, { });
+    const QReadLocker lock = &this->varLock;
+    return this->linkToBlobDict.value(lnkEntry);
 }
 
 auto FileManPrivate::lookupLinkByBlob(const QString &blobName) noexcept -> QString
 {
-    const QReadLocker locker{ &this->dictLock };
-    return this->blobToLinkDict.value(blobName, { });
+    const QReadLocker lock = &this->varLock;
+    return this->blobToLinkDict.value(blobName);
 }
 
 // Static
@@ -280,27 +284,16 @@ auto FileManPrivate::lowestSetFlag(const FileMan::Categories categories) noexcep
 
 auto FileManPrivate::mkDataDir() const noexcept -> bool
 {
-    if (!QDir{ }.mkpath(this->blobDirPath)) [[unlikely]] {
-        logCritical << "Failed to create" << this->blobDirPath;
-        return false;
-    }
-
-    return true;
+    return QDir{ }.mkpath(this->blobDirPath);
 }
 
 auto FileManPrivate::mkDataDir(FileMan::Category category) const noexcept -> bool
 {
-    const QString categoryDirPath{ this->categoryList.value(category).location };
-
-    if (!QDir{ }.mkpath(categoryDirPath)) [[unlikely]] {
-        logCritical << "Failed to create" << categoryDirPath;
-        return false;
-    }
-
-    return true;
+    return QDir{ }.mkpath(this->categoryToDirs.value(category));
 }
 
-auto FileManPrivate::preAddValidate(const QFileInfo &file) const noexcept
+// Static
+auto FileManPrivate::preAddValidate(const QFileInfo &file) noexcept
         -> FileManPrivate::pre_add_validate_t
 {
     if (file.isSymbolicLink() || file.isShortcut() || file.isAlias()) {
@@ -328,9 +321,9 @@ auto FileManPrivate::preAddValidate(const QFileInfo &file) const noexcept
 
     // A 5 mins long 96 kHz 24-bit audio file could easily reach this ceiling images are much more
     // forgiving though
-    constexpr qint32 gibVal = 1073741824;
+    static constexpr qint32 gibVal = 1073741824;
 
-    if (const int e = validateFile(file, gibVal); e != 0)
+    if (const int e = FileManPrivate::validateFile(file, gibVal); e != 0)
         return { .status = e, .categories = Category::None };
 
     //
@@ -339,9 +332,7 @@ auto FileManPrivate::preAddValidate(const QFileInfo &file) const noexcept
     //
     const QMimeDatabase mimeDb;
     const QString       mime =
-            mimeDb.mimeTypeForFile(file.canonicalFilePath(), QMimeDatabase::MatchContent)
-                    .name()
-                    .toLower();
+            mimeDb.mimeTypeForFile(file.canonicalFilePath(), QMimeDatabase::MatchContent).name();
 
     logDebug << "MIME:" << mime;
 
@@ -352,9 +343,10 @@ auto FileManPrivate::preAddValidate(const QFileInfo &file) const noexcept
 
     Categories categories = Category::None;
 
-    for (const auto &[cat, catInfo] : this->categoryList.asKeyValueRange())
-        if (mime.startsWith(catInfo.name + '/'_L1)
-            || (catInfo.name == "video"_L1 && mime.contains("/x-matroska"_L1)))
+    for (const auto &[cat, name] : FileManPrivate::categoryToString.asKeyValueRange())
+        if (mime.startsWith(name + u'/', Qt::CaseInsensitive)
+            || (name.compare("video"_L1, Qt::CaseInsensitive) == 0
+                && mime.contains("/x-matroska"_L1, Qt::CaseInsensitive)))
             categories |= cat;
 
     if (categories == Category::None) {
@@ -369,50 +361,26 @@ auto FileManPrivate::preRmValidate(const QString &lnkPath, const bool enforcedCh
         -> FileManPrivate::pre_rm_validate_t
 {
     const QFileInfo lnkFile{ lnkPath };
-    const QDir      lnkDir      = lnkFile.dir();
-    const QString   lnkFileName = lnkFile.fileName();
-    const QString   lnkDirName  = lnkDir.dirName(); // i.e. parent dir name
-    const QString   lnkDirPath  = QDir::cleanPath(lnkDir.absolutePath());
-    const QString   lnkEntry    = FileManPrivate::createPathComp(lnkDirName, lnkFileName);
+    const QString   lnkDirPath = QDir::cleanPath(lnkFile.absolutePath());
+    const QString   lnkEntry =
+            FileManPrivate::createPathComp(lnkFile.dir().dirName(), lnkFile.fileName());
+    const Category category = this->dirsToCategory.value(lnkDirPath, Category::None);
 
-    // `lnkPath` could be a directory path or TLD, e.g. /, C: etc
-    if (lnkFileName.isEmpty() || lnkDirName.isEmpty()) {
-        logCritical << lnkPath << "is an invalid path. Refusing to proceed.";
-        return { .status = EINVAL, .lnkEntry = { }, .blobEntry = { } };
-    }
-
-    const QString   categoryDirPath = this->categoryDirs.value(lnkDirName);
-    const QDir      categoryDir     = categoryDirPath;
-    const QFileInfo lnkTarget{ QDir::cleanPath(categoryDir.filePath(lnkFile.symLinkTarget())) };
-    const QString   lnkTargetFileName = lnkTarget.fileName();
-
-    if (categoryDirPath.isEmpty()) {
-        logCritical << lnkPath << "is not a valid file in store";
-        return { .status = EINVAL, .lnkEntry = { }, .blobEntry = { } };
-    }
-
-    if (lnkDirPath != categoryDirPath) {
-        logCritical << lnkPath << "is not a path to store";
-        return { .status = EINVAL, .lnkEntry = { }, .blobEntry = { } };
-    }
-
-    if (const int e = this->validateLink(lnkFile); e != 0) {
-        if (e == EINVAL)
-            return { .status = 0, .lnkEntry = lnkEntry, .blobEntry = { } };
-
-        return { .status = e, .lnkEntry = { }, .blobEntry = { } };
-    }
+    if (const int e = this->validateLink(lnkFile); e != 0)
+        return { .status = 0, .lnkEntry = (e == EINVAL) ? lnkEntry : QString{ }, .blobEntry = { } };
 
     //
-    // Reaching here means provided symlink is valid and not dangling. Proceed to check the blobFile
+    // Reaching here means provided symlink is valid and not dangling. Proceed to check the target
     // next
     //
 
+    const QFileInfo lnkTarget{ QDir::cleanPath(
+            QDir{ lnkDirPath }.filePath(lnkFile.symLinkTarget())) };
+    const QString   lnkTargetFileName = lnkTarget.fileName();
+
     return { .status    = 0,
              .lnkEntry  = lnkEntry,
-             .blobEntry = (this->validateBlob(lnkTarget, enforcedCheck,
-                                              FileMan::fromStringToCategory(lnkDirName))
-                           == 0)
+             .blobEntry = (FileManPrivate::validateBlob(lnkTarget, enforcedCheck, category) == 0)
                      ? lnkTargetFileName
                      : QString{ } };
 }
@@ -420,7 +388,7 @@ auto FileManPrivate::preRmValidate(const QString &lnkPath, const bool enforcedCh
 auto FileManPrivate::registerEntry(const QString &lnkEntry, const QString &blobName) noexcept
         -> void
 {
-    const QWriteLocker locker(&this->dictLock);
+    const QWriteLocker lock = &this->varLock;
 
     this->blobToLinkDict.insert(blobName, lnkEntry);
     this->linkToBlobDict.insert(lnkEntry, blobName);
@@ -434,7 +402,7 @@ auto FileManPrivate::releaseStoreLock() noexcept -> void
 
 auto FileManPrivate::removeEntry(const QString &lnkEntry, const QString &blobName) noexcept -> void
 {
-    const QWriteLocker locker(&this->dictLock);
+    const QWriteLocker lock = &this->varLock;
 
     this->blobToLinkDict.remove(blobName);
     this->linkToBlobDict.remove(lnkEntry);
@@ -447,12 +415,12 @@ auto FileManPrivate::renameFile(const QString &fileName, const QDir &location) n
     if (location.exists(fileName)) [[likely]]
         return fileName;
 
-    // Find the first empty rename suffix; e.g. existing-name_2.ext having even anything near 1000
+    // Find the first empty rename suffix; e.g. existing-name_2.ext. Having even anything near 1000
     // rename-suffixed same files is atypical
-    const QFileInfo  file{ fileName };
-    const QString    baseName = file.completeBaseName();
-    const QString    suffix   = u"."_s + file.suffix();
-    constexpr qint64 lim      = 1024;
+    const QFileInfo         file{ fileName };
+    const QString           baseName = file.completeBaseName();
+    const QString           suffix   = u'.' + file.suffix();
+    static constexpr qint64 lim      = 1024;
 
     // Using fast & efficient O(1) QSet for lookup rather than expending IO QDir::exists()
     const QStringList   contents = location.entryList();
@@ -486,7 +454,7 @@ auto FileManPrivate::resolveDataDir(const QString &orgName, const QString &appNa
         return appDataDir;
     }
 
-    if (QFileInfo(appName).fileName() != appName)
+    if (QFileInfo{ appName }.fileName() != appName)
         logFatal << "Invalid application name. FileMan cannot safely isolate its data store. "
                     "Aborting";
 
@@ -499,7 +467,7 @@ auto FileManPrivate::resolveDataDir(const QString &orgName, const QString &appNa
     if (orgName.isEmpty())
         org = QCoreApplication::organizationName();
     else {
-        if (QFileInfo(orgName).fileName() != orgName)
+        if (QFileInfo{ orgName }.fileName() != orgName)
             logFatal << "Invalid organization name. FileMan cannot safely isolate its data store. "
                         "Aborting";
 
@@ -511,6 +479,7 @@ auto FileManPrivate::resolveDataDir(const QString &orgName, const QString &appNa
     }
 
     appDataDir = QStandardPaths::writableLocation(QStandardPaths::GenericDataLocation);
+
     const QString relativePath = (org.isEmpty()) ? appName : org + u'/' + appName;
 
     logDebug << "Store dir:" << appDataDir.absoluteFilePath(relativePath);
@@ -568,14 +537,14 @@ auto FileManPrivate::revLookupSymlink(const QString      &blobName,
 
     QStringList links;
 
-    for (const auto &[category, catInfo] : this->categoryList.asKeyValueRange()) {
+    for (const auto &[cat, catDirPath] : this->categoryToDirs.asKeyValueRange()) {
 
-        if (!categories.testFlag(category))
+        if (!categories.testFlag(cat))
             continue;
 
-        logDebug << "Searching" << catInfo.name << "directory";
+        logDebug << "Searching" << catDirPath << "directory";
 
-        const QDir             searchDir   = catInfo.location;
+        const QDir             searchDir   = catDirPath;
         // enlist oldest first
         const QList<QFileInfo> dirContents = searchDir.entryInfoList(
                 QDir::Files | QDir::Hidden | QDir::NoDotAndDotDot | QDir::System, QDir::Time);
@@ -598,13 +567,13 @@ auto FileManPrivate::revLookupSymlink(const QString      &blobName,
             const QString resolvedTarget =
                     QDir::cleanPath(searchDir.absoluteFilePath(file.symLinkTarget()));
 
-            logDebug << "Link target:"
-                     << QDir::cleanPath(searchDir.absoluteFilePath(file.symLinkTarget()));
+            logDebug << "Link target:" << resolvedTarget;
 
             if (resolvedTarget != blobPath)
                 continue;
 
-            const QString entry = FileManPrivate::createPathComp(catInfo.name, file.fileName());
+            const QString entry = FileManPrivate::createPathComp(
+                    FileManPrivate::sc_categoryToDirNames.value(cat), file.fileName());
 
             links.append(entry);
 
@@ -650,14 +619,15 @@ auto FileManPrivate::setDirPerms(const std::filesystem::path &dirPath, std::erro
 
 auto FileManPrivate::squeezeDicts() noexcept -> void
 {
-    QWriteLocker locker(&this->dictLock);
+    const QWriteLocker lock = &this->varLock;
 
     this->blobToLinkDict.squeeze();
     this->linkToBlobDict.squeeze();
 }
 
+// Static
 auto FileManPrivate::validateBlob(const QFileInfo &blobFile, bool enforcedCheck,
-                                  FileMan::Categories categories) const noexcept -> int
+                                  FileMan::Categories categories) noexcept -> int
 {
     const QString blobPath     = blobFile.absoluteFilePath();
     const QString blobFileName = blobFile.fileName();
@@ -675,7 +645,7 @@ auto FileManPrivate::validateBlob(const QFileInfo &blobFile, bool enforcedCheck,
     int e = 0;
 
     if (enforcedCheck) {
-        const auto validateResult = this->preAddValidate(blobFile);
+        const auto validateResult = FileManPrivate::preAddValidate(blobFile);
 
         if (!categories.testAnyFlags(validateResult.categories)) {
             logWarning << blobPath << "doesn't match required categories";
@@ -698,7 +668,7 @@ auto FileManPrivate::validateBlob(const QFileInfo &blobFile, bool enforcedCheck,
     }
 
     // Valid files ought to have 64 characters exactly (sha256 digest length)
-    constexpr qint8 nameLength = 64;
+    static constexpr qint8 nameLength = 64;
 
     if (const qint64 s = blobFileName.size(); s != nameLength) [[unlikely]]
     {
@@ -718,11 +688,10 @@ auto FileManPrivate::validateBlob(const QFileInfo &blobFile, bool enforcedCheck,
     // Validate the digest against file name. This is a costly operation so saving it for last and
     // call only when called for enforced check. Ducktyping above should already catch invalid files
     // 95-99% of the time.
-    if (enforcedCheck)
-        if (FileManPrivate::calcDigest(blobPath) != blobFileName) [[unlikely]] {
-            logWarning << "Digest mismatch for" << blobPath;
-            return EINVAL;
-        }
+    if (enforcedCheck && FileManPrivate::calcDigest(blobPath) != blobFileName) [[unlikely]] {
+        logWarning << "Digest mismatch for" << blobPath;
+        return EINVAL;
+    }
 
     return 0;
 }
@@ -761,7 +730,20 @@ auto FileManPrivate::validateFile(const QFileInfo &file, const qint64 fileSize) 
 
 auto FileManPrivate::validateLink(const QFileInfo &lnkFile, const QString &blobName) const -> int
 {
-    const QString lnkPath = lnkFile.absoluteFilePath();
+    const QString  lnkPath    = lnkFile.absoluteFilePath();
+    const QString  lnkDirPath = lnkFile.absolutePath();
+    const Category category   = this->dirsToCategory.value(lnkDirPath, Category::None);
+
+    // `lnkFile` could be a directory path or TLD, e.g. /, C: etc
+    if (lnkFile.fileName().isEmpty() || lnkFile.dir().dirName().isEmpty()) {
+        logCritical << lnkPath << "is an invalid path. Refusing to proceed.";
+        return ECANCELED;
+    }
+
+    if (category == Category::None) {
+        logCritical << lnkPath << "is not a path to store";
+        return ECANCELED;
+    }
 
     // Files under dataDir/<category> are usually symlinks
     if (!lnkFile.isSymbolicLink() && !lnkFile.isShortcut() && !lnkFile.isAlias()
@@ -771,17 +753,15 @@ auto FileManPrivate::validateLink(const QFileInfo &lnkFile, const QString &blobN
         return ENOENT;
     }
 
-    const QString   lnkDirName    = lnkFile.dir().dirName();
-    const QDir      categoryDir   = this->categoryDirs.value(lnkDirName, { });
-    const QDir      blobDir       = this->blobDirPath;
-    const QString   lnkTargetPath = QDir::cleanPath(categoryDir.filePath(lnkFile.symLinkTarget()));
+    const QString lnkTargetPath =
+            QDir::cleanPath(QDir{ lnkDirPath }.filePath(lnkFile.symLinkTarget()));
     const QFileInfo lnkTarget{ lnkTargetPath };
     const QString   lnkTargetFileName = lnkTarget.fileName();
 
     logDebug << "Symlink target:" << lnkTargetPath;
 
-    // All healthy symlinks canonically point to `blobDir`
-    if (lnkTarget.absolutePath() != blobDir.absolutePath()) [[unlikely]] {
+    // All healthy symlinks canonically point to `blobDirPath`
+    if (lnkTarget.absolutePath() != this->blobDirPath) [[unlikely]] {
         // An alien symlink in the store, disallow symlink resolution
         logWarning << lnkPath << "points to outside the store or not a symbolic link";
         return EINVAL;
@@ -822,15 +802,15 @@ auto FileManPrivate::validateStore() const noexcept -> FileManPrivate::validate_
         dirStatus = 0;
     }
 
-    for (const auto &[cat, catInfo] : this->categoryList.asKeyValueRange()) {
+    for (const auto &[cat, catDirPath] : this->categoryToDirs.asKeyValueRange()) {
 
-        logDebug << "Store path (categorized):" << catInfo.location;
+        logDebug << "Store path (categorized):" << catDirPath;
 
-        const int e = FileManPrivate::dirHealth(catInfo.location);
+        const int e = FileManPrivate::dirHealth(catDirPath);
 
-        logDebug << catInfo.name << "directory health:" << e;
+        logDebug << FileManPrivate::sc_categoryToDirNames.value(cat) << "directory health:" << e;
 
-        if (!FileManPrivate::fixDirHealth(catInfo.location, e, cat)) {
+        if (!FileManPrivate::fixDirHealth(catDirPath, e, cat)) {
             status.c_status.insert(cat, e);
             continue;
         }

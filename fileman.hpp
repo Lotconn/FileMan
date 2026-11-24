@@ -107,6 +107,7 @@ public:
     enum Error : quint8 {
         Success          = 0,
         Busy             = EBUSY,
+        Canceled         = ECANCELED,
         Exists           = EEXIST,
         FileTooBig       = EFBIG,
         Invalid          = EINVAL,

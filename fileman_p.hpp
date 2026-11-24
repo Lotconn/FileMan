@@ -42,12 +42,6 @@ class FileManPrivate
     //  Types //////////////////////////////////////////////////////////////////////////////////////
 
     // NOLINTBEGIN(*magic-numbers)
-    struct alignas(64) category_info_t
-    {
-        QString name     = { };
-        QString location = { };
-    };
-
     struct alignas(8) pre_add_validate_t
     {
         int        status = { };
@@ -80,26 +74,46 @@ class FileManPrivate
 
     // 64KiB is a good chunk size for almost all purposes including network files, although 1MiB
     // would've been more ideal for local disk files
-    static constexpr qint32       ioChunkSize      = 65536;
-    inline static const QMetaEnum metaCategoryEnum = QMetaEnum::fromType<Categories>();
-    inline static const QMetaEnum metaErrorEnum    = QMetaEnum::fromType<Error>();
+    static constexpr qint32       ioChunkSize   = 65536;
+    inline static const QMetaEnum metaErrorEnum = QMetaEnum::fromType<Error>();
 
-    inline static const QHash<QString, Category> nameToCategory = {
-        { u"audio"_s, Category::Audio },
-        { u"image"_s, Category::Image },
-        { u"video"_s, Category::Video },
+    inline static const QHash<QString, Category> stringToCategory = {
+        { u"Audio"_s, Category::Audio },
+        { u"Image"_s, Category::Image },
+        { u"Video"_s, Category::Video },
     };
 
-    QString                          blobDirPath;
-    QHash<QString, QString>          blobToLinkDict;
-    QHash<QString, QString>          linkToBlobDict;
-    QHash<QString, QString>          categoryDirs;
-    QHash<Category, category_info_t> categoryList;
-    QReadWriteLock                   dictLock;
-    QString                          storeDirPath;
-    QLockFile                       *storeLock{ };
-    QMutex                           storeMutex;
-    std::atomic<bool>                storeManaged;
+    inline static const QHash<Category, QString> categoryToString = {
+        { Category::Audio, u"Audio"_s },
+        { Category::Image, u"Image"_s },
+        { Category::Video, u"Video"_s },
+    };
+
+    inline static const QHash<Category, QString> sc_categoryToDirNames = {
+        { Category::Audio, u"audios"_s },
+        { Category::Image, u"images"_s },
+        { Category::Video, u"videos"_s },
+    };
+
+    inline static const QHash<QString, Category> sc_dirNamesToCategory = {
+        { u"audios"_s, Category::Audio },
+        { u"images"_s, Category::Image },
+        { u"videos"_s, Category::Video },
+    };
+
+    inline static const QString sc_blobDirName  = u"common"_s;
+    inline static const QString sc_storeDirName = u"store"_s;
+
+    QString                  storeDirPath;
+    QString                  blobDirPath;
+    QHash<Category, QString> categoryToDirs;
+    QHash<QString, Category> dirsToCategory;
+    QHash<QString, QString>  blobToLinkDict;
+    QHash<QString, QString>  linkToBlobDict;
+    QLockFile               *storeLock{ };
+    QMutex                   storeMutex;
+    std::atomic<bool>        storeManaged;
+    QReadWriteLock           varLock{ QReadWriteLock::Recursive };
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
     //  Functions //////////////////////////////////////////////////////////////////////////////////
@@ -131,23 +145,6 @@ class FileManPrivate
      * @return int: the severest between `error1` and `error2`, or `error` if both are equal.
      */
     static auto compErrnoSeverity(int error1, int error2) noexcept -> int;
-
-    /**
-     * @brief Constructs a dictionary of category name vs category directory relative to `dataDir`.
-     *
-     * @param dataDir: Root path of the store
-     * @return QHash<QString, QString>: The created hash-dictionary. Never empty.
-     */
-    static auto createCategoryDirsDict(const QString &dataDir) noexcept -> QHash<QString, QString>;
-
-    /**
-     * @brief Constructs a dictionary of FileMan::Category vs categoryDir.
-     *
-     * @param dataDir: Root path of store.
-     * @return QHash<Category, category_info_t>: The created hash-dictionary. Never empty.
-     */
-    static auto createCategoryInfoDict(const QString &dataDir) noexcept
-            -> QHash<Category, category_info_t>;
 
     /**
      * @brief Concatenates two path components `comp1` and `comp2` and returns the combined clean
@@ -195,6 +192,13 @@ class FileManPrivate
      */
     [[nodiscard]] auto fixDirHealth(const QString &dir, int error,
                                     Category category = Category::None) const noexcept -> bool;
+
+    /**
+     * @brief Initiates all paths and dictionaries related to category vs directory relations.
+     *
+     * @param storeDir: Root path of the store
+     */
+    auto initPathsAndDicts(const QDir &storeDir) noexcept -> void;
 
     /**
      * @brief Checks whether dictionary is empty or not.
@@ -257,7 +261,7 @@ class FileManPrivate
      * FileMan::None}` if otherwise. `errno` maybe one of `{EFBIG, EINVAL, ELOOP, EOPNOTSUPP,
      * ENOENT}`.
      */
-    [[nodiscard]] auto preAddValidate(const QFileInfo &file) const noexcept -> pre_add_validate_t;
+    static auto preAddValidate(const QFileInfo &file) noexcept -> pre_add_validate_t;
 
     /**
      * @brief Validates the provided absolute path of file `lnkPath`. Returns a `pre_rm_validate_t`
@@ -386,8 +390,8 @@ class FileManPrivate
      * @return int: 0 on validation pass, `errno:{EFBIG, EINVAL, ELOOP, EOPNOTSUPP, ENOENT}` on
      * failure.
      */
-    [[nodiscard]] auto validateBlob(const QFileInfo &blobFile, bool enforcedCheck = false,
-                                    Categories categories = Category::All) const noexcept -> int;
+    static auto validateBlob(const QFileInfo &blobFile, bool enforcedCheck = false,
+                             Categories categories = Category::All) noexcept -> int;
 
     /**
      * @brief File validation routines.

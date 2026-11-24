@@ -71,7 +71,7 @@ on Windows (`<APPDIR>` is the directory containing the application executable). 
 file is cryptographically hashed (currently using SHA256) to uniquely identify it. The raw file data
 (the "blob") is stored in a central `<AppLocalDataLocation>/store/common` folder, named exactly
 after this hash digest. Then, a relative _symbolic link_ (symlink) is created in the specific
-category folder (e.g., `audio/`), retaining the original, human-readable filename but pointing to
+category folder (e.g., `audios/`), retaining the original, human-readable filename but pointing to
 the hashed blob. For example:
 
 ```cpp
@@ -101,7 +101,7 @@ this:
 ~/.local/share/myapp/store
   |-- common/
   |   `-- 64988b348af3acf583d57260b44528f85da378b4dbcf4e55d36f9fac420a0ccd
-  `-- audio/
+  `-- audios/
       `-- MyAudio.ogg -> ../common/64988b348af3acf583d57260b44528f85da378b4dbcf4e55d36f9fac420a0ccd
 ```
 
@@ -109,7 +109,7 @@ The program output will be:
 
 ```sh
 $ ./myapp
-Saved location: file:///home/user/.local/share/myapp/store/audio/MyAudio.ogg
+Saved location: file:///home/user/.local/share/myapp/store/audios/MyAudio.ogg
 ```
 
 This returned URL is what the implementing application uses to process the file, e.g. removing it at
@@ -276,13 +276,13 @@ Struct type holding members _status()_, _location()_ and _id()_:
 These enums describe the category options available. They can be *OR*ed to specify multiple
 categories.
 
-| Constant         | Value                         | Description                                                                                                                    |
-| :--------------- | :---------------------------- | :----------------------------------------------------------------------------------------------------------------------------- |
-| `FileMan::None`  | `0x00`                        | Does nothing, for internal use only. Using it on public calls may crash programs                                               |
-| `FileMan::Audio` | `0x01`                        | Operate on the **audio** store; located under `<AppLocalDataLocation>/store/audio`. Takes only files with `audio/*` MIME types |
-| `FileMan::Image` | `0x02`                        | Operate on the **image** store; located under `<AppLocalDataLocation>/store/image`. Takes only files with `image/*` MIME types |
-| `FileMan::Video` | `0x04`                        | Operate on the **video** store; located under `<AppLocalDataLocation>/store/video`. Takes only files with `video/*` MIME types |
-| `FileMan::All`   | `Audio` \| `Image` \| `Video` | Operate on all categories. Takes files with all preceding MIME types                                                           |
+| Constant         | Value                         | Description                                                                                                                     |
+| :--------------- | :---------------------------- | :------------------------------------------------------------------------------------------------------------------------------ |
+| `FileMan::None`  | `0x00`                        | Does nothing, for internal use only. Using it on public calls may crash programs                                                |
+| `FileMan::Audio` | `0x01`                        | Operate on the **audio** store; located under `<AppLocalDataLocation>/store/audios`. Takes only files with `audio/*` MIME types |
+| `FileMan::Image` | `0x02`                        | Operate on the **image** store; located under `<AppLocalDataLocation>/store/images`. Takes only files with `image/*` MIME types |
+| `FileMan::Video` | `0x04`                        | Operate on the **video** store; located under `<AppLocalDataLocation>/store/videos`. Takes only files with `video/*` MIME types |
+| `FileMan::All`   | `Audio` \| `Image` \| `Video` | Operate on all categories. Takes files with all preceding MIME types                                                            |
 
 > [!Note]
 >
@@ -303,6 +303,7 @@ Developers are discouraged from using raw errno values as they may vary dependin
 | :-------------------------- | :---------------- | :----------------------------------- |
 | `FileMan::Success`          | `0`               | No error occurred                    |
 | `FileMan::Busy`             | `EBUSY`/`16`      | Device or resource busy              |
+| `FileMan::Canceled`         | `ECANCELED`/`125` | Further operations canceled          |
 | `FileMan::Exists`           | `EEXIST`/`17`     | File exists                          |
 | `FileMan::FileTooBig`       | `EFBIG`/`27`      | File is too large                    |
 | `FileMan::Invalid`          | `EINVAL`/`22`     | Provided argument or file is invalid |
@@ -389,7 +390,7 @@ Returns a [add_file_t](#add-file-type) struct:
 
 Failed returns follow [`errno`][errno] values. On success (`status() == 0`), a path to the symlink
 in store and the checksummed hash as the file's ID is returned. For the example above, `location()`
-holds `file:///home/user/.local/share/<APPNAME>/store/audio/MyAudio.ogg` and `id()` provides
+holds `file:///home/user/.local/share/<APPNAME>/store/audios/MyAudio.ogg` and `id()` provides
 `64988b348af3acf583d57260b44528f85da378b4dbcf4e55d36f9fac420a0ccd`. Unsuccessful operations return
 corresponding non-zero `errno` value for `status()`, an empty URL for `location()` and empty string
 for `id()`.
@@ -499,11 +500,11 @@ Returns a [QString][qstring] containing the absolute directory of _category_ ite
 `FileMan::All` is a composite _flag_ and therefore not supported. String is empty on invalid
 category.
 
-| _category_ [FileMan::Category](#category-enum) | Output ([QString][qstring])          |
-| ---------------------------------------------- | ------------------------------------ |
-| `FileMan::Audio`                               | `<AppLocalDataLocation>/store/audio` |
-| `FileMan::Image`                               | `<AppLocalDataLocation>/store/image` |
-| `FileMan::Video`                               | `<AppLocalDataLocation>/store/video` |
+| _category_ [FileMan::Category](#category-enum) | Output ([QString][qstring])           |
+| ---------------------------------------------- | ------------------------------------- |
+| `FileMan::Audio`                               | `<AppLocalDataLocation>/store/audios` |
+| `FileMan::Image`                               | `<AppLocalDataLocation>/store/images` |
+| `FileMan::Video`                               | `<AppLocalDataLocation>/store/videos` |
 
 <div><a id="filename"></a></div>
 <div><a name="filename"></a></div>
@@ -534,9 +535,9 @@ Returns the corresponding [FileMan::Category](#category-enum) for the provided _
 
 | _categoryName_ ([QString][qstring]) | Output [FileMan::Category](#category-enum) |
 | ----------------------------------- | ------------------------------------------ |
-| `audio`                             | `FileMan::Audio`                           |
-| `image`                             | `FileMan::Image`                           |
-| `video`                             | `FileMan::Video`                           |
+| `Audio`                             | `FileMan::Audio`                           |
+| `Image`                             | `FileMan::Image`                           |
+| `Video`                             | `FileMan::Video`                           |
 
 <div><a id="from-string-to-error"></a></div>
 <div><a name="from-string-to-error"></a></div>
@@ -642,7 +643,7 @@ checks are made on the backing blob:
   setting `status_b` to `ENOTUNIQ`.
 
 If all validations pass, FileMan proceeds to remove the requested file. Continuing our previous
-example, passing the URL `file:///home/user/.local/share/myapp/store/audio/MyAudio.ogg` to
+example, passing the URL `file:///home/user/.local/share/myapp/store/audios/MyAudio.ogg` to
 _rmFile()_ will erase the uniquely identified file from the store. Keen readers will recognize this
 as a direct parallel to the _REST-member DELETE_ convention, and they would be entirely correct.
 
@@ -715,9 +716,9 @@ key in the enum. `FileMan::All` is a composite _flag_ and therefore not supporte
 
 | _category_ [FileMan::Category](#category-enum) | Output ([QString][qstring]) |
 | ---------------------------------------------- | --------------------------- |
-| `FileMan::Audio`                               | `audio`                     |
-| `FileMan::Image`                               | `image`                     |
-| `FileMan::Video`                               | `video`                     |
+| `FileMan::Audio`                               | `Audio`                     |
+| `FileMan::Image`                               | `Image`                     |
+| `FileMan::Video`                               | `Video`                     |
 
 <div><a id="tostring-2"></a></div>
 <div><a name="tostring-2"></a></div>

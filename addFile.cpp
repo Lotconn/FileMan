@@ -18,6 +18,8 @@ auto FileMan::addFile(const QUrl &fileUrl, bool overwrite, const FileMan::Catego
 
         if (retval != 0 && retval != EAGAIN) [[unlikely]]
             return { retval, { }, { } };
+
+        logInfo << "Store validation succeeded";
     }
 
     //
@@ -63,14 +65,14 @@ auto FileMan::addFile(const QUrl &fileUrl, bool overwrite, const FileMan::Catego
         return { ENOENT, { }, { } };
     }
 
-    const QString   srcPath = QFileInfo{ filePath }.absoluteFilePath();
-    const QFileInfo srcFile{ srcPath };
+    const QFileInfo srcFile{ filePath };
+    const QString   srcPath     = srcFile.absoluteFilePath();
     const QString   srcFileName = srcFile.fileName();
     QFile           srcFileHandle{ srcPath };
 
     logDebug << "Resolved file:" << srcPath;
 
-    if (srcPath.startsWith(d->storeDirPath, Qt::CaseInsensitive)) {
+    if (srcPath.startsWith(this->storeDir(), Qt::CaseInsensitive)) {
         logCritical << "Adding files in store is not allowed";
         return { EOPNOTSUPP, { }, { } };
     }
@@ -79,7 +81,7 @@ auto FileMan::addFile(const QUrl &fileUrl, bool overwrite, const FileMan::Catego
 
     //  File validation ////////////////////////////////////////////////////////////////////////////
 
-    const auto result = d->preAddValidate(srcFile);
+    const auto result = FileManPrivate::preAddValidate(srcFile);
 
     logDebug << "File validation result:\n"
              << "Status: " << result.status << '\n'
@@ -97,17 +99,18 @@ auto FileMan::addFile(const QUrl &fileUrl, bool overwrite, const FileMan::Catego
 
     //  Category selection & store operations //////////////////////////////////////////////////////
 
-    const Category catSelected  = FileManPrivate::lowestSetFlag(categories & result.categories);
-    const QString  categoryName = d->categoryList.value(catSelected).name;
+    const Category catSelected = FileManPrivate::lowestSetFlag(categories & result.categories);
 
-    logDebug << "Selected category:" << categoryName;
+    logDebug << "Selected category:" << FileManPrivate::categoryToString.value(catSelected);
 
     //----------------------------------------------------------------------------------------------
 
     //  File & store preparations //////////////////////////////////////////////////////////////////
 
-    if (!d->mkDataDir() || !d->mkDataDir(catSelected)) [[unlikely]]
-        return { ENOENT, { }, { } };
+    if (!d->mkDataDir() || !d->mkDataDir(catSelected)) [[unlikely]] {
+        logCritical << "Failed to create required directories";
+        return { EPERM, { }, { } };
+    }
 
     if (!srcFileHandle.open(QIODeviceBase::ReadOnly)) {
         logCritical << "Couldn't open" << srcPath << "for reading";
@@ -115,10 +118,10 @@ auto FileMan::addFile(const QUrl &fileUrl, bool overwrite, const FileMan::Catego
     }
 
     // Raw data files/blobs reside as dataDir/common/<blob>
-    QDir            blobDir  = d->blobDirPath;
+    const QDir      blobDir  = d->blobDirPath;
     const QString   blobName = FileManPrivate::calcDigest(srcPath);
     const QString   blobPath = blobDir.absoluteFilePath(blobName);
-    const QFileInfo blobFile{ blobPath };
+    const QFileInfo blobFile{ blobDir, blobName };
 
     // Check available (quota) free space before copying. Proceed even if unable to check.
     if (const int e = FileManPrivate::diskFreeCheck(srcFile, blobDir); e != -1 && e != 0)
@@ -130,10 +133,11 @@ auto FileMan::addFile(const QUrl &fileUrl, bool overwrite, const FileMan::Catego
 
     lnkFileName += winLnkExt;
 #endif
-    QDir            lnkDir   = d->categoryList.value(catSelected).location;
-    QString         lnkPath  = lnkDir.absoluteFilePath(lnkFileName);
-    QString         lnkEntry = FileManPrivate::createPathComp(categoryName, lnkFileName);
-    const QFileInfo lnkFile{ lnkPath };
+    const QString   catDirName = FileManPrivate::sc_categoryToDirNames.value(catSelected);
+    const QDir      catDir     = this->categoryDir(catSelected);
+    const QFileInfo lnkFile{ catDir, lnkFileName };
+    QString         lnkPath  = catDir.absoluteFilePath(lnkFileName);
+    QString         lnkEntry = FileManPrivate::createPathComp(catDirName, lnkFileName);
 
     //----------------------------------------------------------------------------------------------
 
@@ -149,7 +153,7 @@ auto FileMan::addFile(const QUrl &fileUrl, bool overwrite, const FileMan::Catego
 
     if (blobExists) {
         if (overwrite) {
-            if (!blobDir.remove(blobName)) [[unlikely]] {
+            if (!QFile::remove(blobPath)) [[unlikely]] {
                 // Certainly NOT because blob doesn't exist in the dir, inhibiting the actual
                 // intention for overwrite. Not acceptable.
                 logCritical << "Couldn't remove" << blobPath;
@@ -161,13 +165,12 @@ auto FileMan::addFile(const QUrl &fileUrl, bool overwrite, const FileMan::Catego
             logInfo << fileUrlStr << "already available on store";
 
             // Search in the broader selected categories, not the filtered catSelected
-            const auto lnk = d->revLookupSymlink(blobName, categories);
-
-            if (!lnk.locations.isEmpty()) [[likely]]
+            if (const auto lookupResult = d->revLookupSymlink(blobName, categories);
+                !lookupResult.locations.isEmpty()) [[likely]]
                 // In an unlikely case when we get multiple items, just provide the first
                 return { EEXIST,
-                         QUrl::fromLocalFile(FileManPrivate::createPathComp(d->storeDirPath,
-                                                                            lnk.locations.first())),
+                         QUrl::fromLocalFile(FileManPrivate::createPathComp(
+                                 this->storeDir(), lookupResult.locations.first())),
                          blobName };
 
             logDebug << blobName << "is orphaned in store. Reusing blob...";
@@ -180,7 +183,7 @@ auto FileMan::addFile(const QUrl &fileUrl, bool overwrite, const FileMan::Catego
         // Overwrite (remove) the symlink only if it was bound to an existing blob
         bool skipRename = (overwrite && blobExists);
 
-        if (!skipRename && !lnkDir.remove(lnkFileName)) [[unlikely]] {
+        if (!skipRename && !QFile::remove(lnkPath)) [[unlikely]] {
             logWarning << "Couldn't remove" << lnkPath << ", falling back to renaming";
 
             skipRename = false;
@@ -194,7 +197,7 @@ auto FileMan::addFile(const QUrl &fileUrl, bool overwrite, const FileMan::Catego
             // automatically handles the path where `lnkEntry` seemingly exists in dict, but doesn't
             // on disk.
             //
-            const QString f = FileManPrivate::renameFile(srcFileName, lnkDir);
+            const QString f = FileManPrivate::renameFile(srcFileName, catDir);
 
             logWarning << "Saving" << srcFileName << "as" << f << "since it already exists";
 
@@ -202,8 +205,8 @@ auto FileMan::addFile(const QUrl &fileUrl, bool overwrite, const FileMan::Catego
 #ifdef Q_OS_WIN
             lnkFileName += winLnkExt;
 #endif
-            lnkPath  = lnkDir.absoluteFilePath(lnkFileName);
-            lnkEntry = FileManPrivate::createPathComp(categoryName, lnkFileName);
+            lnkPath  = catDir.absoluteFilePath(lnkFileName);
+            lnkEntry = FileManPrivate::createPathComp(catDirName, lnkFileName);
         }
     }
 
@@ -218,7 +221,7 @@ auto FileMan::addFile(const QUrl &fileUrl, bool overwrite, const FileMan::Catego
             logCritical << "Failed to copy" << srcPath << "to" << blobPath;
 
             if (QFileInfo::exists(blobPath))
-                blobDir.remove(blobName);
+                QFile::remove(blobPath);
 
             return { EIO, { }, { } };
         }
@@ -229,7 +232,7 @@ auto FileMan::addFile(const QUrl &fileUrl, bool overwrite, const FileMan::Catego
     // target to avoid CWD-dependent resolution.
     const QString targetPath = blobPath;
 #else
-    const QString targetPath = lnkDir.relativeFilePath(blobPath);
+    const QString targetPath = catDir.relativeFilePath(blobPath);
 #endif
     logDebug << "Linking" << lnkPath << "to" << targetPath;
 

@@ -3,10 +3,7 @@
 // Static
 auto FileMan::toString(const Category category) -> QString
 {
-    return (category == Category::None || category == Category::All)
-            ? QString{ }
-            : QString{ FileManPrivate::metaCategoryEnum.valueToKey(qToUnderlying(category)) }
-                      .toLower();
+    return FileManPrivate::categoryToString.value(category);
 }
 
 // Static
