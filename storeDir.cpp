@@ -3,5 +3,5 @@
 auto FileMan::storeDir() const -> QString
 {
     Q_D(const FileMan);
-    return d->storeDirPath;
+    return d->m_storeDirPath;
 }

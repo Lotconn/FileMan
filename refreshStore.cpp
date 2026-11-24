@@ -34,13 +34,13 @@ auto FileMan::refreshStore() -> int
 
     // Clear the store cache dictionaries and revoke trust
     d->clearAllEntries();
-    d->storeManaged = false;
+    d->m_storeManaged = false;
 
     //----------------------------------------------------------------------------------------------
 
     //  Store state caching & pruning //////////////////////////////////////////////////////////////
 
-    for (const auto &[cat, catDirPath] : d->categoryToDirs.asKeyValueRange()) {
+    for (const auto &[cat, catDirPath] : d->m_categoryToDirs.asKeyValueRange()) {
 
         const QDir categoryDir = catDirPath;
 
@@ -70,7 +70,7 @@ auto FileMan::refreshStore() -> int
             }
 
             // RHS is rarer than LHS
-            if (result.blobEntry.isEmpty() || d->blobToLinkDict.contains(result.blobEntry))
+            if (result.blobEntry.isEmpty() || d->m_blobToLinkDict.contains(result.blobEntry))
                     [[unlikely]] {
                 logDebug << "Removing" << file << "from" << catDirPath;
 
@@ -86,13 +86,13 @@ auto FileMan::refreshStore() -> int
 
     d->dumpAllEntries();
 
-    const bool hasValidEntries = !d->isDictEmpty(d->blobToLinkDict);
+    const bool hasValidEntries = !d->isDictEmpty(d->m_blobToLinkDict);
 
     // Compact the dictionary after finished building, if anything was found
     if (hasValidEntries)
         d->squeezeDicts();
 
-    QDir              blobDir = d->blobDirPath;
+    QDir              blobDir = d->m_blobDirPath;
     const QStringList contents =
             blobDir.entryList(QDir::AllEntries | QDir::System | QDir::NoDotAndDotDot);
 
@@ -101,14 +101,14 @@ auto FileMan::refreshStore() -> int
             // Genuinely nothing in the "common" store; our job here is done
             logInfo << "Common store doesn't have any valid contents";
 
-            d->storeManaged = true;
+            d->m_storeManaged = true;
 
             return 0;
         }
 
-        // blobToLinkDict has entries but blobDir enlists empty: certain failure, not a legitimately
-        // empty store
-        logWarning << "Couldn't enlist" << d->blobDirPath;
+        // m_blobToLinkDict has entries but blobDir enlists empty: certain failure, not a
+        // legitimately empty store
+        logWarning << "Couldn't enlist" << d->m_blobDirPath;
 
         return EACCES;
     }
@@ -116,10 +116,10 @@ auto FileMan::refreshStore() -> int
     int e = 0;
 
     for (const QString &blobName : contents) {
-        if (d->blobToLinkDict.contains(blobName)) [[likely]]
+        if (d->m_blobToLinkDict.contains(blobName)) [[likely]]
             continue;
 
-        logDebug << "Removing" << blobName << "from" << d->blobDirPath;
+        logDebug << "Removing" << blobName << "from" << d->m_blobDirPath;
 
         if (!blobDir.remove(blobName)) [[unlikely]] {
             logWarning << "Couldn't remove" << blobName;
@@ -135,7 +135,7 @@ auto FileMan::refreshStore() -> int
 
     //  Finalizing /////////////////////////////////////////////////////////////////////////////////
 
-    d->storeManaged = true;
+    d->m_storeManaged = true;
 
     logInfo << "Housekeeping done on store";
 

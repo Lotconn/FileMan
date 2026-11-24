@@ -4,7 +4,7 @@ auto FileMan::rmFile(const QUrl &fileUrl) -> rm_file_t
 {
     Q_D(FileMan);
 
-    const bool trustStore = d->storeManaged;
+    const bool trustStore = d->m_storeManaged;
 
     // Store validation first; trust if managed already ////////////////////////////////////////////
 
@@ -59,7 +59,7 @@ auto FileMan::rmFile(const QUrl &fileUrl) -> rm_file_t
 
     //  File Operations ////////////////////////////////////////////////////////////////////////////
 
-    QDir blobDir     = d->blobDirPath;
+    QDir blobDir     = d->m_blobDirPath;
     int  status_b    = 0;
     int  status_l    = 0;
     bool blobRemoved = true;
@@ -109,7 +109,7 @@ auto FileMan::rmFile(const QString &fileId) -> rm_file_t
 {
     Q_D(FileMan);
 
-    const bool trustStore = d->storeManaged;
+    const bool trustStore = d->m_storeManaged;
 
     // Store validation first; trust if managed already ////////////////////////////////////////////
 
@@ -141,7 +141,7 @@ auto FileMan::rmFile(const QString &fileId) -> rm_file_t
 
     QFileInfo     blobFile{ fileId };
     const QString blobFileName = blobFile.fileName();
-    const QString blobPath     = FileManPrivate::createPathComp(d->blobDirPath, blobFileName);
+    const QString blobPath     = FileManPrivate::createPathComp(d->m_blobDirPath, blobFileName);
 
     if (blobFileName.isEmpty()) {
         logCritical << fileId << "is not a valid file";

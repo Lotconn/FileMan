@@ -3,5 +3,5 @@
 auto FileMan::categoryDir(FileMan::Category category) const -> QString
 {
     Q_D(const FileMan);
-    return d->categoryToDirs.value(category);
+    return d->m_categoryToDirs.value(category);
 }

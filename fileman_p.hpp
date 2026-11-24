@@ -72,18 +72,15 @@ class FileManPrivate
     ////////////////////////////////////////////////////////////////////////////////////////////////
     //  Variables and objects //////////////////////////////////////////////////////////////////////
 
-    // 64KiB is a good chunk size for almost all purposes including network files, although 1MiB
-    // would've been more ideal for local disk files
-    static constexpr qint32       ioChunkSize   = 65536;
-    inline static const QMetaEnum metaErrorEnum = QMetaEnum::fromType<Error>();
+    inline static const QMetaEnum sc_metaErrorEnum = QMetaEnum::fromType<Error>();
 
-    inline static const QHash<QString, Category> stringToCategory = {
+    inline static const QHash<QString, Category> sc_stringToCategory = {
         { u"Audio"_s, Category::Audio },
         { u"Image"_s, Category::Image },
         { u"Video"_s, Category::Video },
     };
 
-    inline static const QHash<Category, QString> categoryToString = {
+    inline static const QHash<Category, QString> sc_categoryToString = {
         { Category::Audio, u"Audio"_s },
         { Category::Image, u"Image"_s },
         { Category::Video, u"Video"_s },
@@ -104,16 +101,16 @@ class FileManPrivate
     inline static const QString sc_blobDirName  = u"common"_s;
     inline static const QString sc_storeDirName = u"store"_s;
 
-    QString                  storeDirPath;
-    QString                  blobDirPath;
-    QHash<Category, QString> categoryToDirs;
-    QHash<QString, Category> dirsToCategory;
-    QHash<QString, QString>  blobToLinkDict;
-    QHash<QString, QString>  linkToBlobDict;
-    QLockFile               *storeLock{ };
-    QMutex                   storeMutex;
-    std::atomic<bool>        storeManaged;
-    QReadWriteLock           varLock{ QReadWriteLock::Recursive };
+    QString                  m_storeDirPath;
+    QString                  m_blobDirPath;
+    QHash<Category, QString> m_categoryToDirs;
+    QHash<QString, Category> m_dirsToCategory;
+    QHash<QString, QString>  m_blobToLinkDict;
+    QHash<QString, QString>  m_linkToBlobDict;
+    QLockFile               *p_storeLock{ };
+    QMutex                   m_storeMutex;
+    std::atomic<bool>        m_storeManaged;
+    QReadWriteLock           m_varLock{ QReadWriteLock::Recursive };
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
     //  Functions //////////////////////////////////////////////////////////////////////////////////

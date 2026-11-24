@@ -5,7 +5,7 @@ auto FileMan::addFile(const QUrl &fileUrl, bool overwrite, const FileMan::Catego
 {
     Q_D(FileMan);
 
-    const bool trustStore = d->storeManaged;
+    const bool trustStore = d->m_storeManaged;
 
     // Store validations first; trust if managed already ///////////////////////////////////////////
 
@@ -101,7 +101,7 @@ auto FileMan::addFile(const QUrl &fileUrl, bool overwrite, const FileMan::Catego
 
     const Category catSelected = FileManPrivate::lowestSetFlag(categories & result.categories);
 
-    logDebug << "Selected category:" << FileManPrivate::categoryToString.value(catSelected);
+    logDebug << "Selected category:" << FileManPrivate::sc_categoryToString.value(catSelected);
 
     //----------------------------------------------------------------------------------------------
 
@@ -118,7 +118,7 @@ auto FileMan::addFile(const QUrl &fileUrl, bool overwrite, const FileMan::Catego
     }
 
     // Raw data files/blobs reside as dataDir/common/<blob>
-    const QDir      blobDir  = d->blobDirPath;
+    const QDir      blobDir  = d->m_blobDirPath;
     const QString   blobName = FileManPrivate::calcDigest(srcPath);
     const QString   blobPath = blobDir.absoluteFilePath(blobName);
     const QFileInfo blobFile{ blobDir, blobName };
@@ -252,7 +252,7 @@ auto FileMan::addFile(const QUrl &fileUrl, bool overwrite, const FileMan::Catego
     logInfo << fileUrlStr << "successfully added";
     logDebug << "Added as" << blobPath << "to store";
 
-    // Register the [ blob, symlink ] entry to `blobToLinkDict()`
+    // Register the [ blob, symlink ] entry to `m_blobToLinkDict()`
     logDebug << "Registering blob as " << blobName << " and symlink as" << lnkEntry << " to tables";
 
     d->registerEntry(lnkEntry, blobName);
