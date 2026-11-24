@@ -119,7 +119,7 @@ class FileManPrivate
      * @brief Acquires explicit thread lock & lock on the store for serialized access and preventing
      * race conditions.
      *
-     * @return int: 0 on success, errno on failure.
+     * @return int: 0 on success, errno:{EIO, EBUSY, EACCES} on failure.
      */
     auto acquireStoreLock() noexcept -> int;
 
@@ -156,7 +156,7 @@ class FileManPrivate
     /**
      * @brief Checks `dirPath` for existence, symbolic linkage and appropriate permissions.
      *
-     * @return int: 0 on success, `errno` on failure.
+     * @return int: 0 on success, `errno:{EAGAIN, ENOTDIR, EPERM}` on failure.
      */
     static auto dirHealth(const QString &dirPath) noexcept -> int;
 
@@ -269,8 +269,8 @@ class FileManPrivate
      * @return pre_rm_validate_t: On validation passed, `status` is 0, `lnkEntry` contains the
      * constructed entry for `lnkPath` and `blobEntry` may either contain the name of the blob in
      * store or empty if `lnkPath` is resolved to be dangling. Orphaned blobs are never returned. On
-     * error, `status` is `errno:{EAGAIN, ENOTDIR, EINVAL, ENOENT}`, `lnkEntry` may be empty but
-     * `blobName` is always empty.
+     * error, `status` is `errno:{EFBIG, ECANCELED, ELOOP, EOPNOTSUPP, EAGAIN, ENOTDIR, EINVAL,
+     * ENOENT}`, `lnkEntry` may be empty but `blobName` is always empty.
      */
     [[nodiscard]] auto preRmValidate(const QString &lnkPath,
                                      bool           enforcedCheck = false) const noexcept
@@ -354,7 +354,7 @@ class FileManPrivate
      * @param categories: Category directories to search the symlink in
      * @return rev_lookup_symlink_t: `locations` is a string-list of either paths of the symlinks
      * relative to storeDir or empty if none is found or faced other issues. `status` is `errno:{0,
-     * EPERM}`.
+     * ENOENT}`.
      */
     auto revLookupSymlink(const QString &blobName, Categories categories = Category::All) noexcept
             -> rev_lookup_symlink_t;
@@ -384,7 +384,7 @@ class FileManPrivate
      * @param enforcedCheck: Toggles pedantic and performance costly validations.
      * @param categories: Strictly match the blob with these categories only. Requires pedantic
      * check to be on. Default matches with all valid categories.
-     * @return int: 0 on validation pass, `errno:{EFBIG, EINVAL, ELOOP, EOPNOTSUPP, ENOENT}` on
+     * @return int: 0 on validation pass, `errno:{EFBIG, EINVAL, ENOENT}` on
      * failure.
      */
     static auto validateBlob(const QFileInfo &blobFile, bool enforcedCheck = false,
@@ -414,7 +414,7 @@ class FileManPrivate
      *
      * @param lnkFile: The link file to validate. Recommended to construct with absolute file path.
      * @param blobName: (optional) Blob name the symlink's target should match with.
-     * @return int: 0 on validation passed, `errno:{ENOENT,EINVAL}` on failure
+     * @return int: 0 on validation passed, `errno:{ECANCELED, ENOENT, EINVAL}` on failure
      */
     [[nodiscard]] auto validateLink(const QFileInfo &lnkFile, const QString &blobName = { }) const
             -> int;
@@ -423,7 +423,8 @@ class FileManPrivate
      * @brief Validates and attempts repairs on dataDir, blobDir and categoryDir(s). Returns
      * validate_store_t struct having {int d_status, int h_status, int c_status}.
      *
-     * @return validate_store_t: Values are 0 on success, errno on failure.
+     * @return validate_store_t: Values are 0 on success, `errno:{EAGAIN, ENOTDIR, EPERM}` on
+     * failure.
      */
     [[nodiscard]] auto validateStore() const noexcept -> validate_store_t;
 };

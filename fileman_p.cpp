@@ -68,35 +68,6 @@ auto FileManPrivate::compErrnoSeverity(int error1, int error2) noexcept -> int
 }
 
 // Static
-auto FileManPrivate::initPathsAndDicts(const QDir &storeDir) noexcept -> void
-{
-    this->m_storeDirPath = storeDir.absoluteFilePath(FileManPrivate::sc_storeDirName);
-
-    const QDir baseDir = this->m_storeDirPath;
-
-    this->m_blobDirPath = baseDir.absoluteFilePath(FileManPrivate::sc_blobDirName);
-
-    const QString audiosPath =
-            baseDir.absoluteFilePath(FileManPrivate::sc_categoryToDirNames.value(Category::Audio));
-    const QString imagesPath =
-            baseDir.absoluteFilePath(FileManPrivate::sc_categoryToDirNames.value(Category::Image));
-    const QString videosPath =
-            baseDir.absoluteFilePath(FileManPrivate::sc_categoryToDirNames.value(Category::Video));
-
-    this->m_categoryToDirs = {
-        { Category::Audio, audiosPath },
-        { Category::Image, imagesPath },
-        { Category::Video, videosPath },
-    };
-
-    this->m_dirsToCategory = {
-        { audiosPath, Category::Audio },
-        { imagesPath, Category::Image },
-        { videosPath, Category::Video },
-    };
-}
-
-// Static
 auto FileManPrivate::createPathComp(const QString &comp1, const QString &comp2) noexcept -> QString
 {
     return QDir::toNativeSeparators(QDir::cleanPath(comp1 + u'/' + comp2));
@@ -249,6 +220,35 @@ auto FileManPrivate::fixDirHealth(const QString &dir, int error,
     }
 
     return true;
+}
+
+// Static
+auto FileManPrivate::initPathsAndDicts(const QDir &storeDir) noexcept -> void
+{
+    this->m_storeDirPath = storeDir.absoluteFilePath(FileManPrivate::sc_storeDirName);
+
+    const QDir baseDir = this->m_storeDirPath;
+
+    this->m_blobDirPath = baseDir.absoluteFilePath(FileManPrivate::sc_blobDirName);
+
+    const QString audiosPath =
+            baseDir.absoluteFilePath(FileManPrivate::sc_categoryToDirNames.value(Category::Audio));
+    const QString imagesPath =
+            baseDir.absoluteFilePath(FileManPrivate::sc_categoryToDirNames.value(Category::Image));
+    const QString videosPath =
+            baseDir.absoluteFilePath(FileManPrivate::sc_categoryToDirNames.value(Category::Video));
+
+    this->m_categoryToDirs = {
+        { Category::Audio, audiosPath },
+        { Category::Image, imagesPath },
+        { Category::Video, videosPath },
+    };
+
+    this->m_dirsToCategory = {
+        { audiosPath, Category::Audio },
+        { imagesPath, Category::Image },
+        { videosPath, Category::Video },
+    };
 }
 
 auto FileManPrivate::isDictEmpty(const QHash<QString, QString> &dict) noexcept -> bool
