@@ -19,7 +19,7 @@ auto FileMan::addFile(const QUrl &fileUrl, bool overwrite, const FileMan::Catego
         if (retval != 0 && retval != EAGAIN) [[unlikely]]
             return { retval, { }, { } };
 
-        logInfo << "Store validation succeeded";
+        logDebug << "Store validation succeeded";
     }
 
     //
@@ -159,6 +159,8 @@ auto FileMan::addFile(const QUrl &fileUrl, bool overwrite, const FileMan::Catego
                 logCritical << "Couldn't remove" << blobPath;
                 return { EACCES, { }, { } };
             }
+
+            logDebug << blobPath << "removed successfully";
         } else {
             //  Expend fs IO to reverse lookup the related symlink file. Note the output is not
             //  static on initialization, the list can change between calls
@@ -183,10 +185,13 @@ auto FileMan::addFile(const QUrl &fileUrl, bool overwrite, const FileMan::Catego
         // Overwrite (remove) the symlink only if it was bound to an existing blob
         bool skipRename = (overwrite && blobExists);
 
-        if (!skipRename && !QFile::remove(lnkPath)) [[unlikely]] {
-            logWarning << "Couldn't remove" << lnkPath << ", falling back to renaming";
+        if (skipRename) {
+            if (!QFile::remove(lnkPath)) [[unlikely]] {
+                logWarning << "Couldn't remove" << lnkPath << ", falling back to renaming";
 
-            skipRename = false;
+                skipRename = false;
+            } else
+                logDebug << lnkPath << "removed successfully";
         }
 
         if (!skipRename) {
@@ -225,6 +230,8 @@ auto FileMan::addFile(const QUrl &fileUrl, bool overwrite, const FileMan::Catego
 
             return { EIO, { }, { } };
         }
+
+        logInfo << blobName << "copied successfully to store";
     }
 
 #ifdef Q_OS_WIN
