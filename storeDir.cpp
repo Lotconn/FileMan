@@ -1,7 +1,7 @@
 #include <fileman_p.hpp>
 
-auto FileMan::storeDir() const -> QString
+auto FileMan::storeDir() const -> QUrl
 {
     Q_D(const FileMan);
-    return d->m_storeDirPath;
+    return QUrl::fromLocalFile(d->m_storeDirPath);
 }

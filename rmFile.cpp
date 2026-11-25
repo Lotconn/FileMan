@@ -171,7 +171,7 @@ auto FileMan::rmFile(const QString &fileId) -> rm_file_t
 
     // Remove all the symlinks pointing to it next
     for (const QString &lnkEntry : lookupResult.locations) {
-        const QString lnkPath = FileManPrivate::createPathComp(this->storeDir(), lnkEntry);
+        const QString lnkPath = FileManPrivate::createPathComp(d->m_storeDirPath, lnkEntry);
 
         // Do not remove invalid reverse-resolved symlinks. Pedantic, not really necessary;
         // revLookupSymlink() already did the job, hopefully in a good manner

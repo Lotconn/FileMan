@@ -33,20 +33,20 @@ applications.
 
 ### Public Methods
 
-|                           Return type | Function                                                                                                                                                     |
-| ------------------------------------: | :----------------------------------------------------------------------------------------------------------------------------------------------------------- |
-|                                       | [FileMan](#fileman-constructor-1)([QObject][qobject] \*parent = nullptr) `[explicit]`                                                                        |
-|                                       | [FileMan](#fileman-constructor-2)(const [QDir][qdir] &storeDir, [QObject][qobject] \*parent = nullptr) `[explicit]` `[since 3.0]`                            |
-|                                       | [FileMan](#fileman-constructor-3)(const [QString][qstring] &appName, [QObject][qobject] \*parent = nullptr) `[explicit]` `[since 3.0]`                       |
-|                                       | [FileMan](#fileman-constructor-4)(const [QString][qstring] &orgName, const [QString][qstring] &appName, [QObject][qobject] \*parent = nullptr) `[since 3.0]` |
-|                                       | [~FileMan()](#fileman-destructor) `[override]`                                                                                                               |
-|          [add_file_t](#add-file-type) | [addFile](#addfile-1)(_const_ [QUrl][qurl] &fileUrl, bool overwrite, [FileMan::Categories](#category-enum) categories = FileMan::All) `[since 3.0]`          |
-|          [add_file_t](#add-file-type) | [addFile](#addfile-2)(_const_ [QUrl][qurl] &fileUrl, [FileMan::Categories](#category-enum) categories = FileMan::All)                                        |
-| [QString][qstring]<br>`[[nodiscard]]` | [categoryDir](#categorydir)([FileMan::Category](#category-enum) category) _const_ `[since 3.0]`                                                              |
-|                                   int | [refreshStore()](#refreshstore)                                                                                                                              |
-|            [rm_file_t](#rm-file-type) | [rmFile](#rmfile-1)([QUrl][qurl] fileUrl)                                                                                                                    |
-|            [rm_file_t](#rm-file-type) | [rmFile](#rmfile-2)([QString][qstring] fileId)                                                                                                               |
-| [QString][qstring]<br>`[[nodiscard]]` | [storeDir](#storedir)() _const_ `[since 3.0]`                                                                                                                |
+|                   Return type | Function                                                                                                                                                     |
+| ----------------------------: | :----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+|                               | [FileMan](#fileman-constructor-1)([QObject][qobject] \*parent = nullptr) `[explicit]`                                                                        |
+|                               | [FileMan](#fileman-constructor-2)(const [QDir][qdir] &storeDir, [QObject][qobject] \*parent = nullptr) `[explicit]` `[since 3.0]`                            |
+|                               | [FileMan](#fileman-constructor-3)(const [QString][qstring] &appName, [QObject][qobject] \*parent = nullptr) `[explicit]` `[since 3.0]`                       |
+|                               | [FileMan](#fileman-constructor-4)(const [QString][qstring] &orgName, const [QString][qstring] &appName, [QObject][qobject] \*parent = nullptr) `[since 3.0]` |
+|                               | [~FileMan()](#fileman-destructor) `[override]`                                                                                                               |
+|  [add_file_t](#add-file-type) | [addFile](#addfile-1)(_const_ [QUrl][qurl] &fileUrl, bool overwrite, [FileMan::Categories](#category-enum) categories = FileMan::All) `[since 3.0]`          |
+|  [add_file_t](#add-file-type) | [addFile](#addfile-2)(_const_ [QUrl][qurl] &fileUrl, [FileMan::Categories](#category-enum) categories = FileMan::All)                                        |
+| [QUrl][qurl]<br>`[nodiscard]` | [categoryDir](#categorydir)([FileMan::Category](#category-enum) category) _const_ `[since 3.0]`                                                              |
+|                           int | [refreshStore()](#refreshstore)                                                                                                                              |
+|    [rm_file_t](#rm-file-type) | [rmFile](#rmfile-1)([QUrl][qurl] fileUrl)                                                                                                                    |
+|    [rm_file_t](#rm-file-type) | [rmFile](#rmfile-2)([QString][qstring] fileId)                                                                                                               |
+| [QUrl][qurl]<br>`[nodiscard]` | [storeDir](#storedir)() _const_ `[since 3.0]`                                                                                                                |
 
 ### Static Public Members
 
@@ -518,17 +518,17 @@ false_.
 <div><a id="categorydir"></a></div>
 <div><a name="categorydir"></a></div>
 
-### `[[nodiscard]]` [QString][qstring] FileMan::categoryDir([FileMan::Category](#category-enum) category) _const_ `[since 3.0]`
+### [QUrl][qurl] FileMan::categoryDir([FileMan::Category](#category-enum) category) _const_ `[nodiscard]` `[since 3.0]`
 
-Returns a [QString][qstring] containing the absolute directory of _category_ items in store.
+Returns a local file [QUrl][qurl] containing the absolute directory of _category_ items in store.
 `FileMan::All` is a composite _flag_ and therefore not supported. String is empty on invalid
 category.
 
-| _category_ [FileMan::Category](#category-enum) | Output ([QString][qstring])           |
-| ---------------------------------------------- | ------------------------------------- |
-| `FileMan::Audio`                               | `<AppLocalDataLocation>/store/audios` |
-| `FileMan::Image`                               | `<AppLocalDataLocation>/store/images` |
-| `FileMan::Video`                               | `<AppLocalDataLocation>/store/videos` |
+| _category_ [FileMan::Category](#category-enum) | Output ([QUrl][qurl])                        |
+| ---------------------------------------------- | -------------------------------------------- |
+| `FileMan::Audio`                               | `file://<AppLocalDataLocation>/store/audios` |
+| `FileMan::Image`                               | `file://<AppLocalDataLocation>/store/images` |
+| `FileMan::Video`                               | `file://<AppLocalDataLocation>/store/videos` |
 
 <div><a id="filename"></a></div>
 <div><a name="filename"></a></div>
@@ -725,10 +725,10 @@ appropriately and retries if necessary.
 <div><a id="storedir"></a></div>
 <div><a name="storedir"></a></div>
 
-### `[[nodiscard]]` [QString][qstring] FileMan::storeDir() _const_ `[since 3.0]`
+### [QUrl][qurl] FileMan::storeDir() _const_ `[nodiscard]` `[since 3.0]`
 
-Returns a [QString][qstring] containing the absolute directory of `<AppLocalDataLocation>/store`.
-String is never empty.
+Returns a local file [QUrl][qurl] containing the absolute directory of the store, e.g.
+`file://<AppLocalDataLocation>/store`. String is never empty.
 
 <div><a id="tostring-1"></a></div>
 <div><a name="tostring-1"></a></div>

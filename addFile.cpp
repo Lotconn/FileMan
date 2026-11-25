@@ -72,7 +72,7 @@ auto FileMan::addFile(const QUrl &fileUrl, bool overwrite, const FileMan::Catego
 
     logDebug << "Resolved file:" << srcPath;
 
-    if (srcPath.startsWith(this->storeDir(), Qt::CaseInsensitive)) {
+    if (srcPath.startsWith(d->m_storeDirPath, Qt::CaseInsensitive)) {
         logCritical << "Adding files in store is not allowed";
         return { EOPNOTSUPP, { }, { } };
     }
@@ -134,7 +134,7 @@ auto FileMan::addFile(const QUrl &fileUrl, bool overwrite, const FileMan::Catego
     lnkFileName += winLnkExt;
 #endif
     const QString   catDirName = FileManPrivate::sc_categoryToDirNames.value(catSelected);
-    const QDir      catDir     = this->categoryDir(catSelected);
+    const QDir      catDir     = d->m_categoryToDirs.value(catSelected);
     const QFileInfo lnkFile{ catDir, lnkFileName };
     QString         lnkPath  = catDir.absoluteFilePath(lnkFileName);
     QString         lnkEntry = FileManPrivate::createPathComp(catDirName, lnkFileName);
@@ -172,7 +172,7 @@ auto FileMan::addFile(const QUrl &fileUrl, bool overwrite, const FileMan::Catego
                 // In an unlikely case when we get multiple items, just provide the first
                 return { EEXIST,
                          QUrl::fromLocalFile(FileManPrivate::createPathComp(
-                                 this->storeDir(), lookupResult.locations.first())),
+                                 d->m_storeDirPath, lookupResult.locations.first())),
                          blobName };
 
             logDebug << blobName << "is orphaned in store. Reusing blob...";

@@ -25,11 +25,11 @@ messages for detailed descriptions.
   "images" for image category.
 - Name strings for Category enum now follow key name casing unlike all lower-case previously, e.g.
   `FileMan::Video` -> `Video`
-- `getDataDir()` renamed to `storeDir()`. Attributes and behavior otherwise are retained.
+- `getDataDir()` renamed to `storeDir()` and returns a local file URL (QUrl) instead.
 - `categoryToString()` renamed to `toString()` and made static with another overload introduced for
-  `FileMan::Error`. Behavior otherwise is retained.
+  `FileMan::Error`.
 - `getFileName()` renamed to `fileName()`. Attributes and behavior otherwise are retained.
-- `getCategoryDir()` renamed to `categoryDir()`. Attributes and behavior otherwise are retained.
+- `getCategoryDir()` renamed to `categoryDir()` and returns a local file URL (QUrl) instead.
 - `add_file_t` and `rm_file_t` are now type classes
 - Objects instantiated with the types are now separate entities unlike previously where all
   instances shared the same underlying data
