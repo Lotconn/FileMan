@@ -30,6 +30,10 @@ messages for detailed descriptions.
   `FileMan::Error`. Behavior otherwise is retained.
 - `getFileName()` renamed to `fileName()`. Attributes and behavior otherwise are retained.
 - `getCategoryDir()` renamed to `categoryDir()`. Attributes and behavior otherwise are retained.
+- `add_file_t` and `rm_file_t` are now type classes
+- Objects instantiated with the types are now separate entities unlike previously where all
+  instances shared the same underlying data
+- `add_file_t::isNull()` and `rm_file_t::isNull()` dropped `noexcept` specifier
 
 ### New
 
@@ -52,6 +56,8 @@ messages for detailed descriptions.
   string names return `Category::None` on the former and `Error::Success` on the latter.
 - `rmFile(const QString &fileId)` overload allowing direct and more complete removal of blobs and
   all its associated links using the `id()` as provided by `addFile()`
+- `add_file_t` and `rm_file_t` types can now be used to construct mutable objects in QML along with
+  individual member modifications through the methods and brace initialization, just like structs
 
 ### Improvements
 
@@ -65,6 +71,8 @@ messages for detailed descriptions.
   other symlinks in the store. `refreshStore()` however keeps only the oldest symlink entry among
   the group. Facing such situation in real world is very much unlikely from first, unless in some
   filesystem error edge cases.
+- Relocatable attributes for `add_file_t` and `rm_file_t` classes were added avoiding deep copies
+  where applicable and improving performance
 
 ### Fixes
 

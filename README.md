@@ -258,13 +258,24 @@ issues. For building-host platform support see
 
 ### add_file_t
 
-Struct type holding members _status()_, _location()_ and _id()_:
+Type class holding properties _status_, _location_ and _id_:
 
-| Member     | Type               | Attributes      |
-| ---------- | ------------------ | --------------- |
-| status()   | int                | `[[nodiscard]]` |
-| location() | [QUrl][qurl]       | `[[nodiscard]]` |
-| id()       | [QString][qstring] | `[[nodiscard]]` |
+| Property | Type                           |
+| -------- | ------------------------------ |
+| status   | int                            |
+| location | [url][url]                     |
+| id       | [string][string] `[since 3.0]` |
+
+#### Access Functions
+
+| Type                                | Method                                          |
+| ----------------------------------- | ----------------------------------------------- |
+| int<br>`[nodiscard]`                | status()                                        |
+| void                                | setStatus(int status) `[since 3.0]`             |
+| [QUrl][qurl]<br>`[nodiscard]`       | location()                                      |
+| void                                | setLocation(const QUrl &location) `[since 3.0]` |
+| [QString][qstring]<br>`[nodiscard]` | id() `[since 3.0]`                              |
+| void                                | setId(const QString &id) `[since 3.0]`          |
 
 <div><a id="category-enum"></a></div>
 <div><a name="category-enum"></a></div>
@@ -321,12 +332,25 @@ Developers are discouraged from using raw errno values as they may vary dependin
 
 ### rm_file_t
 
-Struct type holding members _status_l()_ and _status_b()_:
+Type class holding properties _status_l_ and _status_b_:
 
-| Member     | Type | Attributes      |
-| ---------- | ---- | --------------- |
-| status_l() | int  | `[[nodiscard]]` |
-| status_b() | int  | `[[nodiscard]]` |
+| Property | Type |
+| -------- | ---- |
+| status_l | int  |
+| status_b | int  |
+
+<!-- markdownlint-disable no-duplicate-heading -->
+
+#### Access Functions
+
+<!-- markdownlint-enable -->
+
+| Type                 | Method                                  |
+| -------------------- | --------------------------------------- |
+| int<br>`[nodiscard]` | status_l()                              |
+| void                 | setStatus_l(int status_l) `[since 3.0]` |
+| int<br>`[nodiscard]` | status_b()                              |
+| void                 | setStatus_b(int status_b) `[since 3.0]` |
 
 ## Member Function Documentation
 
@@ -991,3 +1015,5 @@ This project is licensed under MIT, copyright Lotconn, 2026.
 [qobject]: https://doc.qt.io/qt-6/qobject.html
 [qstring]: https://doc.qt.io/qt-6/qstring.html
 [qurl]: https://doc.qt.io/qt-6/qurl.html
+[string]: https://doc.qt.io/qt-6/qml-string.html
+[url]: https://doc.qt.io/qt-6/qml-url.html

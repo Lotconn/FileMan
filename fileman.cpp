@@ -2,6 +2,114 @@
 
 Q_LOGGING_CATEGORY(fileman, "FileMan")
 
+////////////////////////////////////////////////////////////////////////////////////////////////////
+// add_file_t //////////////////////////////////////////////////////////////////////////////////////
+
+add_file_t::add_file_t() : d{ new add_file_t_data } { }
+
+add_file_t::add_file_t(int status, const QUrl &location, const QString &id)
+    : d{ new add_file_t_data }
+{
+    this->setId(id);
+    this->setLocation(location);
+    this->setStatus(status);
+}
+
+add_file_t::add_file_t(const add_file_t &other)     = default;
+add_file_t::add_file_t(add_file_t &&other) noexcept = default;
+add_file_t::~add_file_t()                           = default;
+
+auto add_file_t::operator=(const add_file_t &other) -> add_file_t &     = default;
+auto add_file_t::operator=(add_file_t &&other) noexcept -> add_file_t & = default;
+
+auto add_file_t::id() const -> QString
+{
+    return (this->isNull()) ? QString{ } : this->d->m_id;
+}
+
+// True only after this object has been moved-from. A default-constructed add_file_t is never null.
+auto add_file_t::isNull() const -> bool
+{
+    return (this->d == nullptr);
+}
+
+auto add_file_t::location() const -> QUrl
+{
+    return (this->isNull()) ? QUrl{ } : this->d->m_location;
+}
+
+auto add_file_t::status() const -> int
+{
+    return (this->isNull()) ? -1 : this->d->m_status;
+}
+
+auto add_file_t::setId(const QString &id) -> void
+{
+    if (!this->isNull())
+        this->d->m_id = id;
+}
+
+auto add_file_t::setLocation(const QUrl &location) -> void
+{
+    if (!this->isNull())
+        this->d->m_location = location;
+}
+
+auto add_file_t::setStatus(int status) -> void
+{
+    if (!this->isNull())
+        this->d->m_status = status;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+// rm_file_t ///////////////////////////////////////////////////////////////////////////////////////
+
+rm_file_t::rm_file_t() : d{ new rm_file_t_data } { }
+
+rm_file_t::rm_file_t(int status_l, int status_b) : d{ new rm_file_t_data }
+{
+    this->setStatus_b(status_b);
+    this->setStatus_l(status_l);
+}
+
+rm_file_t::rm_file_t(const rm_file_t &other)     = default;
+rm_file_t::rm_file_t(rm_file_t &&other) noexcept = default;
+rm_file_t::~rm_file_t()                          = default;
+
+auto rm_file_t::operator=(const rm_file_t &other) -> rm_file_t &     = default;
+auto rm_file_t::operator=(rm_file_t &&other) noexcept -> rm_file_t & = default;
+
+// True only after this object has been moved-from. A default-constructed rm_file_t is never null.
+auto rm_file_t::isNull() const -> bool
+{
+    return this->d == nullptr;
+}
+
+auto rm_file_t::setStatus_b(int status_b) -> void
+{
+    if (this->isNull())
+        this->d->m_status_b = status_b;
+}
+
+auto rm_file_t::setStatus_l(int status_l) -> void
+{
+    if (this->isNull())
+        this->d->m_status_l = status_l;
+}
+
+auto rm_file_t::status_b() const -> int
+{
+    return (this->isNull()) ? -1 : this->d->m_status_b;
+}
+
+auto rm_file_t::status_l() const -> int
+{
+    return (this->isNull()) ? -1 : this->d->m_status_l;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+// FileMan /////////////////////////////////////////////////////////////////////////////////////////
+
 FileMan::FileMan(const QDir &storeDir, QObject *parent)
     : QObject{ parent }, d_ptr{ new FileManPrivate{ this } }
 {
@@ -46,79 +154,4 @@ auto FileMan::instance() -> FileMan &
 auto FileMan::instanceExists() -> bool
 {
     return (FileMan::s_singletonInstance != nullptr);
-}
-
-//
-// Opaque/PIMPL structs add_file_t and rm_file_t for maintaining ABI compatiblity
-//
-
-// Empty constructors
-add_file_t::add_file_t() : d_ptr{ new AddFileType } { }
-rm_file_t::rm_file_t() : d_ptr{ new RmFileType } { }
-
-// Constructors having references to members
-add_file_t::add_file_t(int status, const QUrl &location, const QString &id)
-    : d_ptr{ new AddFileType }
-{
-    this->d_ptr->status   = status;
-    this->d_ptr->location = location;
-    this->d_ptr->id       = id;
-}
-
-rm_file_t::rm_file_t(int status_l, int status_b) : d_ptr{ new RmFileType }
-{
-    this->d_ptr->status_l = status_l;
-    this->d_ptr->status_b = status_b;
-}
-
-// Copy/Move constructors
-add_file_t::add_file_t(const add_file_t &)     = default;
-add_file_t::add_file_t(add_file_t &&) noexcept = default;
-rm_file_t::rm_file_t(const rm_file_t &)        = default;
-rm_file_t::rm_file_t(rm_file_t &&) noexcept    = default;
-
-auto add_file_t::operator=(const add_file_t &) -> add_file_t &     = default;
-auto add_file_t::operator=(add_file_t &&) noexcept -> add_file_t & = default;
-auto rm_file_t::operator=(const rm_file_t &) -> rm_file_t &        = default;
-auto rm_file_t::operator=(rm_file_t &&) noexcept -> rm_file_t &    = default;
-
-// Destructors
-add_file_t::~add_file_t() = default;
-rm_file_t::~rm_file_t()   = default;
-
-// Accesors
-auto add_file_t::status() const -> int
-{
-    return (this->d_ptr == nullptr) ? -1 : this->d_ptr->status;
-}
-
-auto add_file_t::location() const -> QUrl
-{
-    return (this->d_ptr == nullptr) ? QUrl{ } : this->d_ptr->location;
-}
-
-auto add_file_t::id() const -> QString
-{
-    return (this->d_ptr == nullptr) ? QString{ } : this->d_ptr->id;
-}
-
-// True only after this object has been moved-from. A default-constructed add_file_t is never null.
-auto add_file_t::isNull() const noexcept -> bool
-{
-    return (this->d_ptr != nullptr);
-}
-
-auto rm_file_t::status_b() const -> int
-{
-    return (this->d_ptr == nullptr) ? -1 : this->d_ptr->status_b;
-}
-
-auto rm_file_t::status_l() const -> int
-{
-    return (this->d_ptr == nullptr) ? -1 : this->d_ptr->status_l;
-}
-
-auto rm_file_t::isNull() const noexcept -> bool
-{
-    return this->d_ptr != nullptr;
 }

@@ -24,6 +24,29 @@ using Qt::StringLiterals::operator""_L1;
 using Qt::StringLiterals::operator""_s;
 // NOLINTEND(*global-names-in-headers)
 
+class add_file_t_data : public QSharedData // NOLINT(*special-member-functions)
+{
+public:
+    add_file_t_data()                             = default;
+    add_file_t_data(const add_file_t_data &other) = default;
+    ~add_file_t_data()                            = default;
+
+    int     m_status = 0;
+    QUrl    m_location;
+    QString m_id;
+};
+
+class rm_file_t_data : public QSharedData // NOLINT(*special-member-functions)
+{
+public:
+    rm_file_t_data()                            = default;
+    rm_file_t_data(const rm_file_t_data &other) = default;
+    ~rm_file_t_data()                           = default;
+
+    int m_status_l = 0;
+    int m_status_b = 0;
+};
+
 class FileManPrivate
 {
     explicit FileManPrivate(FileMan *q) : q_ptr{ q } { }
@@ -44,27 +67,27 @@ class FileManPrivate
     // NOLINTBEGIN(*magic-numbers)
     struct alignas(8) pre_add_validate_t
     {
-        int        status = { };
+        int        status = 0;
         Categories categories;
     };
 
     struct alignas(64) pre_rm_validate_t
     {
-        int     status    = { };
-        QString lnkEntry  = { };
-        QString blobEntry = { };
+        int     status = 0;
+        QString lnkEntry;
+        QString blobEntry;
     };
 
     struct alignas(32) rev_lookup_symlink_t
     {
-        int         status = { };
+        int         status = 0;
         QStringList locations;
     };
 
     struct alignas(16) validate_store_t
     {
-        int                  d_status = { };
-        int                  h_status = { };
+        int                  d_status = 0;
+        int                  h_status = 0;
         QHash<Category, int> c_status;
     };
     // NOLINTEND(*magic-numbers)
@@ -427,19 +450,4 @@ class FileManPrivate
      * failure.
      */
     [[nodiscard]] auto validateStore() const noexcept -> validate_store_t;
-};
-
-class AddFileType : public QSharedData
-{
-public:
-    int     status = 0;
-    QUrl    location;
-    QString id;
-};
-
-class RmFileType : public QSharedData
-{
-public:
-    int status_l = 0;
-    int status_b = 0;
 };
