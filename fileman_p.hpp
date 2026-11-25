@@ -11,11 +11,11 @@
 
 Q_DECLARE_LOGGING_CATEGORY(fileman)
 
-#define logDebug    qCDebug(fileman).noquote() << __func__ << ": "
-#define logInfo     qCInfo(fileman).noquote() << __func__ << ": "
-#define logWarning  qCWarning(fileman).noquote() << __func__ << ": "
-#define logCritical qCCritical(fileman).noquote() << __func__ << ": "
-#define logFatal    qCFatal(fileman).noquote() << __func__ << ": "
+#define logDebug    qCDebug(fileman).noquote().nospace() << __func__ << ": "
+#define logInfo     qCInfo(fileman).noquote().nospace() << __func__ << ": "
+#define logWarning  qCWarning(fileman).noquote().nospace() << __func__ << ": "
+#define logCritical qCCritical(fileman).noquote().nospace() << __func__ << ": "
+#define logFatal    qCFatal(fileman).noquote().nospace() << __func__ << ": "
 
 // NOLINTBEGIN(*global-names-in-headers)
 // Allows shorthand QStringLiteral operators. Included in this internal header for all sources to

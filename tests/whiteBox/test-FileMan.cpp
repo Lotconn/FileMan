@@ -1,17 +1,15 @@
 #include <test-common.hpp>
 
-int main(int argc, char *argv[]) {
-  QCoreApplication app(argc, argv);
-  QCoreApplication::setApplicationName("libTest"_L1);
+int main(int argc, char *argv[])
+{
+    QCoreApplication app{ argc, argv };
+    QCoreApplication::setApplicationName("libTest"_L1);
+    QCoreApplication::setOrganizationName("FileManTests"_L1);
 
-  FileMan  testman;
-  FileMan  testman2 = testman;
-  FileMan &testman3 = testman;
-  logInfo << "Copied: " << (&testman != &testman2);
-  logInfo << "Referenced: " << (&testman == &testman3);
+    FileMan  testman;
+    FileMan &testman2 = testman;
 
-  FileMan testman4 = std::move(testman);
-  logInfo << "Moved: " << (FileMan::instance() == nullptr);
+    logInfo << "Referenced: " << (&testman == &testman2);
 
-  return 0;
+    return 0;
 }

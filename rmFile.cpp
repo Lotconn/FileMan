@@ -51,7 +51,7 @@ auto FileMan::rmFile(const QUrl &fileUrl) -> rm_file_t
     const auto validateResult = d->preRmValidate(lnkPath);
 
     if (validateResult.status != 0) {
-        logCritical << "Refusing to proceed with" << fileUrlStr;
+        logCritical << "Refusing to proceed with " << fileUrlStr;
         return { validateResult.status, -1 };
     }
 
@@ -67,25 +67,25 @@ auto FileMan::rmFile(const QUrl &fileUrl) -> rm_file_t
 
     // Remove the raw blob from the store first
     if (validateResult.blobEntry.isEmpty()) [[unlikely]]
-        logWarning << "No valid blobs found in store for" << fileUrlStr;
+        logWarning << "No valid blobs found in store for " << fileUrlStr;
     else {
         // Let's trust that preRmValidate() won't return orphaned blobs
         if (const auto lookupResult = d->revLookupSymlink(validateResult.blobEntry);
             lookupResult.locations.size() > 1) {
 
-            logWarning << "Multiple attached symlinks found for" << validateResult.blobEntry;
+            logWarning << "Multiple attached symlinks found for " << validateResult.blobEntry;
             logWarning << "Refusing to remove blob";
             status_b = ENOTUNIQ;
         } else if (blobRemoved = blobDir.remove(validateResult.blobEntry); !blobRemoved)
                 [[unlikely]] {
-            logCritical << "Couldn't remove" << validateResult.blobEntry;
+            logCritical << "Couldn't remove " << validateResult.blobEntry;
             status_b = EACCES;
         }
     }
 
     // Remove the symlink next
     if (lnkRemoved = QFile::remove(lnkPath); !lnkRemoved) [[unlikely]] {
-        logCritical << "Couldn't remove" << fileUrlStr;
+        logCritical << "Couldn't remove " << fileUrlStr;
         status_l = EACCES;
     }
 
@@ -98,9 +98,9 @@ auto FileMan::rmFile(const QUrl &fileUrl) -> rm_file_t
                    Q_LIKELY(blobRemoved) ? validateResult.blobEntry : ""_L1);
 
     if ((status_l == 0) && (status_b == 0)) [[likely]]
-        logInfo << fileUrlStr << "removed successfully from store";
+        logInfo << fileUrlStr << " removed successfully from store";
     else [[unlikely]]
-        logInfo << fileUrlStr << "removal from store wasn't fully successful";
+        logInfo << fileUrlStr << " removal from store wasn't fully successful";
 
     return { status_l, status_b };
 }
@@ -144,7 +144,7 @@ auto FileMan::rmFile(const QString &fileId) -> rm_file_t
     const QString blobPath     = FileManPrivate::createPathComp(d->m_blobDirPath, blobFileName);
 
     if (blobFileName.isEmpty()) {
-        logCritical << fileId << "is not a valid file";
+        logCritical << fileId << " is not a valid file";
         return { -1, EINVAL };
     }
 
@@ -156,16 +156,16 @@ auto FileMan::rmFile(const QString &fileId) -> rm_file_t
     const auto lookupResult = d->revLookupSymlink(blobFileName);
     int        status_l     = 0;
 
-    logInfo << "Removing" << blobPath;
+    logInfo << "Removing " << blobPath;
 
     // Remove the blob first
     if (!QFile::remove(blobPath)) [[unlikely]] {
-        logCritical << "Couldn't remove" << fileId;
+        logCritical << "Couldn't remove " << fileId;
         return { -1, EACCES };
     }
 
     if (lookupResult.status == ENOENT) [[unlikely]] {
-        logInfo << fileId << "was an orphan in store";
+        logInfo << fileId << " was an orphan in store";
         return { -1, 0 };
     }
 
@@ -178,10 +178,10 @@ auto FileMan::rmFile(const QString &fileId) -> rm_file_t
         if (d->validateLink(QFileInfo{ lnkPath }, blobFileName) != 0) [[unlikely]]
             continue;
 
-        logInfo << "Removing" << lnkPath;
+        logInfo << "Removing " << lnkPath;
 
         if (!QFile::remove(lnkPath)) [[unlikely]] {
-            logCritical << "Couldn't remove" << lnkPath;
+            logCritical << "Couldn't remove " << lnkPath;
 
             if (status_l == 0)
                 status_l = EACCES;
@@ -196,7 +196,7 @@ auto FileMan::rmFile(const QString &fileId) -> rm_file_t
 
     //  Finalizing /////////////////////////////////////////////////////////////////////////////////
 
-    logInfo << fileId << "successfully removed from store";
+    logInfo << fileId << " successfully removed from store";
 
     return { 0, 0 };
 }

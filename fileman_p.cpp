@@ -81,19 +81,19 @@ auto FileManPrivate::dirHealth(const QString &dirPath) noexcept -> int
     // Non-existence check; put first for better logging, otherwise, the following block should be
     // first
     if (!dir.exists()) {
-        logWarning << dirPath << "doesn't exist yet";
+        logWarning << dirPath << " doesn't exist yet";
         return EAGAIN;
     }
 
     // dirPath being a symlink is not allowed
     if (dir.isSymbolicLink() || dir.isShortcut() || dir.isAlias() || !dir.isDir()) [[unlikely]] {
-        logCritical << dirPath << "is not a directory";
+        logCritical << dirPath << " is not a directory";
         return ENOTDIR;
     }
 
     // Read, Write & Execute permissions are required
     if (!dir.isReadable() || !dir.isWritable() || !dir.isExecutable()) [[unlikely]] {
-        logWarning << dirPath << "has inappropriate permissions";
+        logWarning << dirPath << " has inappropriate permissions";
         return EPERM;
     }
 
@@ -115,7 +115,7 @@ auto FileManPrivate::diskFreeCheck(const QFileInfo &file, const QDir &dir) noexc
     if (fsFree - fileSize <= 0) {
         // Exact fit with 0 byte-margin is highly suspicious, and often prone to failure
         logCritical << "Not enough free space available";
-        logInfo << fileSize << "required but only" << fsFree << "is available";
+        logInfo << fileSize << " required but only " << fsFree << " is available";
         return ENOSPC;
     }
 
@@ -166,7 +166,7 @@ auto FileManPrivate::fixDirHealth(const QString &dir, int error,
 {
     if (error != 0 && error != EAGAIN && error != ENOTDIR && error != EPERM) [[unlikely]] {
         logCritical << "Critical error on store, can't continue";
-        logDebug << "Error branch [" << dir << "]:" << error;
+        logDebug << "Error branch [" << dir << "]: " << error;
         return false;
     }
 
@@ -181,8 +181,8 @@ auto FileManPrivate::fixDirHealth(const QString &dir, int error,
         std::error_code             ec;
 
         if (!FileManPrivate::setDirPerms(dir_stl, ec)) [[unlikely]] {
-            logCritical << "Couldn't set appropriate permissions on" << dir;
-            logDebug << "Error branch [" << dir << "]:" << error;
+            logCritical << "Couldn't set appropriate permissions on " << dir;
+            logDebug << "Error branch [" << dir << "]: " << error;
             logDebug << "Error code: " << ec.value();
             return false;
         }
@@ -196,7 +196,7 @@ auto FileManPrivate::fixDirHealth(const QString &dir, int error,
         if (!QFile::remove(dir)) [[unlikely]] {
 
             logCritical << "Critical error on store, can't continue";
-            logDebug << "Error branch [" << dir << "]:" << error;
+            logDebug << "Error branch [" << dir << "]: " << error;
             return false;
         }
 
@@ -209,9 +209,9 @@ auto FileManPrivate::fixDirHealth(const QString &dir, int error,
 
         if (!dirCreated) [[unlikely]] {
             // Could be other advanced permission errors (e.g. ACL)
-            logCritical << "Critical error on store, please check" << dir
-                        << "and its parent dirs for permission issues";
-            logDebug << "Error status [" << dir << "]:" << error;
+            logCritical << "Critical error on store, please check " << dir
+                        << " and its parent dirs for permission issues";
+            logDebug << "Error status [" << dir << "]: " << error;
             return false;
         }
 
@@ -334,7 +334,7 @@ auto FileManPrivate::preAddValidate(const QFileInfo &file) noexcept
     const QString       mime =
             mimeDb.mimeTypeForFile(file.canonicalFilePath(), QMimeDatabase::MatchContent).name();
 
-    logDebug << "MIME:" << mime;
+    logDebug << "MIME: " << mime;
 
     if (mime.isEmpty()) [[unlikely]] {
         logCritical << "MIME type could not be determined";
@@ -482,7 +482,7 @@ auto FileManPrivate::resolveDataDir(const QString &orgName, const QString &appNa
 
     const QString relativePath = (org.isEmpty()) ? appName : org + u'/' + appName;
 
-    logDebug << "Store dir:" << appDataDir.absoluteFilePath(relativePath);
+    logDebug << "Store dir: " << appDataDir.absoluteFilePath(relativePath);
 
     return appDataDir.filePath(relativePath);
 }
@@ -507,7 +507,7 @@ auto FileManPrivate::revLookupSymlink(const QString      &blobName,
     const bool    entryExists = !lnkEntry.isEmpty();
     const bool    isManaged   = this->m_storeManaged;
 
-    logDebug << "Looking up blob:" << blobName;
+    logDebug << "Looking up blob: " << blobName;
 
     if (isManaged && entryExists) [[likely]] {
         const QFileInfo lnkFile{ QDir{ this->m_storeDirPath }.filePath(lnkEntry) };
@@ -519,8 +519,8 @@ auto FileManPrivate::revLookupSymlink(const QString      &blobName,
             const QString lnkTarget =
                     QDir::cleanPath(blobDir.absoluteFilePath(lnkFile.symLinkTarget()));
 
-            logDebug << "lnkTarget:" << lnkFile.symLinkTarget();
-            logDebug << "lnkTarget (cleaned):" << lnkTarget;
+            logDebug << "lnkTarget: " << lnkFile.symLinkTarget();
+            logDebug << "lnkTarget (cleaned): " << lnkTarget;
 
             if (lnkTarget == blobPath) [[likely]]
                 // The dictionaries only hold one map, not multi-maps
@@ -530,7 +530,7 @@ auto FileManPrivate::revLookupSymlink(const QString      &blobName,
         // Either symlink doesn't match target in reality or it doesn't exist on fs. Either way,
         // remove stale entry from the dictionaries, and proceed to full dir check
 
-        logDebug << "Removing stale" << lnkEntry << "from caches.";
+        logDebug << "Removing stale " << lnkEntry << " from caches.";
 
         this->removeEntry(lnkEntry, blobName);
     }
@@ -542,7 +542,7 @@ auto FileManPrivate::revLookupSymlink(const QString      &blobName,
         if (!categories.testFlag(cat))
             continue;
 
-        logDebug << "Searching" << catDirPath << "directory";
+        logDebug << "Searching " << catDirPath << " directory";
 
         const QDir             searchDir   = catDirPath;
         // enlist oldest first
@@ -553,13 +553,13 @@ auto FileManPrivate::revLookupSymlink(const QString      &blobName,
 
         if (dirContents.isEmpty()) {
             // Nothing present to lookup anyway
-            logInfo << searchDir.absolutePath() << "is empty.";
+            logInfo << searchDir.absolutePath() << " is empty.";
             continue;
         }
 
         // Search for symlinks and compare the resolved target with `blobName`
         for (const QFileInfo &file : dirContents) {
-            logDebug << "Examining file:" << file.filePath();
+            logDebug << "Examining file: " << file.filePath();
 
             if (!file.isSymbolicLink() && !file.isShortcut() && !file.isAlias()) [[unlikely]]
                 continue;
@@ -567,7 +567,7 @@ auto FileManPrivate::revLookupSymlink(const QString      &blobName,
             const QString resolvedTarget =
                     QDir::cleanPath(searchDir.absoluteFilePath(file.symLinkTarget()));
 
-            logDebug << "Link target:" << resolvedTarget;
+            logDebug << "Link target: " << resolvedTarget;
 
             if (resolvedTarget != blobPath)
                 continue;
@@ -578,7 +578,7 @@ auto FileManPrivate::revLookupSymlink(const QString      &blobName,
             links.append(entry);
 
             if (isManaged) [[unlikely]] {
-                logInfo << "Updating hash-tables with missing [" << entry << "," << blobName
+                logInfo << "Updating hash-tables with missing [" << entry << ", " << blobName
                         << "] entry";
 
                 this->registerEntry(entry, blobName);
@@ -634,7 +634,7 @@ auto FileManPrivate::validateBlob(const QFileInfo &blobFile, bool enforcedCheck,
 
     // Blob may be a crafted jump-symlink residing in the store
     if (blobFile.isSymbolicLink() || blobFile.isShortcut() || blobFile.isAlias()) [[unlikely]] {
-        logWarning << blobPath << "is unexpectedly a symlink";
+        logWarning << blobPath << " is unexpectedly a symlink";
         return EINVAL;
     }
 
@@ -648,7 +648,7 @@ auto FileManPrivate::validateBlob(const QFileInfo &blobFile, bool enforcedCheck,
         const auto validateResult = FileManPrivate::preAddValidate(blobFile);
 
         if (!categories.testAnyFlags(validateResult.categories)) {
-            logWarning << blobPath << "doesn't match required categories";
+            logWarning << blobPath << " doesn't match required categories";
             return EINVAL;
         }
 
@@ -657,13 +657,13 @@ auto FileManPrivate::validateBlob(const QFileInfo &blobFile, bool enforcedCheck,
         e = FileManPrivate::validateFile(blobFile);
 
     if (e == ENOENT) [[unlikely]] {
-        logWarning << blobPath << "doesn't exist on store";
+        logWarning << blobPath << " doesn't exist on store";
         return e;
     }
 
     if (e != 0) [[unlikely]] {
-        logWarning << blobPath << "didn't pass validations";
-        logDebug << "Error:" << e;
+        logWarning << blobPath << " didn't pass validations";
+        logDebug << "Error: " << e;
         return e;
     }
 
@@ -672,16 +672,16 @@ auto FileManPrivate::validateBlob(const QFileInfo &blobFile, bool enforcedCheck,
 
     if (const qint64 s = blobFileName.size(); s != nameLength) [[unlikely]]
     {
-        logWarning << blobPath << "is not a valid file in store (wrong name)";
-        logDebug << "Base name size:" << s << "vs" << nameLength;
+        logWarning << blobPath << " is not a valid file in store (wrong name)";
+        logDebug << "Base name size: " << s << " vs " << nameLength;
         return EINVAL;
     }
 
     // They also have exactly hex characters: [a-fA-F] & [0-9]
     for (const QChar &c : blobFileName)
         if (!FileManPrivate::isHexDigit(c)) [[unlikely]] {
-            logWarning << blobPath << "is not a valid file in store (wrong name)";
-            logDebug << "Base name" << blobFileName << "doesn't look like a sha256 hash";
+            logWarning << blobPath << " is not a valid file in store (wrong name)";
+            logDebug << "Base name " << blobFileName << " doesn't look like a sha256 hash";
             return EINVAL;
         }
 
@@ -689,7 +689,7 @@ auto FileManPrivate::validateBlob(const QFileInfo &blobFile, bool enforcedCheck,
     // call only when called for enforced check. Ducktyping above should already catch invalid files
     // 95-99% of the time.
     if (enforcedCheck && FileManPrivate::calcDigest(blobPath) != blobFileName) [[unlikely]] {
-        logWarning << "Digest mismatch for" << blobPath;
+        logWarning << "Digest mismatch for " << blobPath;
         return EINVAL;
     }
 
@@ -720,8 +720,8 @@ auto FileManPrivate::validateFile(const QFileInfo &file, const qint64 fileSize) 
         return e;
 
     if (file.size() > fileSize) {
-        logCritical << "File size exceeding" << QLocale{ }.formattedDataSize(fileSize)
-                    << "is not supported";
+        logCritical << "File size exceeding " << QLocale{ }.formattedDataSize(fileSize)
+                    << " is not supported";
         return EFBIG;
     }
 
@@ -736,12 +736,12 @@ auto FileManPrivate::validateLink(const QFileInfo &lnkFile, const QString &blobN
 
     // `lnkFile` could be a directory path or TLD, e.g. /, C: etc
     if (lnkFile.fileName().isEmpty() || lnkFile.dir().dirName().isEmpty()) {
-        logCritical << lnkPath << "is an invalid path. Refusing to proceed.";
+        logCritical << lnkPath << " is an invalid path. Refusing to proceed.";
         return ECANCELED;
     }
 
     if (category == Category::None) {
-        logCritical << lnkPath << "is not a path to store";
+        logCritical << lnkPath << " is not a path to store";
         return ECANCELED;
     }
 
@@ -749,7 +749,7 @@ auto FileManPrivate::validateLink(const QFileInfo &lnkFile, const QString &blobN
     if (!lnkFile.isSymbolicLink() && !lnkFile.isShortcut() && !lnkFile.isAlias()
         && !lnkFile.exists()) {
         // This file actually doesn't exist
-        logWarning << lnkPath << "doesn't exist in store";
+        logWarning << lnkPath << " doesn't exist in store";
         return ENOENT;
     }
 
@@ -758,18 +758,18 @@ auto FileManPrivate::validateLink(const QFileInfo &lnkFile, const QString &blobN
     const QFileInfo lnkTarget{ lnkTargetPath };
     const QString   lnkTargetFileName = lnkTarget.fileName();
 
-    logDebug << "Symlink target:" << lnkTargetPath;
+    logDebug << "Symlink target: " << lnkTargetPath;
 
     // All healthy symlinks canonically point to `m_blobDirPath`
     if (lnkTarget.absolutePath() != this->m_blobDirPath) [[unlikely]] {
         // An alien symlink in the store, disallow symlink resolution
-        logWarning << lnkPath << "points to outside the store or not a symbolic link";
+        logWarning << lnkPath << " points to outside the store or not a symbolic link";
         return EINVAL;
     }
 
     if (!blobName.isEmpty() && (lnkTargetFileName != blobName)) {
-        logWarning << "Link target" << lnkTargetFileName
-                   << "does not match with the provided file name" << blobName;
+        logWarning << "Link target " << lnkTargetFileName
+                   << " does not match with the provided file name" << blobName;
         return EINVAL;
     }
 
@@ -785,7 +785,7 @@ auto FileManPrivate::validateStore() const noexcept -> FileManPrivate::validate_
         const int e         = FileManPrivate::dirHealth(dir);
         int      &dirStatus = (dir == this->m_storeDirPath) ? status.d_status : status.h_status;
 
-        logDebug << dir << "directory health:" << e;
+        logDebug << dir << " directory health: " << e;
 
         if (!FileManPrivate::fixDirHealth(dir, e)) {
             dirStatus = e;
@@ -793,8 +793,8 @@ auto FileManPrivate::validateStore() const noexcept -> FileManPrivate::validate_
             // The checks are serialized based on hierarchy so any errors are fatal, blocking
             // further continuation
 
-            // logDebug << "Error status [d, h, c]:" << status.d_status << status.h_status
-            //          << status.c_status;
+            // logDebug << "Error status [d, h, c]: " << status.d_status << ", " << status.h_status
+            //          << ", " << status.c_status;
 
             return status;
         }
@@ -804,11 +804,11 @@ auto FileManPrivate::validateStore() const noexcept -> FileManPrivate::validate_
 
     for (const auto &[cat, catDirPath] : this->m_categoryToDirs.asKeyValueRange()) {
 
-        logDebug << "Store path (categorized):" << catDirPath;
+        logDebug << "Store path (categorized): " << catDirPath;
 
         const int e = FileManPrivate::dirHealth(catDirPath);
 
-        logDebug << FileManPrivate::sc_categoryToDirNames.value(cat) << "directory health:" << e;
+        logDebug << FileManPrivate::sc_categoryToDirNames.value(cat) << " directory health: " << e;
 
         if (!FileManPrivate::fixDirHealth(catDirPath, e, cat)) {
             status.c_status.insert(cat, e);
@@ -818,8 +818,8 @@ auto FileManPrivate::validateStore() const noexcept -> FileManPrivate::validate_
         status.c_status.insert(cat, 0);
     }
 
-    // logDebug << "Error status [d, h, c]:" << status.d_status << status.h_status <<
-    // status.c_status;
+    // logDebug << "Error status [d, h, c]: " << status.d_status << ", " << status.h_status
+    //          << ", " << status.c_status;
 
     return status;
 }

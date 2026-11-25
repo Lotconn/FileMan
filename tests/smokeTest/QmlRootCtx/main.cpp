@@ -2,30 +2,33 @@
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
 #include <QtQml/qqml.h>
-#include <fileman>
 
-int main(int argc, char *argv[]) {
+#include <FileMan>
 
-  using Qt::StringLiterals::operator""_L1;
+int main(int argc, char *argv[])
+{
 
-  QCoreApplication app(argc, argv);
-  QCoreApplication::setOrganizationName("RootCtxTest"_L1);
-  QCoreApplication::setApplicationName(APPNAME);
+    using Qt::StringLiterals::operator""_L1;
+    using Qt::StringLiterals::operator""_s;
 
-  FileMan fileman;
-  qmlRegisterUncreatableMetaObject(FileMan::staticMetaObject, "Lotconn.FileMan.Enums", 0, 0,
-                                   "FileMan", "Enum/flag access only");
+    QCoreApplication app{ argc, argv };
+    QCoreApplication::setOrganizationName("FileManRootCtxTests"_L1);
+    QCoreApplication::setApplicationName(QStringLiteral(APPNAME));
 
-  QQmlApplicationEngine engine;
-  const QString         qmlUrl = "qrc:/"_L1 + APPNAME + "/Main.qml"_L1;
+    FileMan fileman;
+    qmlRegisterUncreatableMetaObject(FileMan::staticMetaObject, "Lotconn.FileMan.Enums", 0, 0,
+                                     "FileMan", u"Enum/flag access only"_s);
 
-  engine.rootContext()->setContextProperty("fileman", &fileman);
-  engine.load(QUrl("qrc:/"_L1 + APPNAME + "/Main.qml"_L1));
+    QQmlApplicationEngine engine;
+    const QUrl            qmlUrl = u"qrc:/"_s + QStringLiteral(APPNAME) + u"/Main.qml"_s;
 
-  if (engine.rootObjects().isEmpty()) {
-    qCritical("Failed to load QML root object; aborting");
-    return 1;
-  }
+    engine.rootContext()->setContextProperty(u"fileman"_s, &fileman);
+    engine.load(qmlUrl);
 
-  return QCoreApplication::exec();
+    if (engine.rootObjects().isEmpty()) {
+        qCritical() << "Failed to load QML root object; aborting";
+        return 1;
+    }
+
+    return QCoreApplication::exec();
 }

@@ -26,8 +26,6 @@ messages for detailed descriptions.
 - Name strings for Category enum now follow key name casing unlike all lower-case previously, e.g.
   `FileMan::Video` -> `Video`
 - `getDataDir()` renamed to `storeDir()` and returns a local file URL (QUrl) instead.
-- `categoryToString()` renamed to `toString()` and made static with another overload introduced for
-  `FileMan::Error`.
 - `getFileName()` renamed to `fileName()`. Attributes and behavior otherwise are retained.
 - `getCategoryDir()` renamed to `categoryDir()` and returns a local file URL (QUrl) instead.
 - `add_file_t` and `rm_file_t` are now type classes
@@ -52,6 +50,11 @@ messages for detailed descriptions.
   returned if directory validation resolves to be not of directory type.
 - Added `FileMan::Error::NotUnique` representing `ENOTUNIQ` (value 76). Would usually be returned if
   blob is linked with multiple symlinks in the store.
+- `categoryToString()` made static with another method `errorToString()` introduced for
+  `FileMan::Error`.
+- `toString()` with another overload introduced for `FileMan::Error`. Should preferrably used over
+  `categoryToString()` or `errorToString()`, except where overload resolution could possibly be
+  ambiguous, e.g. from QML.
 - `fromStringToCategory()` and `fromStringToError()` added to translate string name to enum. Invalid
   string names return `Category::None` on the former and `Error::Success` on the latter.
 - `rmFile(const QString &fileId)` overload allowing direct and more complete removal of blobs and

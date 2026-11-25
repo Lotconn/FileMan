@@ -1,9 +1,8 @@
 #include <test-common.hpp>
 
-int main(int /*argc*/, char * /*argv*/[]) {
-  FileMan failman;
+int main(int /*argc*/, char * /*argv*/[])
+{
+    logInfo << FileMan{ }.storeDir().toDisplayString();
 
-  logInfo << FileMan::instance().getDataDir();
-
-  return 0;
+    return 0;
 }

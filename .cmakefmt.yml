@@ -236,6 +236,24 @@ commands:
         nargs: "+"
       RESOURCES:
         nargs: "+"
+  qt_add_resources:
+    pargs: 2
+    flags:
+      - BIG_RESOURCES
+      - DISCARD_FILE_CONTENTS
+    kwargs:
+      PREFIX:
+        nargs: 1
+      LANG:
+        nargs: 1
+      BASE:
+        nargs: 1
+      OUTPUT_TARGETS:
+        nargs: 1
+      FILES:
+        nargs: "+"
+      OPTIONS:
+        nargs: "+"
   qt_query_qml_module:
     pargs: 1
     kwargs:

@@ -61,7 +61,7 @@ auto FileMan::addFile(const QUrl &fileUrl, bool overwrite, const FileMan::Catego
     const QString filePath   = fileUrl.toLocalFile();
 
     if (filePath.isEmpty()) {
-        logCritical << "No such file:" << filePath;
+        logCritical << "No such file: " << filePath;
         return { ENOENT, { }, { } };
     }
 
@@ -70,7 +70,7 @@ auto FileMan::addFile(const QUrl &fileUrl, bool overwrite, const FileMan::Catego
     const QString   srcFileName = srcFile.fileName();
     QFile           srcFileHandle{ srcPath };
 
-    logDebug << "Resolved file:" << srcPath;
+    logDebug << "Resolved file: " << srcPath;
 
     if (srcPath.startsWith(d->m_storeDirPath, Qt::CaseInsensitive)) {
         logCritical << "Adding files in store is not allowed";
@@ -85,13 +85,13 @@ auto FileMan::addFile(const QUrl &fileUrl, bool overwrite, const FileMan::Catego
 
     logDebug << "File validation result:\n"
              << "Status: " << result.status << '\n'
-             << "Category:" << result.categories;
+             << "Category: " << result.categories;
 
     if (result.status != 0)
         return { result.status, { }, { } };
 
     if (!categories.testAnyFlags(result.categories)) {
-        logCritical << "No valid category found for" << srcPath;
+        logCritical << "No valid category found for " << srcPath;
         return { EINVAL, { }, { } };
     }
 
@@ -101,7 +101,7 @@ auto FileMan::addFile(const QUrl &fileUrl, bool overwrite, const FileMan::Catego
 
     const Category catSelected = FileManPrivate::lowestSetFlag(categories & result.categories);
 
-    logDebug << "Selected category:" << FileManPrivate::sc_categoryToString.value(catSelected);
+    logDebug << "Selected category: " << FileManPrivate::sc_categoryToString.value(catSelected);
 
     //----------------------------------------------------------------------------------------------
 
@@ -113,7 +113,7 @@ auto FileMan::addFile(const QUrl &fileUrl, bool overwrite, const FileMan::Catego
     }
 
     if (!srcFileHandle.open(QIODeviceBase::ReadOnly)) {
-        logCritical << "Couldn't open" << srcPath << "for reading";
+        logCritical << "Couldn't open " << srcPath << " for reading";
         return { EPERM, { }, { } };
     }
 
@@ -156,15 +156,15 @@ auto FileMan::addFile(const QUrl &fileUrl, bool overwrite, const FileMan::Catego
             if (!QFile::remove(blobPath)) [[unlikely]] {
                 // Certainly NOT because blob doesn't exist in the dir, inhibiting the actual
                 // intention for overwrite. Not acceptable.
-                logCritical << "Couldn't remove" << blobPath;
+                logCritical << "Couldn't remove " << blobPath;
                 return { EACCES, { }, { } };
             }
 
-            logDebug << blobPath << "removed successfully";
+            logDebug << blobPath << " removed successfully";
         } else {
             //  Expend fs IO to reverse lookup the related symlink file. Note the output is not
             //  static on initialization, the list can change between calls
-            logInfo << fileUrlStr << "already available on store";
+            logInfo << fileUrlStr << " already available on store";
 
             // Search in the broader selected categories, not the filtered catSelected
             if (const auto lookupResult = d->revLookupSymlink(blobName, categories);
@@ -175,7 +175,7 @@ auto FileMan::addFile(const QUrl &fileUrl, bool overwrite, const FileMan::Catego
                                  d->m_storeDirPath, lookupResult.locations.first())),
                          blobName };
 
-            logDebug << blobName << "is orphaned in store. Reusing blob...";
+            logDebug << blobName << " is orphaned in store. Reusing blob...";
 
             blobIsOrphan = true;
         }
@@ -187,11 +187,11 @@ auto FileMan::addFile(const QUrl &fileUrl, bool overwrite, const FileMan::Catego
 
         if (skipRename) {
             if (!QFile::remove(lnkPath)) [[unlikely]] {
-                logWarning << "Couldn't remove" << lnkPath << ", falling back to renaming";
+                logWarning << "Couldn't remove " << lnkPath << ", falling back to renaming";
 
                 skipRename = false;
             } else
-                logDebug << lnkPath << "removed successfully";
+                logDebug << lnkPath << " removed successfully";
         }
 
         if (!skipRename) {
@@ -204,7 +204,7 @@ auto FileMan::addFile(const QUrl &fileUrl, bool overwrite, const FileMan::Catego
             //
             const QString f = FileManPrivate::renameFile(srcFileName, catDir);
 
-            logWarning << "Saving" << srcFileName << "as" << f << "since it already exists";
+            logWarning << "Saving " << srcFileName << " as " << f << " since it already exists";
 
             lnkFileName = f;
 #ifdef Q_OS_WIN
@@ -223,7 +223,7 @@ auto FileMan::addFile(const QUrl &fileUrl, bool overwrite, const FileMan::Catego
         if (!QFile::copy(srcPath, blobPath,
                          QFileDevice::ReadOwner | QFileDevice::WriteOwner | QFileDevice::ReadGroup
                                  | QFileDevice::ReadOther)) {
-            logCritical << "Failed to copy" << srcPath << "to" << blobPath;
+            logCritical << "Failed to copy " << srcPath << " to " << blobPath;
 
             if (QFileInfo::exists(blobPath))
                 QFile::remove(blobPath);
@@ -231,7 +231,7 @@ auto FileMan::addFile(const QUrl &fileUrl, bool overwrite, const FileMan::Catego
             return { EIO, { }, { } };
         }
 
-        logInfo << blobName << "copied successfully to store";
+        logInfo << blobName << " copied successfully to store";
     }
 
 #ifdef Q_OS_WIN
@@ -241,19 +241,20 @@ auto FileMan::addFile(const QUrl &fileUrl, bool overwrite, const FileMan::Catego
 #else
     const QString targetPath = catDir.relativeFilePath(blobPath);
 #endif
-    logDebug << "Linking" << lnkPath << "to" << targetPath;
+    logDebug << "Linking " << lnkPath << " to " << targetPath;
 
     // Symlink the unanimous blob as the supplied file name under corresponding category
     if (!QFile::link(targetPath, lnkPath)) [[unlikely]] {
-        logCritical << "Failed to symlink" << blobPath << "to" << lnkPath;
+        logCritical << "Failed to symlink " << blobPath << " to " << lnkPath;
         return { EACCES, { }, { } };
     }
 
-    logInfo << fileUrlStr << "successfully added";
-    logDebug << "Added as" << blobPath << "to store";
+    logInfo << fileUrlStr << " successfully added";
+    logDebug << "Added as " << blobPath << " to store";
 
     // Register the [ blob, symlink ] entry to `m_blobToLinkDict()`
-    logDebug << "Registering blob as " << blobName << " and symlink as" << lnkEntry << " to tables";
+    logDebug << "Registering blob as " << blobName << " and symlink as " << lnkEntry
+             << " to tables";
 
     d->registerEntry(lnkEntry, blobName);
 

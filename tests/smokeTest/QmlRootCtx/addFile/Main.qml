@@ -1,4 +1,3 @@
-import QtCore
 import QtQml
 import Lotconn.FileMan.Enums
 

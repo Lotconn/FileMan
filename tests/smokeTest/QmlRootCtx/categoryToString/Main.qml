@@ -4,7 +4,7 @@ import Lotconn.FileMan.Enums
 QtObject {
     Component.onCompleted: {
         for (const cat of [FileMan.None, FileMan.Audio, FileMan.Image, FileMan.Video, FileMan.All])
-            console.info(fileman.toString(cat));
+            console.info(fileman.categoryToString(cat));
 
         Qt.quit();
     }

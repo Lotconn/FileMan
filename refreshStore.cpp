@@ -45,7 +45,7 @@ auto FileMan::refreshStore() -> int
         const QDir categoryDir = catDirPath;
 
         if (categoryDir.isEmpty(QDir::AllEntries | QDir::System | QDir::NoDotAndDotDot)) {
-            logWarning << FileMan::toString(cat) << "store doesn't have any contents yet";
+            logWarning << FileMan::toString(cat) << " store doesn't have any contents yet";
             continue;
         }
 
@@ -54,7 +54,7 @@ auto FileMan::refreshStore() -> int
         const QStringList contents = categoryDir.entryList(
                 QDir::AllEntries | QDir::System | QDir::NoDotAndDotDot, QDir::Time);
 
-        logDebug << "Contents in" << catDirPath << ":";
+        logDebug << "Contents in " << catDirPath << ":";
         logDebug << contents;
 
         // Build the store-state cache dictionary from valid files in the store
@@ -72,10 +72,10 @@ auto FileMan::refreshStore() -> int
             // RHS is rarer than LHS
             if (result.blobEntry.isEmpty() || d->m_blobToLinkDict.contains(result.blobEntry))
                     [[unlikely]] {
-                logDebug << "Removing" << file << "from" << catDirPath;
+                logDebug << "Removing " << file << " from " << catDirPath;
 
                 if (!QFile::remove(filePath)) [[unlikely]]
-                    logWarning << "Couldn't remove" << filePath;
+                    logWarning << "Couldn't remove " << filePath;
 
                 continue;
             }
@@ -108,7 +108,7 @@ auto FileMan::refreshStore() -> int
 
         // m_blobToLinkDict has entries but blobDir enlists empty: certain failure, not a
         // legitimately empty store
-        logWarning << "Couldn't enlist" << d->m_blobDirPath;
+        logWarning << "Couldn't enlist " << d->m_blobDirPath;
 
         return EACCES;
     }
@@ -119,10 +119,10 @@ auto FileMan::refreshStore() -> int
         if (d->m_blobToLinkDict.contains(blobName)) [[likely]]
             continue;
 
-        logDebug << "Removing" << blobName << "from" << d->m_blobDirPath;
+        logDebug << "Removing " << blobName << " from " << d->m_blobDirPath;
 
         if (!blobDir.remove(blobName)) [[unlikely]] {
-            logWarning << "Couldn't remove" << blobName;
+            logWarning << "Couldn't remove " << blobName;
 
             if (e == 0)
                 e = EACCES;

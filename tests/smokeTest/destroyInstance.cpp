@@ -1,12 +1,15 @@
 #include <test-common.hpp>
 
-int main(int argc, char *argv[]) {
-  QCoreApplication app(argc, argv);
-  QCoreApplication::setApplicationName("libTest"_L1);
-  FileMan tempMan;
-  tempMan.~FileMan();
+int main(int argc, char *argv[])
+{
+    QCoreApplication app{ argc, argv };
+    QCoreApplication::setApplicationName("libTest"_L1);
+    QCoreApplication::setOrganizationName("FileManTests"_L1);
+    FileMan tempMan;
 
-  logInfo << FileMan::instance().getDataDir();
+    tempMan.~FileMan();
 
-  return 0;
+    logInfo << FileMan::instance().storeDir().toDisplayString();
+
+    return 0;
 }

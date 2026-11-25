@@ -52,6 +52,8 @@ applications.
 
 |        Return type | Function                                                                                               |
 | -----------------: | :----------------------------------------------------------------------------------------------------- |
+| [QString][qstring] | [categoryToString](#category-to-string)([FileMan::Category](#category-enum) category)                  |
+| [QString][qstring] | [errorToString](#error-to-string)([FileMan::Error](#error-enum) error) `[since 3.0]`                   |
 | [QString][qstring] | [fileName](#filename)(const [QUrl][qurl] &fileUrl) `[since 3.0]`                                       |
 |  FileMan::Category | [fromStringToCategory](#from-string-to-category)(const [QString][qstring] &categoryName) `[since 3.0]` |
 |     FileMan::Error | [fromStringToError](#from-string-to-error)(const [QString][qstring] &errorName) `[since 3.0]`          |
@@ -77,7 +79,7 @@ the hashed blob. For example:
 ```cpp
 //  MIT License : Lotconn 2026
 
-#include <QtCoreApplication>
+#include <QCoreApplication>
 #include <FileMan>
 
 int main(int argc, char *argv[]) {
@@ -473,7 +475,7 @@ Example:
 ```cpp
 //  MIT License : Lotconn 2026
 
-#include <QtCoreApplication>
+#include <QCoreApplication>
 #include <QTextStream>
 #include <FileMan>
 
@@ -529,6 +531,22 @@ category.
 | `FileMan::Audio`                               | `file://<AppLocalDataLocation>/store/audios` |
 | `FileMan::Image`                               | `file://<AppLocalDataLocation>/store/images` |
 | `FileMan::Video`                               | `file://<AppLocalDataLocation>/store/videos` |
+
+<div><a id="category-to-string"></a></div>
+<div><a name="category-to-string"></a></div>
+
+### [QString][qstring] FileMan::categoryToString(([FileMan::Category](#category-enum) category) `[static]`
+
+Returns a [QString][qstring] containing the name of _category_ or empty if _category_ is an invalid
+key in the enum. Preferrably use [toString()](#tostring-1).
+
+<div><a id="error-to-string"></a></div>
+<div><a name="error-to-string"></a></div>
+
+### [QString][qstring] FileMan::errorToString(([FileMan::Error](#error-enum) error) `[static]` `[since 3.0]`
+
+Returns a [QString][qstring] containing the name of _error_ or empty if _error_ is an invalid key in
+the enum. Preferrably use [toString()](#tostring-2).
 
 <div><a id="filename"></a></div>
 <div><a name="filename"></a></div>
@@ -744,6 +762,10 @@ key in the enum. `FileMan::All` is a composite _flag_ and therefore not supporte
 | `FileMan::Image`                               | `Image`                     |
 | `FileMan::Video`                               | `Video`                     |
 
+> [!Note]
+>
+> This method is not invokable from QML. Use [categoryToString()](#category-to-string) instead.
+
 <div><a id="tostring-2"></a></div>
 <div><a name="tostring-2"></a></div>
 
@@ -752,6 +774,10 @@ key in the enum. `FileMan::All` is a composite _flag_ and therefore not supporte
 Returns a [QString][qstring] containing the string of the _error_ key or empty if _error_ is an
 invalid key in the enum. For example, providing `FileMan::Exists` returns `Exists` as string. The
 string is empty if _error_ is an invalid key in FileMan::Error.
+
+> [!Note]
+>
+> This method is not invokable from QML. Use [errorToString()](#error-to-string) instead.
 
 <div><a id="integration"></a></div>
 <div><a name="integration"></a></div>
