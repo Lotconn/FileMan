@@ -5,10 +5,10 @@ Q_LOGGING_CATEGORY(fileman, "FileMan")
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 // add_file_t //////////////////////////////////////////////////////////////////////////////////////
 
-add_file_t::add_file_t() : d{ new add_file_t_data } { }
+add_file_t::add_file_t() : d{ new FileManPrivateData } { }
 
 add_file_t::add_file_t(int status, const QUrl &location, const QString &id)
-    : d{ new add_file_t_data }
+    : d{ new FileManPrivateData }
 {
     this->setId(id);
     this->setLocation(location);
@@ -64,9 +64,9 @@ auto add_file_t::setStatus(int status) -> void
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 // rm_file_t ///////////////////////////////////////////////////////////////////////////////////////
 
-rm_file_t::rm_file_t() : d{ new rm_file_t_data } { }
+rm_file_t::rm_file_t() : d{ new FileManPrivateData } { }
 
-rm_file_t::rm_file_t(int status_l, int status_b) : d{ new rm_file_t_data }
+rm_file_t::rm_file_t(int status_l, int status_b) : d{ new FileManPrivateData }
 {
     this->setStatus_b(status_b);
     this->setStatus_l(status_l);

@@ -13,7 +13,9 @@
 #  define FM_SYM_ATTR Q_DECL_IMPORT
 #endif
 
-class add_file_t_data;
+class FileManPrivate;
+class FileManPrivateData;
+
 class FM_SYM_ATTR add_file_t
 {
     Q_GADGET
@@ -23,7 +25,7 @@ class FM_SYM_ATTR add_file_t
     Q_PROPERTY(QUrl location READ location WRITE setLocation)
     Q_PROPERTY(QString id READ id WRITE setId)
 
-    QSharedDataPointer<add_file_t_data> d;
+    QSharedDataPointer<FileManPrivateData> d;
 
 public:
     add_file_t();
@@ -47,7 +49,6 @@ public:
 };
 Q_DECLARE_TYPEINFO(add_file_t, Q_RELOCATABLE_TYPE);
 
-class rm_file_t_data;
 class FM_SYM_ATTR rm_file_t
 {
     Q_GADGET
@@ -56,7 +57,7 @@ class FM_SYM_ATTR rm_file_t
     Q_PROPERTY(int status_l READ status_l WRITE setStatus_l)
     Q_PROPERTY(int status_b READ status_b WRITE setStatus_b)
 
-    QSharedDataPointer<rm_file_t_data> d;
+    QSharedDataPointer<FileManPrivateData> d;
 
 public:
     rm_file_t();
@@ -78,7 +79,6 @@ public:
 };
 Q_DECLARE_TYPEINFO(rm_file_t, Q_RELOCATABLE_TYPE);
 
-class FileManPrivate;
 class FM_SYM_ATTR FileMan : public QObject
 {
     Q_OBJECT

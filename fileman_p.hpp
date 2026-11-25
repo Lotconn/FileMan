@@ -24,27 +24,18 @@ using Qt::StringLiterals::operator""_L1;
 using Qt::StringLiterals::operator""_s;
 // NOLINTEND(*global-names-in-headers)
 
-class add_file_t_data : public QSharedData // NOLINT(*special-member-functions)
+class FileManPrivateData : public QSharedData // NOLINT(*special-member-functions)
 {
 public:
-    add_file_t_data()                             = default;
-    add_file_t_data(const add_file_t_data &other) = default;
-    ~add_file_t_data()                            = default;
+    FileManPrivateData()                                = default;
+    FileManPrivateData(const FileManPrivateData &other) = default;
+    ~FileManPrivateData()                               = default;
 
-    int     m_status = 0;
-    QUrl    m_location;
     QString m_id;
-};
-
-class rm_file_t_data : public QSharedData // NOLINT(*special-member-functions)
-{
-public:
-    rm_file_t_data()                            = default;
-    rm_file_t_data(const rm_file_t_data &other) = default;
-    ~rm_file_t_data()                           = default;
-
-    int m_status_l = 0;
-    int m_status_b = 0;
+    QUrl    m_location;
+    int     m_status   = 0;
+    int     m_status_b = 0;
+    int     m_status_l = 0;
 };
 
 class FileManPrivate
