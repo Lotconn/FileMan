@@ -91,10 +91,14 @@ auto FileManPrivate::dirHealth(const QString &dirPath) noexcept -> int
         return ENOTDIR;
     }
 
+#ifdef Q_OS_WIN
+    const QNtfsPermissionCheckGuard permissionGuard;
+#endif
+
     // Read, Write & Execute permissions are required
     if (!dir.isReadable() || !dir.isWritable() || !dir.isExecutable()) [[unlikely]] {
         logWarning << dirPath << " has inappropriate permissions";
-        return EPERM;
+        return EACCES;
     }
 
     return 0;
@@ -150,11 +154,11 @@ auto FileManPrivate::errnoSeverity(int e) noexcept -> int
     case EINVAL:
         return 3;
     case EACCES:
-    case EPERM:
+        // case EPERM:
         return 4;
     case EIO: // NOLINTBEGIN(*magic-numbers*)
         return 5;
-    case ENOTDIR:
+    case ECANCELED | ENOTDIR:
         return 7;
     default:
         return 6;
@@ -164,26 +168,16 @@ auto FileManPrivate::errnoSeverity(int e) noexcept -> int
 auto FileManPrivate::fixDirHealth(const QString &dir, int error,
                                   FileMan::Category category) const noexcept -> bool
 {
-    if (error != 0 && error != EAGAIN && error != ENOTDIR && error != EPERM) [[unlikely]] {
+    if (error != 0 && error != EAGAIN && error != ENOTDIR && error != EACCES) [[unlikely]] {
         logCritical << "Critical error on store, can't continue";
         logDebug << "Error branch [" << dir << "]: " << error;
         return false;
     }
 
-#ifdef Q_OS_WIN
-    // Enables permission operations on NTFS on Windows within this scope
-    QNtfsPermissionCheckGuard permissionGuard;
-#endif
-
-    if (error == EPERM) [[unlikely]] {
+    if (error == EACCES) [[unlikely]] {
         // Attempt to fix permissions
-        const std::filesystem::path dir_stl = dir.toStdString();
-        std::error_code             ec;
-
-        if (!FileManPrivate::setDirPerms(dir_stl, ec)) [[unlikely]] {
+        if (!QFile::setPermissions(dir, FileManPrivate::sc_dirPerms)) [[unlikely]] {
             logCritical << "Couldn't set appropriate permissions on " << dir;
-            logDebug << "Error branch [" << dir << "]: " << error;
-            logDebug << "Error code: " << ec.value();
             return false;
         }
 
@@ -261,6 +255,14 @@ auto FileManPrivate::isDictEmpty(const QHash<QString, QString> &dict) noexcept -
 auto FileManPrivate::isHexDigit(QChar ch) noexcept -> bool
 {
     return (ch >= u'0' && ch <= u'9') || (ch >= u'a' && ch <= u'f') || (ch >= u'A' && ch <= u'F');
+}
+
+// Static
+auto FileManPrivate::isNtfs(const QDir &dir) noexcept -> bool
+{
+    const QString fsType = QStorageInfo{ dir }.fileSystemType();
+    return fsType.contains("ntfs"_L1, Qt::CaseInsensitive)
+            || fsType.contains("fuse"_L1, Qt::CaseInsensitive);
 }
 
 auto FileManPrivate::lookupBlobByLink(const QString &lnkEntry) noexcept -> QString
@@ -351,7 +353,7 @@ auto FileManPrivate::preAddValidate(const QFileInfo &file) noexcept
 
     if (categories == Category::None) {
         logCritical << "File type not supported for this operation";
-        return { .status = EOPNOTSUPP, .categories = Category::None };
+        return { .status = ECANCELED, .categories = Category::None };
     }
 
     return { .status = 0, .categories = categories };
@@ -367,7 +369,9 @@ auto FileManPrivate::preRmValidate(const QString &lnkPath, const bool enforcedCh
     const Category category = this->m_dirsToCategory.value(lnkDirPath, Category::None);
 
     if (const int e = this->validateLink(lnkFile); e != 0)
-        return { .status = 0, .lnkEntry = (e == EINVAL) ? lnkEntry : QString{ }, .blobEntry = { } };
+        return { .status    = (e == EINVAL) ? 0 : e,
+                 .lnkEntry  = (e == EINVAL) ? lnkEntry : QString{ },
+                 .blobEntry = { } };
 
     //
     // Reaching here means provided symlink is valid and not dangling. Proceed to check the target
@@ -497,10 +501,6 @@ auto FileManPrivate::revLookupSymlink(const QString      &blobName,
                                       FileMan::Categories categories) noexcept
         -> FileManPrivate::rev_lookup_symlink_t
 {
-#ifdef Q_OS_WIN
-    // Enables permission lookup on NTFS on Windows within this scope
-    const QNtfsPermissionCheckGuard permissionGuard;
-#endif
     const QDir    blobDir     = this->m_blobDirPath;
     const QString blobPath    = blobDir.absoluteFilePath(blobName);
     const QString lnkEntry    = this->lookupLinkByBlob(blobName);
@@ -597,26 +597,6 @@ auto FileManPrivate::revLookupSymlink(const QString      &blobName,
     return { .status = ENOENT, .locations = { } };
 }
 
-// Static
-auto FileManPrivate::setDirPerms(const std::filesystem::path &dirPath, std::error_code &ec) noexcept
-        -> bool
-{
-    using std::filesystem::perm_options;
-    using std::filesystem::permissions;
-    using std::filesystem::perms;
-
-    const QList<perms> permScope = { perms::owner_all, perms::group_all, perms::others_all };
-
-    for (const perms &scope : permScope) {
-        permissions(dirPath, scope, perm_options::add, ec);
-
-        if (ec.value() == 0) [[likely]]
-            return true;
-    }
-
-    return false;
-}
-
 auto FileManPrivate::squeezeDicts() noexcept -> void
 {
     const QWriteLocker lock = &this->m_varLock;
@@ -642,23 +622,40 @@ auto FileManPrivate::validateBlob(const QFileInfo &blobFile, bool enforcedCheck,
     // already, but do only when called for an enforced check since this is a costly function and
     // redos some jobs already done. Use the lighter `validateFile()` otherwise
 
-    int e = 0;
+    int        e = 0;
+    Categories fileCategories;
+    QFileInfo  tmpBlobFile = blobFile;
 
-    if (enforcedCheck) {
-        const auto validateResult = FileManPrivate::preAddValidate(blobFile);
+    for (bool retry = true; retry;) {
 
-        if (!categories.testAnyFlags(validateResult.categories)) {
-            logWarning << blobPath << " doesn't match required categories";
-            return EINVAL;
+        if (enforcedCheck) {
+            const auto validateResult = FileManPrivate::preAddValidate(tmpBlobFile);
+            e                         = validateResult.status;
+            fileCategories            = validateResult.categories;
+        } else
+            e = FileManPrivate::validateFile(blobFile);
+
+        if (e == ENOENT) [[unlikely]] {
+            logWarning << blobPath << " doesn't exist on store";
+            return e;
         }
 
-        e = validateResult.status;
-    } else
-        e = FileManPrivate::validateFile(blobFile);
+        // Attempt to fix the permission if file is not readable
+        if (e == EACCES) [[unlikely]] {
+            logWarning << blobPath << " has inappropriate permissions. Attempting fix...";
 
-    if (e == ENOENT) [[unlikely]] {
-        logWarning << blobPath << " doesn't exist on store";
-        return e;
+            if (!QFile::setPermissions(blobPath, FileManPrivate::sc_filePerms)) [[unlikely]] {
+                logCritical << "Couldn't set appropriate permissions on " << blobPath;
+                return e;
+            }
+
+            // Check again after permission fix. Also requires a QFileInfo::refresh() to invalidate
+            // the cache
+            tmpBlobFile.refresh();
+            continue;
+        }
+
+        retry = false;
     }
 
     if (e != 0) [[unlikely]] {
@@ -667,8 +664,13 @@ auto FileManPrivate::validateBlob(const QFileInfo &blobFile, bool enforcedCheck,
         return e;
     }
 
+    if (enforcedCheck && !categories.testAnyFlags(fileCategories)) {
+        logWarning << blobPath << " doesn't match required categories";
+        return EINVAL;
+    }
+
     // Valid files ought to have 64 characters exactly (sha256 digest length)
-    static constexpr qint8 nameLength = 64;
+    static constexpr qsizetype nameLength = 64;
 
     if (const qint64 s = blobFileName.size(); s != nameLength) [[unlikely]]
     {
@@ -693,18 +695,24 @@ auto FileManPrivate::validateBlob(const QFileInfo &blobFile, bool enforcedCheck,
         return EINVAL;
     }
 
-    return 0;
+    return e;
 }
 
 // Static
 auto FileManPrivate::validateFile(const QFileInfo &file) noexcept -> int
 {
-    //
+#ifdef Q_OS_WIN
+    const QNtfsPermissionCheckGuard permissionGuard;
+#endif
+
     // Check existence & file type; only take regular files - from wherever accessible (including
     // from /sys as long as permission allows but we handle these unacceptable files next)
-    //
     if (const bool exists = file.exists(); !exists || !file.isFile())
         return exists ? EINVAL : ENOENT;
+
+    // Valid files at least need read permission
+    if (!file.isReadable()) [[unlikely]]
+        return EACCES;
 
     // regular, but unusual files; e.g. textstreams or files under /proc
     if (file.size() <= 0)
@@ -752,6 +760,19 @@ auto FileManPrivate::validateLink(const QFileInfo &lnkFile, const QString &blobN
         logWarning << lnkPath << " doesn't exist in store";
         return ENOENT;
     }
+
+#ifdef Q_OS_WIN
+    // Windows shortcuts are like regular files unlike Unix, so needs special handling
+
+    QFile lnkFileHandle{ lnkPath };
+
+    if (!lnkFileHandle.open(QIODevice::ReadOnly)) {
+        logWarning << lnkPath << " has inappropriate permissions";
+        return EACCES;
+    }
+
+    lnkFileHandle.close();
+#endif
 
     const QString lnkTargetPath =
             QDir::cleanPath(QDir{ lnkDirPath }.filePath(lnkFile.symLinkTarget()));

@@ -74,7 +74,7 @@ auto FileMan::addFile(const QUrl &fileUrl, bool overwrite, const FileMan::Catego
 
     if (srcPath.startsWith(d->m_storeDirPath, Qt::CaseInsensitive)) {
         logCritical << "Adding files in store is not allowed";
-        return { EOPNOTSUPP, { }, { } };
+        return { ECANCELED, { }, { } };
     }
 
     //----------------------------------------------------------------------------------------------
@@ -92,7 +92,7 @@ auto FileMan::addFile(const QUrl &fileUrl, bool overwrite, const FileMan::Catego
 
     if (!categories.testAnyFlags(result.categories)) {
         logCritical << "No valid category found for " << srcPath;
-        return { EINVAL, { }, { } };
+        return { ENOENT, { }, { } };
     }
 
     //----------------------------------------------------------------------------------------------
@@ -109,12 +109,12 @@ auto FileMan::addFile(const QUrl &fileUrl, bool overwrite, const FileMan::Catego
 
     if (!d->mkDataDir() || !d->mkDataDir(catSelected)) [[unlikely]] {
         logCritical << "Failed to create required directories";
-        return { EPERM, { }, { } };
+        return { EACCES, { }, { } };
     }
 
     if (!srcFileHandle.open(QIODeviceBase::ReadOnly)) {
         logCritical << "Couldn't open " << srcPath << " for reading";
-        return { EPERM, { }, { } };
+        return { EACCES, { }, { } };
     }
 
     // Raw data files/blobs reside as dataDir/common/<blob>
@@ -220,9 +220,17 @@ auto FileMan::addFile(const QUrl &fileUrl, bool overwrite, const FileMan::Catego
     // Finalizing //////////////////////////////////////////////////////////////////////////////////
 
     if (!blobIsOrphan) [[unlikely]] {
-        if (!QFile::copy(srcPath, blobPath,
-                         QFileDevice::ReadOwner | QFileDevice::WriteOwner | QFileDevice::ReadGroup
-                                 | QFileDevice::ReadOther)) {
+        bool copied = false;
+
+        if (FileManPrivate::isNtfs(blobDir))
+            // Just copy source file permissions until this block actually implements proper
+            // permission handling on NTFS
+            copied = QFile::copy(srcPath, blobPath);
+        else
+            copied = QFile::copy(srcPath, blobPath, FileManPrivate::sc_filePerms);
+
+        if (!copied) [[unlikely]] {
+            // Not because it exists
             logCritical << "Failed to copy " << srcPath << " to " << blobPath;
 
             if (QFileInfo::exists(blobPath))
@@ -246,7 +254,7 @@ auto FileMan::addFile(const QUrl &fileUrl, bool overwrite, const FileMan::Catego
     // Symlink the unanimous blob as the supplied file name under corresponding category
     if (!QFile::link(targetPath, lnkPath)) [[unlikely]] {
         logCritical << "Failed to symlink " << blobPath << " to " << lnkPath;
-        return { EACCES, { }, { } };
+        return { EPERM, { }, { } };
     }
 
     logInfo << fileUrlStr << " successfully added";

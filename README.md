@@ -143,8 +143,10 @@ them. This is not a bug; it is the intended design to maintain absolute store in
 
 > [!Important]
 >
-> While FileMan establishes rudimentary hardening measures, it does not _guarantee_ absolute
-> security; implementers must still ensure their own downstream security practices.
+> - While FileMan establishes rudimentary hardening measures, it does not _guarantee_ absolute
+>   security; implementers must still ensure their own downstream security practices.
+> - Permission model is limited on NTFS. While proper permission checks work, setting them is not
+>   fully implemented yet. This is an ongoing issue and on the plans.
 
 ### Performance
 
@@ -249,8 +251,8 @@ static module. For details and elaborate guidance, refer to the
 
 FileMan supports every platform and toolchain that
 [Qt supports](https://doc.qt.io/qt-6.12/supported-platforms.html), owing to extensive use of
-Qt-idiomatic codes. The library built on any new linux host for any target should work without
-issues. For building-host platform support see
+Qt-idiomatic codes. The library cross-compiled on any new linux host for any target should work
+without issues. For building-host platform support see
 [the Supported Platforms section](CONTRIBUTING#supported-platforms) on CONTRIBUTING.md.
 
 ## Member Type Documentation

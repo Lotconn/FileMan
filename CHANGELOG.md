@@ -76,6 +76,8 @@ messages for detailed descriptions.
   filesystem error edge cases.
 - Relocatable attributes for `add_file_t` and `rm_file_t` classes were added avoiding deep copies
   where applicable and improving performance
+- File permission checks were made slightly more robust, and permission fixing now extends to store
+  files too. Also made clear distinctions about limited permission model on NTFS.
 
 ### Fixes
 
@@ -96,12 +98,12 @@ messages for detailed descriptions.
 - `internal-helpers` have been removed. All methods there have moved to `FileManPrivate` class as
   static members.
 - All private methods and data structures in `FileMan` class also got moved to `FileManPrivate`
+- All PIMPL data class types now use `FileManPrivateData` class
 - Auto-formatting and linting enabled for almost all file-types used in the project. Relevant
   styling configurations are included in the tree.
 - Added `logFatal` for replacing `qFatal()` loggings. The logging prefix strings were also modified
   to improve readability and visuals
-- Instances of "hash" wording replaced with "blob" as appropriate. The former is preserved for
-  specifying checksum hashes only. This consequentially renamed some internal methods.
+- Some private members were renamed, replaced and ammended
 - Also, C++ follows Qt's code style. Refer to <https://wiki.qt.io/Qt_Coding_Style> and
   <https://wiki.qt.io/Qt_Coding_Style>.
 - Workspace configurations and extensions recommendations were added for proper VSCode/VSCodium

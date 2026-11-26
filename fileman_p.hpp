@@ -115,6 +115,13 @@ class FileManPrivate
     inline static const QString sc_blobDirName  = u"common"_s;
     inline static const QString sc_storeDirName = u"store"_s;
 
+    static constexpr auto sc_dirPerms = QFileDevice::ReadOwner | QFileDevice::WriteOwner
+            | QFileDevice::ExeOwner | QFileDevice::ReadGroup | QFileDevice::ExeGroup
+            | QFileDevice::ReadOther | QFileDevice::ExeOther;
+
+    static constexpr auto sc_filePerms = QFileDevice::ReadOwner | QFileDevice::WriteOwner
+            | QFileDevice::ReadGroup | QFileDevice::ReadOther;
+
     QString                  m_storeDirPath;
     QString                  m_blobDirPath;
     QHash<Category, QString> m_categoryToDirs;
@@ -170,7 +177,7 @@ class FileManPrivate
     /**
      * @brief Checks `dirPath` for existence, symbolic linkage and appropriate permissions.
      *
-     * @return int: 0 on success, `errno:{EAGAIN, ENOTDIR, EPERM}` on failure.
+     * @return int: 0 on success, `errno:{EAGAIN, ENOTDIR, EACCES}` on failure.
      */
     static auto dirHealth(const QString &dirPath) noexcept -> int;
 
@@ -227,6 +234,15 @@ class FileManPrivate
     static auto isHexDigit(QChar ch) noexcept -> bool;
 
     /**
+     * @brief Examines whether `dir` resides on an NTFS filesystem.
+     *
+     * @param dir: The dir to examine. Recommended to construct with absolute path, otherwise will
+     * resolve the path relative to CWD
+     * @return bool: Returns true if underlying fs is NTFS, false if not
+     */
+    static auto isNtfs(const QDir &dir) noexcept -> bool;
+
+    /**
      * @brief Looks-up the blob entry for `lnkEntry` in the in-memory hash-table.
      *
      * @param lnkEntry: Link to lookup with in the hash-table
@@ -270,7 +286,7 @@ class FileManPrivate
      * @param file: The file (object) to validate against.
      * @return pre_add_validate_t: `{0, FileMan::<valid_categories>}` if successful, `{errno,
      * FileMan::None}` if otherwise. `errno` maybe one of `{EFBIG, EINVAL, ELOOP, EOPNOTSUPP,
-     * ENOENT}`.
+     * ENOENT, EACCES}`.
      */
     static auto preAddValidate(const QFileInfo &file) noexcept -> pre_add_validate_t;
 
@@ -374,17 +390,6 @@ class FileManPrivate
             -> rev_lookup_symlink_t;
 
     /**
-     * @brief Sets read, write and execute permissions on a directory at path. Iterates from
-     * strictest scope (owner level) to broadest (world level). Returns
-     *
-     * @param path: The directory path to set permissions
-     * @param ec: Stores detailed errors about the failure.
-     * @return bool: true on success, false if setting permission failed on all levels.
-     */
-    static auto setDirPerms(const std::filesystem::path &path, std::error_code &ec) noexcept
-            -> bool;
-
-    /**
      * @brief Shrinks the dictionary sizes to their contents size
      */
     auto squeezeDicts() noexcept -> void;
@@ -398,7 +403,7 @@ class FileManPrivate
      * @param enforcedCheck: Toggles pedantic and performance costly validations.
      * @param categories: Strictly match the blob with these categories only. Requires pedantic
      * check to be on. Default matches with all valid categories.
-     * @return int: 0 on validation pass, `errno:{EFBIG, EINVAL, ENOENT}` on
+     * @return int: 0 on validation pass, `errno:{EFBIG, EINVAL, ENOENT, EACCES}` on
      * failure.
      */
     static auto validateBlob(const QFileInfo &blobFile, bool enforcedCheck = false,
@@ -408,7 +413,7 @@ class FileManPrivate
      * @brief File validation routines.
      *
      * @param file: File to validate
-     * @return int: 0 if successful, errno:{EINVAL, ENOENT} otherwise.
+     * @return int: 0 if successful, errno:{EINVAL, ENOENT, EACCES} otherwise.
      */
     static auto validateFile(const QFileInfo &file) noexcept -> int;
 
@@ -418,7 +423,7 @@ class FileManPrivate
      *
      * @param file: File to validate
      * @param fileSize: Maximum allowed file size
-     * @return int: 0 if successful, errno:{EINVAL, ENOENT, EFBIG} otherwise.
+     * @return int: 0 if successful, errno:{EINVAL, ENOENT, EFBIG, EACCES} otherwise.
      */
     static auto validateFile(const QFileInfo &file, qint64 fileSize) noexcept -> int;
 
@@ -437,7 +442,7 @@ class FileManPrivate
      * @brief Validates and attempts repairs on dataDir, blobDir and categoryDir(s). Returns
      * validate_store_t struct having {int d_status, int h_status, int c_status}.
      *
-     * @return validate_store_t: Values are 0 on success, `errno:{EAGAIN, ENOTDIR, EPERM}` on
+     * @return validate_store_t: Values are 0 on success, `errno:{EAGAIN, ENOTDIR, EACCES}` on
      * failure.
      */
     [[nodiscard]] auto validateStore() const noexcept -> validate_store_t;
