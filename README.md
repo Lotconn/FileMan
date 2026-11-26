@@ -115,9 +115,9 @@ Saved location: file:///home/user/.local/share/myapp/store/audios/MyAudio.ogg
 ```
 
 This returned URL is what the implementing application uses to process the file, e.g. removing it at
-a later time using [_rmFile()_](#rmfile-1). Keen observers will notice that the last two components
-of this URL directly identify the file's category and name within the store, resembling the _RESTful
-member-type_ convention. Refer to [Member Type Documentation](#member-type-documentation) &
+a later time using [_rmFile()_](#rmfile-1). The last two components of this URL identify the file's
+category and name within the store, resembling the _RESTful member-type_ convention. Refer to
+[Member Type Documentation](#member-type-documentation) &
 [Member Function Documentation](#member-function-documentation) for further details.
 
 ### Security-by-design
@@ -139,7 +139,7 @@ Throughout this process, FileMan adheres to the principle of least privilege and
 Acquisition Is Initialization) to ensure resources are cleanly managed. Any stale, corrupted, or
 invalid files encountered during the operation are safely pruned. Consequently, if a user manually
 places or removes files in the store outside of the provided APIs, FileMan may delete or ignore
-them. This is not a bug; it is the intended design to maintain absolute store integrity.
+them. This is intended by-design to maintain absolute store integrity.
 
 > [!Important]
 >
@@ -207,7 +207,7 @@ int main(int argc, char *argv[]) {
 For QML integrations, explicit instantiation from C++ backend is not necessary. However, although
 discouraged, instantiation is necessary for embedding FileMan's context properties in QML's
 namespace root. The recommended method is to use FileMan as a QML module which is detailed in
-[QML Integarion Guide](#qml-integration) section.
+[QML Integration Guide](#qml-integration) section.
 
 ### Thread safety
 
@@ -541,7 +541,7 @@ category.
 ### [QString][qstring] FileMan::categoryToString(([FileMan::Category](#category-enum) category) `[static]`
 
 Returns a [QString][qstring] containing the name of _category_ or empty if _category_ is an invalid
-key in the enum. Preferrably use [toString()](#tostring-1).
+key in the enum. Preferably use [toString()](#tostring-1).
 
 <div><a id="error-to-string"></a></div>
 <div><a name="error-to-string"></a></div>
@@ -549,7 +549,7 @@ key in the enum. Preferrably use [toString()](#tostring-1).
 ### [QString][qstring] FileMan::errorToString(([FileMan::Error](#error-enum) error) `[static]` `[since 3.0]`
 
 Returns a [QString][qstring] containing the name of _error_ or empty if _error_ is an invalid key in
-the enum. Preferrably use [toString()](#tostring-2).
+the enum. Preferably use [toString()](#tostring-2).
 
 <div><a id="filename"></a></div>
 <div><a name="filename"></a></div>

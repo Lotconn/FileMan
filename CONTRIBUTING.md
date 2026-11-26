@@ -53,8 +53,8 @@ building is the preferred way, although out-of-source building is possible.
 
 ### 1. Using Builder Image
 
-The [repository registry](https://ghcr.io/lotconn/fileman/builder?tab=tags) hosts an x86_64 builder
-image for development tasks tailored for FileMan.
+The [repository registry](https://gitlab.com/lotconn/fileman/container_registry) hosts an x86_64
+builder image for development tasks tailored for FileMan.
 
 > [!NOTE]
 >
@@ -65,13 +65,13 @@ image for development tasks tailored for FileMan.
 First, from project root, create a container with the builder image and enter :
 
 ```bash
-podman run --rm -it -v $(pwd):/src:z ghcr.io/lotconn/fileman/builder:latest
+podman run --rm -it -v $(pwd):/src:z registry.gitlab.com/lotconn/fileman/builder:latest
 ```
 
 If using docker:
 
 ```bash
-docker run --rm -it -v $(pwd):/src:z,shared ghcr.io/lotconn/fileman/builder:latest
+docker run --rm -it -v $(pwd):/src:z,shared registry.gitlab.com/lotconn/fileman/builder:latest
 ```
 
 <details><summary>Further developer notes: Click to expand</summary>

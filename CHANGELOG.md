@@ -114,6 +114,8 @@ messages for detailed descriptions.
   environment setup
 - Doxygen inline briefs were added in private methods for which documentations are not written
 - Documentation updates and fixes for new version, new and changed methods
+- Primary container registry switched back to `registry.gitlab.com/lotconn/fileman`. The available
+  images can be browsed at <https://gitlab.com/lotconn/fileman/container_registry>
 
 Full changelog: [`v2.0.2...v3.0.0`](https://gitlab.com/lotconn/fileman/-/compare/v2.0.2...v3.0.0)
 

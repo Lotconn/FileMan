@@ -44,12 +44,19 @@ auto FileManPrivate::acquireStoreLock() noexcept -> int
 // Static
 auto FileManPrivate::calcDigest(const QString &path) noexcept -> QString
 {
-    QFile file{ path };
+    static constexpr qint64 ioChunkSize = 131072; // 128kiB chunks
+    QCryptographicHash      hash{ QCryptographicHash::Sha256 };
+    QFile                   file{ path };
 
     if (!file.open(QIODeviceBase::ReadOnly))
         return { };
 
-    return QCryptographicHash::hash(file.readAll(), QCryptographicHash::Sha256).toHex();
+    // Read in chunks; readAll() may hog memory and crash
+    while (!file.atEnd())
+        if (const QByteArray chunk = file.read(ioChunkSize); !chunk.isEmpty())
+            hash.addData(chunk);
+
+    return hash.result().toHex();
 }
 
 auto FileManPrivate::clearAllEntries() noexcept -> void
