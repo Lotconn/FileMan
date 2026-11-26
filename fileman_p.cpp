@@ -754,11 +754,15 @@ auto FileManPrivate::validateLink(const QFileInfo &lnkFile, const QString &blobN
     }
 
     // Files under dataDir/<category> are usually symlinks
-    if (!lnkFile.isSymbolicLink() && !lnkFile.isShortcut() && !lnkFile.isAlias()
-        && !lnkFile.exists()) {
-        // This file actually doesn't exist
-        logWarning << lnkPath << " doesn't exist in store";
-        return ENOENT;
+    if (!lnkFile.isSymbolicLink() && !lnkFile.isShortcut() && !lnkFile.isAlias()) {
+        if (!lnkFile.exists()) {
+            // This file actually doesn't exist
+            logWarning << lnkPath << " doesn't exist in store";
+            return ENOENT;
+        }
+
+        logWarning << lnkPath << " is not a symlink";
+        return EINVAL;
     }
 
 #ifdef Q_OS_WIN

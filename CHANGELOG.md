@@ -12,6 +12,7 @@ messages for detailed descriptions.
 ### Breaking Changes
 
 - Now using Qt 6.12 LTS, CMake 3.24, and C++20 as the standard and baseline project-wide
+- Library name is now PascalCase "FileMan" (e.g. `libFileMan.so`, `FileMan.dll` etc)
 - Router header renamed to `FileMan`; includes now need to use as `<FileMan>`
 - Removed `create()` as QmlEngine was never calling it owing to the availability of the default
   constructor
@@ -50,6 +51,8 @@ messages for detailed descriptions.
   returned if directory validation resolves to be not of directory type.
 - Added `FileMan::Error::NotUnique` representing `ENOTUNIQ` (value 76). Would usually be returned if
   blob is linked with multiple symlinks in the store.
+- `FileMan::Error::PermissionDenied` value changed to `EACCES` and `NotPermitted` introduced for
+  `EPERM`
 - `categoryToString()` made static with another method `errorToString()` introduced for
   `FileMan::Error`.
 - `toString()` with another overload introduced for `FileMan::Error`. Should preferrably used over

@@ -27,8 +27,6 @@ set(CMAKE_PROJECT_SPDX_LICENSE "MIT")
 set(QT_QML_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/qml/)
 set(fm_ns Lotconn)
 
-string(TOLOWER ${PROJECT_NAME} project_name_lower)
-
 option(FM_BUILD_EXAMPLES "Build examples in the project" OFF)
 option(FM_BUILD_TESTS "Build tests in the project" OFF)
 set(FM_BUILD_AS "SHARED" CACHE STRING "Build the library as static")
@@ -185,7 +183,6 @@ set_target_properties(${PROJECT_NAME} ${PROJECT_NAME}plugin
 
 set_target_properties(${PROJECT_NAME}
                       PROPERTIES
-                        OUTPUT_NAME ${project_name_lower} # Outputs (lib)FileMan.* otherwise
                         VERSION ${PROJECT_VERSION}
                         SOVERSION ${PROJECT_VERSION_MAJOR})
 # fmt: on

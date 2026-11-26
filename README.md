@@ -326,9 +326,10 @@ Developers are discouraged from using raw errno values as they may vary dependin
 | `FileMan::Loop`             | `ELOOP`/`40`      | Too many levels of symbolic links    |
 | `FileMan::NotADir`          | `ENOTDIR`/`20`    | Not a directory                      |
 | `FileMan::NotFound`         | `ENOENT`/`2`      | No such file or directory            |
+| `FileMan::NotPermitted`     | `EPERM`/`1`       | Operation not permitted              |
 | `FileMan::NotSupported`     | `EOPNOTSUPP`/`95` | Operation not allowed or supported   |
 | `FileMan::NotUnique`        | `ENOTUNIQ`/`76`   | File not uniquely linked in store    |
-| `FileMan::PermissionDenied` | `EPERM`/`1`       | Operation not permitted              |
+| `FileMan::PermissionDenied` | `EACCES`/`13`     | Permission denied                    |
 | `FileMan::TryAgain`         | `EAGAIN`/`11`     | Operation temporarily failed         |
 
 <div><a id="rm-file-type"></a></div>

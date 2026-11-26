@@ -87,13 +87,13 @@ auto rm_file_t::isNull() const -> bool
 
 auto rm_file_t::setStatus_b(int status_b) -> void
 {
-    if (this->isNull())
+    if (!this->isNull())
         this->d->m_status_b = status_b;
 }
 
 auto rm_file_t::setStatus_l(int status_l) -> void
 {
-    if (this->isNull())
+    if (!this->isNull())
         this->d->m_status_l = status_l;
 }
 

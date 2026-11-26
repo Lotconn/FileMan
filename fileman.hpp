@@ -122,11 +122,12 @@ public:
         Invalid          = EINVAL,
         IOError          = EIO,
         Loop             = ELOOP,
-        NotFound         = ENOENT,
         NotADir          = ENOTDIR,
-        NotUnique        = ENOTUNIQ,
+        NotFound         = ENOENT,
+        NotPermitted     = EPERM,
         NotSupported     = EOPNOTSUPP,
-        PermissionDenied = EPERM,
+        NotUnique        = ENOTUNIQ,
+        PermissionDenied = EACCES,
         TryAgain         = EAGAIN,
         // ceiling is 0xFF
     };
