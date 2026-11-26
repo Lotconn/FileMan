@@ -78,6 +78,7 @@ messages for detailed descriptions.
   where applicable and improving performance
 - File permission checks were made slightly more robust, and permission fixing now extends to store
   files too. Also made clear distinctions about limited permission model on NTFS.
+- New directories made and files copied to store now have explicit permissions set
 
 ### Fixes
 

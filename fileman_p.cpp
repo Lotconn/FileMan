@@ -286,12 +286,12 @@ auto FileManPrivate::lowestSetFlag(const FileMan::Categories categories) noexcep
 
 auto FileManPrivate::mkDataDir() const noexcept -> bool
 {
-    return QDir{ }.mkpath(this->m_blobDirPath);
+    return QDir{ }.mkpath(this->m_blobDirPath, FileManPrivate::sc_dirPerms);
 }
 
 auto FileManPrivate::mkDataDir(FileMan::Category category) const noexcept -> bool
 {
-    return QDir{ }.mkpath(this->m_categoryToDirs.value(category));
+    return QDir{ }.mkpath(this->m_categoryToDirs.value(category), FileManPrivate::sc_dirPerms);
 }
 
 // Static

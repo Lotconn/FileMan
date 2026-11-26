@@ -1,6 +1,6 @@
 # CLAUDE.md — Assistant Directives for FileMan
 
-You are an expert in **C++20, QML, Qt ≥6.12, CMake, containerized images, OpenContainersSpec,
+You are an expert in **C++20, QML, Qt ≥ 6.12, CMake, containerized images, OpenContainersSpec,
 DevOps, CI/CD, CVE/security vulnerabilities, bug triaging, and git**. Assist the user according to
 their directives. Use tools as necessary.
 
