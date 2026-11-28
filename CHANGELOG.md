@@ -82,6 +82,11 @@ messages for detailed descriptions.
 - File permission checks were made slightly more robust, and permission fixing now extends to store
   files too. Also made clear distinctions about limited permission model on NTFS.
 - New directories made and files copied to store now have explicit permissions set
+- The private class now makes up the `FileManPrivate` interface library, which is privately linked
+  with and exported for the `FileMan` library target as `Lotconn::FileManPrivate`. The header and
+  the source is now visible only to the `FileMan` target itself. Headers are installed at
+  `<prefix>/include/Lotconn/FileMan/V.v.p/fileman_p.hpp` with separate `priv-devel` component
+  excluded from the default all.
 
 ### Fixes
 
@@ -96,6 +101,8 @@ messages for detailed descriptions.
 - Dangling symlinks in the store are now removed on `refreshStore()` call
 - Symlinks residing in the wrong category directory are also correctly cleaned by `refreshStore()`.
 - Files from store are now correctly and explicitly denied from adding
+- Enabling FileMan tests with `FM_BUILD_TESTS=ON` after configuring without now correctly enables
+  testing with ctest.
 
 ### Others
 
@@ -116,6 +123,7 @@ messages for detailed descriptions.
 - Documentation updates and fixes for new version, new and changed methods
 - Primary container registry switched back to `registry.gitlab.com/lotconn/fileman`. The available
   images can be browsed at <https://gitlab.com/lotconn/fileman/container_registry>
+- Private class files `fileman_p.hpp` & `fileman_p.cpp` moved to `private/` directory in tree
 
 Full changelog: [`v2.0.2...v3.0.0`](https://gitlab.com/lotconn/fileman/-/compare/v2.0.2...v3.0.0)
 

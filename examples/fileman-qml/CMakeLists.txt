@@ -16,7 +16,7 @@ inline comment on the preceeding line. For a subsequent block, the highlighted p
 ]]
 
 #[KEY:Minimum 3.24 recommended]
-cmake_minimum_required(VERSION 3.24...4.4)
+cmake_minimum_required(VERSION 3.24...4.5)
 
 include(CheckIPOSupported)
 

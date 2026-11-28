@@ -126,7 +126,7 @@ public:
         NotFound         = ENOENT,
         NotPermitted     = EPERM,
         NotSupported     = EOPNOTSUPP,
-        NotUnique        = ENOTUNIQ,
+        NotUnique        = 76, // This is ENOTUNIQ
         PermissionDenied = EACCES,
         TryAgain         = EAGAIN,
         // ceiling is 0xFF

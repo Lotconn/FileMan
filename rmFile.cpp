@@ -66,16 +66,16 @@ auto FileMan::rmFile(const QUrl &fileUrl) -> rm_file_t
     bool lnkRemoved  = false;
 
     // Remove the raw blob from the store first
-    if (validateResult.blobEntry.isEmpty()) [[unlikely]]
+    if (validateResult.blobEntry.isEmpty()) [[unlikely]] {
         logWarning << "No valid blobs found in store for " << fileUrlStr;
-    else {
+    } else {
         // Let's trust that preRmValidate() won't return orphaned blobs
         if (const auto lookupResult = d->revLookupSymlink(validateResult.blobEntry);
             lookupResult.locations.size() > 1) {
 
             logWarning << "Multiple attached symlinks found for " << validateResult.blobEntry;
             logWarning << "Refusing to remove blob";
-            status_b = ENOTUNIQ;
+            status_b = 76; // this is ENOTUNIQ
         } else if (blobRemoved = blobDir.remove(validateResult.blobEntry); !blobRemoved)
                 [[unlikely]] {
             logCritical << "Couldn't remove " << validateResult.blobEntry;

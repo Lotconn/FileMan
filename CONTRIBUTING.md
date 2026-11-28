@@ -1,7 +1,7 @@
 # Contributing
 
 This project uses CMake as the build environment. Minimum required is 3.24 with highest policy set
-to 4.4. clang with LLVM is the recommended compiler used for the project.
+to 4.5. clang with LLVM is the recommended compiler used for the project.
 
 ## Supported Platforms
 

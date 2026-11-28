@@ -529,11 +529,13 @@ Returns a local file [QUrl][qurl] containing the absolute directory of _category
 `FileMan::All` is a composite _flag_ and therefore not supported. String is empty on invalid
 category.
 
-| _category_ [FileMan::Category](#category-enum) | Output ([QUrl][qurl])                        |
-| ---------------------------------------------- | -------------------------------------------- |
-| `FileMan::Audio`                               | `file://<AppLocalDataLocation>/store/audios` |
-| `FileMan::Image`                               | `file://<AppLocalDataLocation>/store/images` |
-| `FileMan::Video`                               | `file://<AppLocalDataLocation>/store/videos` |
+| _category_ [FileMan::Category](#category-enum) | Output ([QUrl][qurl])                         |
+| ---------------------------------------------- | --------------------------------------------- |
+| `FileMan::Audio`                               | `file://<AppLocalDataLocation>/store/audios/` |
+| `FileMan::Image`                               | `file://<AppLocalDataLocation>/store/images/` |
+| `FileMan::Video`                               | `file://<AppLocalDataLocation>/store/videos/` |
+
+_See also: [storeDir()](#storedir)_
 
 <div><a id="category-to-string"></a></div>
 <div><a name="category-to-string"></a></div>
@@ -749,7 +751,7 @@ appropriately and retries if necessary.
 ### [QUrl][qurl] FileMan::storeDir() _const_ `[nodiscard]` `[since 3.0]`
 
 Returns a local file [QUrl][qurl] containing the absolute directory of the store, e.g.
-`file://<AppLocalDataLocation>/store`. String is never empty.
+`file://<AppLocalDataLocation>/store/`. String is never empty.
 
 <div><a id="tostring-1"></a></div>
 <div><a name="tostring-1"></a></div>
@@ -1012,7 +1014,7 @@ Refer to the [QML example](examples/fileman-qml/) for a basic working implementa
 ## Contributing
 
 This project uses CMake as the build environment. Minimum required is 3.24 with highest policy set
-to 4.4. Clang with LLVM, GCC, MingW and MSVC are all supported. See
+to 4.5. Clang with LLVM, GCC, MingW and MSVC are all supported. See
 [CONTRIBUTING.md](./CONTRIBUTING.md) for further details about building, available build flags and
 contribution guidelines & policies.
 

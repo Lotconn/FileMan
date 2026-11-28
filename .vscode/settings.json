@@ -23,6 +23,7 @@
     "cmake.configureOnOpen": false,
     "cmake.generator": "Ninja Multi-Config",
     "cmake.sourceDirectory": "${workspaceFolder}",
+    "cmake.useVsDeveloperEnvironment": "never",
     "editor.formatOnSave": true,
     "editor.rulers": [
         100

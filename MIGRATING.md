@@ -52,7 +52,7 @@ const result = FileMan.addFile(fileUrl, FileMan.Categories.Images)
 
 Ensure your `CMakeLists.txt` meets the new minimum requirements:
 
-- **CMake:** Minimum version 3.24, policies up to 4.4.
+- **CMake:** Minimum version 3.24, policies up to 4.5.
 - **Qt:** Strict mode set to 6.12 (`QT_ENABLE_STRICT_MODE_UP_TO=0x061200`).
 
 ## 3. Checklist for Migration

@@ -3,5 +3,5 @@
 auto FileMan::storeDir() const -> QUrl
 {
     Q_D(const FileMan);
-    return QUrl::fromLocalFile(d->m_storeDirPath);
+    return QUrl::fromLocalFile(d->m_storeDirPath + u'/');
 }

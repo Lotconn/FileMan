@@ -8,6 +8,8 @@
 
 #include <fileman_p.hpp>
 
+Q_LOGGING_CATEGORY(fileman, "FileMan", QtInfoMsg)
+
 auto FileManPrivate::acquireStoreLock() noexcept -> int
 {
     constexpr qint32 lockLifetime = 40000; // 40 sec

@@ -1,9 +1,8 @@
-#
+####################################################################################################
 # CMake & project setup ############################################################################
-#
 
 # Qt recommends minimum version of 3.16
-cmake_minimum_required(VERSION 3.24...4.4)
+cmake_minimum_required(VERSION 3.24...4.5)
 
 project(FileMan
         VERSION 3.0.0
@@ -17,10 +16,8 @@ include(CMakeDependentOption)
 include(CMakePrintHelpers)
 include(CMakePackageConfigHelpers)
 
-#---------------------------------------------------------------------------------------------------
-#
+####################################################################################################
 # Global variables #################################################################################
-#
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON) # Some IDEs need this for linter servers
 set(CMAKE_PROJECT_SPDX_LICENSE "MIT")
@@ -32,6 +29,7 @@ option(FM_BUILD_TESTS "Build tests in the project" OFF)
 set(FM_BUILD_AS "SHARED" CACHE STRING "Build the library as static")
 set_property(CACHE FM_BUILD_AS PROPERTY STRINGS "SHARED" "STATIC")
 
+####################################################################################################
 ## Conditional variables ###########################################################################
 
 if(DEFINED BUILD_SHARED_LIBS AND NOT BUILD_SHARED_LIBS)
@@ -43,13 +41,13 @@ if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
     set(BUILD_TESTING OFF CACHE BOOL "Build tests in the project")
   endif()
 
-  include(CTest)
-
   if(BUILD_TESTING)
     set(FM_BUILD_TESTS ON CACHE BOOL "Build tests in the project" FORCE)
   elseif(FM_BUILD_TESTS)
     set(BUILD_TESTING ON CACHE BOOL "Build tests in the project" FORCE)
   endif()
+
+  include(CTest)
 endif()
 
 find_program(CCACHE_PROGRAM ccache)
@@ -115,15 +113,11 @@ set(CPACK_PROJECT_CONFIG_FILE ${PROJECT_BINARY_DIR}/ExtraCPackConfig.cmake)
 set(CPACK_GENERATOR "TGZ")
 set(CPACK_PACKAGE_VENDOR "Lotconn")
 
-#---------------------------------------------------------------------------------------------------
-#
+####################################################################################################
 # Package/library setup ############################################################################
-#
 
 find_package(Qt6 REQUIRED COMPONENTS Core Qml)
 
-qt_standard_project_setup(REQUIRES 6.12)
-#
 # Strictly standardize on Qt 6.12
 #
 # These CMake policies are in effect:
@@ -137,8 +131,9 @@ qt_standard_project_setup(REQUIRES 6.12)
 #          (Qt 6.12)
 # QTP0007: Quotes and escapes forwarded argument values in generated deploy scripts (Qt 6.12)
 # QTP0008: Forwards deploy script arguments without re-evaluating them. (Qt 6.12)
-#
+qt_standard_project_setup(REQUIRES 6.12)
 
+qt_add_library(${PROJECT_NAME}Private INTERFACE)
 qt_add_qml_module(${PROJECT_NAME}
                   URI Lotconn.FileMan
                   VERSION 3.0 ${FM_BUILD_AS}
@@ -146,8 +141,8 @@ qt_add_qml_module(${PROJECT_NAME}
                     FileMan
                     fileman.hpp
                     fileman.cpp
-                    fileman_p.hpp
-                    fileman_p.cpp
+                    private/fileman_p.hpp
+                    private/fileman_p.cpp
                     addFile.cpp
                     categoryDir.cpp
                     fileName.cpp
@@ -161,7 +156,6 @@ qt_add_qml_module(${PROJECT_NAME}
                     # qt_add_qml_module() creates some object targets that need to be included with 
                     # the qml module in order for it to work. This is especially necessary on static
                     # builds. OUTPUT_TARGETS enlists all those required objects in the variable
-                    #
                   OUTPUT_TARGETS fm_qml_mod_output_targets)
 
 # Some variables worth noting down
@@ -174,6 +168,7 @@ qt_query_qml_module(${PROJECT_NAME}
 
 # Namespaces are always a good idea
 add_library(${fm_ns}::${PROJECT_NAME} ALIAS ${PROJECT_NAME})
+add_library(${fm_ns}::${PROJECT_NAME}Private ALIAS ${PROJECT_NAME}Private)
 # fmt: off
 set_target_properties(${PROJECT_NAME} ${PROJECT_NAME}plugin
                       PROPERTIES
@@ -201,18 +196,14 @@ file(RELATIVE_PATH
 set_target_properties(${PROJECT_NAME}plugin
                       PROPERTIES INSTALL_RPATH "$ORIGIN:$ORIGIN/${plugin_rpath}")
 
-#---------------------------------------------------------------------------------------------------
-#
-# Target compiling & linking #######################################################################
-#
+####################################################################################################
+## Target compiling & linking ######################################################################
 
-#
 # Disable policies older than Qt 6.12. The format is 0xMMmmrr
 # MM = Major (06); mm = minor (09); rr = revision (00)
 #
 # Refer to https://doc.qt.io/qt-6/qtglobal.html#QT_ENABLE_STRICT_MODE_UP_TO for a complete list of
 # disabled APIs
-#
 target_compile_definitions(${PROJECT_NAME}
                            PRIVATE
                              QT_ENABLE_STRICT_MODE_UP_TO=0x061200
@@ -223,6 +214,7 @@ target_compile_definitions(${PROJECT_NAME}plugin PRIVATE QT_ENABLE_STRICT_MODE_U
 target_compile_options(${PROJECT_NAME} PRIVATE "${compile_flags}")
 target_compile_options(${PROJECT_NAME}plugin PRIVATE "${compile_flags}")
 target_include_directories(${PROJECT_NAME}
+                           PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/private
                            PUBLIC
                              #
                              # Since the project layout is flat, CMake needs to know where to look
@@ -232,6 +224,12 @@ target_include_directories(${PROJECT_NAME}
                              $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
                              $<INSTALL_INTERFACE:include>)
 
+target_include_directories(${PROJECT_NAME}Private
+                           INTERFACE
+                             $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/private>
+                             $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/${fm_ns}/${PROJECT_NAME}/${PROJECT_VERSION}/private>
+)
+
 target_include_directories(${PROJECT_NAME}plugin
                            PUBLIC
                              $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
@@ -239,18 +237,20 @@ target_include_directories(${PROJECT_NAME}plugin
 
 #
 # Versionless invokes are preferred
-#
 # Return types depends on Qt::Core & ::Qml, needs to be PUBLIC
-#
 target_link_libraries(${PROJECT_NAME} PUBLIC Qt::Core Qt::Qml)
+target_link_libraries(${PROJECT_NAME}Private INTERFACE ${PROJECT_NAME})
 target_link_options(${PROJECT_NAME} PRIVATE "${linker_flags}")
 target_link_options(${PROJECT_NAME}plugin PRIVATE "${linker_flags}")
 target_sources(${PROJECT_NAME} PUBLIC FILE_SET HEADERS FILES FileMan fileman.hpp)
+target_sources(${PROJECT_NAME}Private
+               INTERFACE
+               FILE_SET HEADERS
+                 BASE_DIRS private/
+                 FILES private/fileman_p.hpp)
 
-#---------------------------------------------------------------------------------------------------
-#
-# External project includes ########################################################################
-#
+####################################################################################################
+## External project includes #######################################################################
 
 if(FM_BUILD_EXAMPLES)
   add_subdirectory(examples/fileman-cli-qt)
@@ -258,19 +258,15 @@ if(FM_BUILD_EXAMPLES)
   add_subdirectory(examples/fileman-qml)
 endif()
 
-#---------------------------------------------------------------------------------------------------
-#
-# Testing ##########################################################################################
-#
+####################################################################################################
+## Testing #########################################################################################
 
 if((CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME) AND FM_BUILD_TESTS)
   add_subdirectory(tests)
 endif()
 
-#---------------------------------------------------------------------------------------------------
-#
-# Installing #######################################################################################
-#
+####################################################################################################
+## Installing ######################################################################################
 
 install(TARGETS
         ${PROJECT_NAME} ${fm_qml_mod_output_targets} # install those qml module object targets
@@ -284,15 +280,23 @@ install(TARGETS
           COMPONENT devel
           DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/${fm_ns}/${PROJECT_NAME}")
 
-#
+install(TARGETS ${PROJECT_NAME}Private
+        EXPORT ${PROJECT_NAME}Targets
+        FILE_SET HEADERS
+          EXCLUDE_FROM_ALL
+          COMPONENT priv-devel
+          DESTINATION
+                      "${CMAKE_INSTALL_INCLUDEDIR}/${fm_ns}/${PROJECT_NAME}/${PROJECT_VERSION}/private"
+)
+
 # The qml module plugin and related files should be installed under INSTALL_LIBDIR/[qt6/]qml as is
 # conventional. QT_QML_OUTPUT_DIR could be manually set but QT6_INSTALL_QML already has the
 # structure right
-#
 install(TARGETS "${PROJECT_NAME}plugin"
         EXPORT ${PROJECT_NAME}Targets
         ARCHIVE COMPONENT devel DESTINATION "${QT6_INSTALL_QML}/${fm_ns}/${PROJECT_NAME}"
         LIBRARY COMPONENT runtime DESTINATION "${QT6_INSTALL_QML}/${fm_ns}/${PROJECT_NAME}")
+
 install(FILES "${fm_qml_mod_qmldir}" "${fm_qml_mod_typeinfo}"
         DESTINATION "${QT6_INSTALL_QML}/${fm_ns}/${PROJECT_NAME}"
         COMPONENT runtime)
@@ -309,6 +313,7 @@ install(EXPORT ${PROJECT_NAME}Targets
         DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME}"
         COMPONENT devel
         NAMESPACE Lotconn::)
+
 install(FILES
         "${CMAKE_CURRENT_SOURCE_DIR}/${PROJECT_NAME}Config.cmake"
         "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}ConfigVersion.cmake"
@@ -322,5 +327,8 @@ if(CMAKE_SOURCE_DIR STREQUAL PROJECT_SOURCE_DIR)
           DESTINATION "${CMAKE_INSTALL_DATADIR}/licenses/${fm_ns}/${PROJECT_NAME}"
           COMPONENT runtime)
 endif()
+
+####################################################################################################
+## Packaging #######################################################################################
 
 include(CPack)
